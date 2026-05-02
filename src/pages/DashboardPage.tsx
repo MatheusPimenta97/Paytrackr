@@ -40,22 +40,146 @@ function cardStatusLabel(s: ReturnType<typeof creditCardDueStatus>) {
   return "Fatura em aberto";
 }
 
-function mobileWalletCardBg(card: CreditCard): string {
-  if (card.kind === "beneficios") {
-    return "bg-gradient-to-br from-emerald-950 via-teal-900 to-slate-900";
-  }
-  switch (card.brand) {
-    case "visa":
-      return "bg-gradient-to-br from-[#0a1628] via-[#152b52] to-[#3d5a8c]";
-    case "master":
-      return "bg-gradient-to-br from-[#1c1408] via-[#4a3518] to-[#b8860b]";
-    case "elo":
-      return "bg-gradient-to-br from-[#1a237e] via-[#3949ab] to-[#7986cb]";
-    case "amex":
-      return "bg-gradient-to-br from-[#263238] via-[#455a64] to-[#78909c]";
-    default:
-      return "bg-gradient-to-br from-slate-900 via-slate-800 to-slate-700";
-  }
+function DashboardCreditCardTile({
+  card: c,
+  onEdit,
+  onTryDelete,
+}: {
+  card: CreditCard;
+  onEdit: () => void;
+  onTryDelete: () => void;
+}) {
+  const isBenef = c.kind === "beneficios";
+  const due = isBenef ? ("open" as const) : creditCardDueStatus(c.dueDay);
+  const available = roundMoney(c.creditLimit - c.currentInvoice);
+  const usedPct =
+    c.creditLimit > 0
+      ? Math.min(100, roundMoney((c.currentInvoice / c.creditLimit) * 100))
+      : 0;
+  const dueUrgent = !isBenef && (due === "overdue" || due === "soon");
+
+  return (
+    <div className="rounded-xl border border-outline-variant/10 bg-surface-container-lowest p-6 shadow-light dark:border-slate-700 dark:bg-slate-900">
+      <div className="mb-6 flex items-start justify-between gap-2">
+        <div className="flex min-w-0 items-center space-x-3">
+          <CardBrandLogo
+            brand={c.brand}
+            className="!h-10 !w-[4.25rem] shadow-sm"
+            imgClassName="max-h-8 w-full max-w-[3.5rem] object-contain object-center"
+          />
+          <div className="min-w-0">
+            <p className="truncate text-xs font-bold uppercase tracking-wider text-on-surface-variant dark:text-slate-400">
+              {c.name}
+            </p>
+            <p className="font-mono text-[10px] text-outline dark:text-slate-500">•••• {c.last4}</p>
+          </div>
+        </div>
+        <div className="flex shrink-0 flex-col items-end gap-2">
+          <span
+            className={`rounded px-2 py-1 text-[10px] font-black uppercase ${
+              isBenef
+                ? "bg-tertiary-fixed text-on-tertiary-fixed-variant"
+                : due === "overdue" || due === "soon"
+                  ? "bg-error-container text-on-error-container"
+                  : "bg-secondary-container text-on-secondary-container"
+            }`}
+          >
+            {isBenef ? "Pré-pago" : cardStatusLabel(due)}
+          </span>
+          <div className="flex gap-1">
+            <Link
+              to={`/cartao/${c.id}`}
+              className="rounded p-1 text-on-surface-variant hover:bg-surface-container-high dark:text-slate-400 dark:hover:bg-slate-800"
+              aria-label="Detalhes do cartão"
+              title="Detalhes"
+            >
+              <span className="material-symbols-outlined text-lg">visibility</span>
+            </Link>
+            <button
+              type="button"
+              onClick={onEdit}
+              className="rounded p-1 text-on-surface-variant hover:bg-surface-container-high dark:text-slate-400 dark:hover:bg-slate-800"
+              aria-label="Editar cartão"
+            >
+              <span className="material-symbols-outlined text-lg">edit</span>
+            </button>
+            <button
+              type="button"
+              onClick={onTryDelete}
+              className="rounded p-1 text-error hover:bg-error-container/30"
+              aria-label="Remover cartão"
+            >
+              <span className="material-symbols-outlined text-lg">delete</span>
+            </button>
+          </div>
+        </div>
+      </div>
+      <div className="space-y-4">
+        {isBenef ? (
+          <>
+            <div className="space-y-2">
+              {(["refeicao", "alimentacao", "mobilidade"] as BenefitBucket[]).map((b) => (
+                <div
+                  key={b}
+                  className="flex items-center justify-between rounded-lg bg-surface-container-high/40 px-3 py-2 dark:bg-slate-800/60"
+                >
+                  <span className="text-xs font-medium text-on-surface-variant dark:text-slate-400">
+                    {BENEFIT_BUCKET_LABEL[b]}
+                  </span>
+                  <span className="font-headline text-sm font-black text-primary dark:text-slate-100">
+                    {formatBRL(c.benefitBalances[b])}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <div className="text-right text-[10px] text-on-surface-variant dark:text-slate-500">
+              Lançamentos com este cartão atualizam as bolsas.
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="flex items-end justify-between gap-2">
+              <div>
+                <p className="mb-1 text-xs font-medium text-on-surface-variant dark:text-slate-400">
+                  Fatura Atual
+                </p>
+                <p className="font-headline text-2xl font-black text-primary dark:text-slate-100">
+                  {formatBRL(c.currentInvoice)}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] font-medium text-on-surface-variant dark:text-slate-400">
+                  Fechamento
+                </p>
+                <p className="text-xs font-semibold text-on-surface-variant dark:text-slate-300">
+                  {formatCardBillingDayLabel(c.closingDay)}
+                </p>
+                <p className="mt-1.5 text-[10px] font-medium text-on-surface-variant dark:text-slate-400">
+                  Vencimento
+                </p>
+                <p
+                  className={`text-sm font-bold ${dueUrgent ? "text-error" : "text-on-surface-variant dark:text-slate-300"}`}
+                >
+                  {formatCardBillingDayLabel(c.dueDay)}
+                </p>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <div className="flex justify-between text-[10px] font-bold">
+                <span className="text-on-surface-variant dark:text-slate-400">Limite utilizado</span>
+                <span className="text-primary dark:text-blue-200">
+                  Limite disponível: {formatBRL(available)}
+                </span>
+              </div>
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-container-high dark:bg-slate-800">
+                <div className={`h-full rounded-full ${BAR_COLOR[c.brand]}`} style={{ width: `${usedPct}%` }} />
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
 }
 
 function accountSubtitleMobile(acc: { icon: string }): string {
@@ -133,6 +257,26 @@ export function DashboardPage() {
 
   return (
     <Fragment>
+      <QuickIncomeModal
+        open={depositOpen}
+        title="Depositar"
+        onClose={() => setDepositOpen(false)}
+      />
+      <ManageCreditCardModal
+        open={cardFormOpen}
+        editing={cardFormEditing}
+        onClose={() => setCardFormOpen(false)}
+      />
+      <CreditCardLimitsModal
+        open={limitsOpen}
+        onClose={() => setLimitsOpen(false)}
+        cards={state.creditCards}
+      />
+      <EditAccountModal
+        open={editAccountId !== null}
+        accountId={editAccountId}
+        onClose={() => setEditAccountId(null)}
+      />
       {/* Dashboard mobile — layout compacto estilo mock */}
       <div className="mx-auto max-w-md space-y-5 px-4 pb-28 pt-24 md:hidden">
         <section className="rounded-xl border border-slate-100 bg-white p-5 shadow-[0px_4px_12px_rgba(0,40,85,0.05)] dark:border-slate-800 dark:bg-slate-900">
@@ -171,54 +315,68 @@ export function DashboardPage() {
           </button>
         </section>
 
-        <section className="space-y-3">
-          <div className="flex items-center justify-between px-1">
-            <h3 className="font-headline text-lg font-semibold text-primary dark:text-slate-100">Meus cartões</h3>
-            <button
-              type="button"
-              onClick={() => setLimitsOpen(true)}
-              disabled={state.creditCards.length === 0}
-              className="text-sm font-semibold text-on-primary-container hover:underline disabled:opacity-40 dark:text-blue-300"
-            >
-              Ver todos
-            </button>
-          </div>
-          {state.creditCards.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-outline-variant/40 bg-surface-container-lowest p-6 text-center dark:bg-slate-900">
-              <p className="mb-3 text-sm text-on-surface-variant">Nenhum cartão cadastrado.</p>
+        <section className="space-y-4">
+          <div className="flex flex-col gap-3 px-1">
+            <h3 className="font-headline text-lg font-semibold tracking-tight text-primary dark:text-slate-100">
+              Gestão de Cartões
+            </h3>
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
                 onClick={() => {
                   setCardFormEditing(null);
                   setCardFormOpen(true);
                 }}
-                className="rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white"
+                className="flex items-center space-x-1 rounded-lg border border-secondary/40 bg-secondary-container/30 px-3 py-2 text-sm font-bold text-secondary transition-colors hover:bg-secondary-container/50 dark:border-emerald-800/50 dark:bg-emerald-950/40 dark:text-emerald-200 dark:hover:bg-emerald-950/60"
               >
-                Incluir cartão
+                <span className="material-symbols-outlined text-base">add_card</span>
+                <span>Incluir cartão</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setLimitsOpen(true)}
+                disabled={state.creditCards.length === 0}
+                className="flex items-center space-x-1 text-sm font-semibold text-secondary hover:underline disabled:pointer-events-none disabled:opacity-40 dark:text-emerald-300"
+              >
+                <span>Ver todos os limites</span>
+                <span className="material-symbols-outlined text-sm">arrow_forward</span>
+              </button>
+            </div>
+          </div>
+          {state.creditCards.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-outline-variant/40 bg-surface-container-lowest/80 p-8 text-center shadow-light dark:bg-slate-900">
+              <p className="mb-4 text-sm text-on-surface-variant dark:text-slate-400">
+                Nenhum cartão cadastrado. Inclua os seus para acompanhar fatura, vencimento e limite.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setCardFormEditing(null);
+                  setCardFormOpen(true);
+                }}
+                className="rounded-lg bg-primary px-5 py-2.5 text-sm font-bold text-white"
+              >
+                Incluir primeiro cartão
               </button>
             </div>
           ) : (
-            <div className="no-scrollbar flex snap-x gap-4 overflow-x-auto pb-1">
+            <div className="no-scrollbar flex snap-x gap-4 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {carouselCreditCards.map((c) => (
-                <Link
+                <div
                   key={c.id}
-                  to={`/cartao/${c.id}`}
-                  className={`relative flex min-h-[180px] min-w-[280px] shrink-0 snap-center flex-col justify-between rounded-xl p-5 text-white shadow-lg ${mobileWalletCardBg(c)}`}
+                  className="relative w-[min(100%,22rem)] shrink-0 snap-center min-w-[min(100%,22rem)]"
                 >
-                  <div className="relative z-10 flex items-start justify-between">
-                    <span className="material-symbols-outlined text-3xl opacity-90">contactless</span>
-                    <span className="max-w-[60%] text-right font-headline text-lg font-semibold italic leading-tight">
-                      {c.name}
-                    </span>
-                  </div>
-                  <div className="relative z-10">
-                    <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider opacity-80">
-                      Número do cartão
-                    </p>
-                    <p className="font-headline text-lg tracking-[0.18em]">•••• {c.last4}</p>
-                  </div>
-                  <div className="pointer-events-none absolute inset-0 rounded-xl bg-black/15" aria-hidden />
-                </Link>
+                  <DashboardCreditCardTile
+                    card={c}
+                    onEdit={() => {
+                      setCardFormEditing(c);
+                      setCardFormOpen(true);
+                    }}
+                    onTryDelete={() => {
+                      if (confirm(`Remover o cartão "${c.name}"?`)) deleteCreditCard(c.id);
+                    }}
+                  />
+                </div>
               ))}
             </div>
           )}
@@ -319,26 +477,6 @@ export function DashboardPage() {
       </div>
 
     <div className="mx-auto hidden max-w-7xl px-6 pb-12 md:block md:px-12">
-      <QuickIncomeModal
-        open={depositOpen}
-        title="Depositar"
-        onClose={() => setDepositOpen(false)}
-      />
-      <ManageCreditCardModal
-        open={cardFormOpen}
-        editing={cardFormEditing}
-        onClose={() => setCardFormOpen(false)}
-      />
-      <CreditCardLimitsModal
-        open={limitsOpen}
-        onClose={() => setLimitsOpen(false)}
-        cards={state.creditCards}
-      />
-      <EditAccountModal
-        open={editAccountId !== null}
-        accountId={editAccountId}
-        onClose={() => setEditAccountId(null)}
-      />
       <header className="mb-12 flex flex-col items-end justify-between md:flex-row">
         <div className="w-full space-y-6 md:w-auto">
           <div>
@@ -476,145 +614,23 @@ export function DashboardPage() {
                   onScroll={updateCardScroll}
                   className="flex gap-6 overflow-x-auto scroll-smooth pb-1 [-ms-overflow-style:none] [scrollbar-width:thin] snap-x snap-mandatory sm:snap-none [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-outline-variant/40"
                 >
-                  {carouselCreditCards.map((c) => {
-                  const isBenef = c.kind === "beneficios";
-                  const due = isBenef ? ("open" as const) : creditCardDueStatus(c.dueDay);
-                  const available = roundMoney(c.creditLimit - c.currentInvoice);
-                  const usedPct =
-                    c.creditLimit > 0
-                      ? Math.min(100, roundMoney((c.currentInvoice / c.creditLimit) * 100))
-                      : 0;
-                  const dueUrgent = !isBenef && (due === "overdue" || due === "soon");
-                  return (
+                  {carouselCreditCards.map((c) => (
                     <div
                       key={c.id}
-                      className="relative shrink-0 snap-center max-sm:w-full max-sm:min-w-[min(100%,22rem)] sm:w-[calc(50%-0.75rem)] sm:min-w-[calc(50%-0.75rem)] sm:max-w-[calc(50%-0.75rem)] rounded-xl border border-outline-variant/10 bg-surface-container-lowest p-6 shadow-light"
+                      className="relative max-sm:w-full max-sm:min-w-[min(100%,22rem)] shrink-0 snap-center sm:w-[calc(50%-0.75rem)] sm:min-w-[calc(50%-0.75rem)] sm:max-w-[calc(50%-0.75rem)]"
                     >
-                      <div className="mb-6 flex items-start justify-between gap-2">
-                        <div className="flex min-w-0 items-center space-x-3">
-                          <CardBrandLogo
-                            brand={c.brand}
-                            className="!h-10 !w-[4.25rem] shadow-sm"
-                            imgClassName="max-h-8 w-full max-w-[3.5rem] object-contain object-center"
-                          />
-                          <div className="min-w-0">
-                            <p className="truncate text-xs font-bold uppercase tracking-wider text-on-surface-variant">
-                              {c.name}
-                            </p>
-                            <p className="font-mono text-[10px] text-outline">•••• {c.last4}</p>
-                          </div>
-                        </div>
-                        <div className="flex shrink-0 flex-col items-end gap-2">
-                          <span
-                            className={`rounded px-2 py-1 text-[10px] font-black uppercase ${
-                              isBenef
-                                ? "bg-tertiary-fixed text-on-tertiary-fixed-variant"
-                                : due === "overdue" || due === "soon"
-                                  ? "bg-error-container text-on-error-container"
-                                  : "bg-secondary-container text-on-secondary-container"
-                            }`}
-                          >
-                            {isBenef ? "Pré-pago" : cardStatusLabel(due)}
-                          </span>
-                          <div className="flex gap-1">
-                            <Link
-                              to={`/cartao/${c.id}`}
-                              className="rounded p-1 text-on-surface-variant hover:bg-surface-container-high"
-                              aria-label="Detalhes do cartão"
-                              title="Detalhes"
-                            >
-                              <span className="material-symbols-outlined text-lg">visibility</span>
-                            </Link>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setCardFormEditing(c);
-                                setCardFormOpen(true);
-                              }}
-                              className="rounded p-1 text-on-surface-variant hover:bg-surface-container-high"
-                              aria-label="Editar cartão"
-                            >
-                              <span className="material-symbols-outlined text-lg">edit</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                if (confirm(`Remover o cartão "${c.name}"?`)) deleteCreditCard(c.id);
-                              }}
-                              className="rounded p-1 text-error hover:bg-error-container/30"
-                              aria-label="Remover cartão"
-                            >
-                              <span className="material-symbols-outlined text-lg">delete</span>
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="space-y-4">
-                        {isBenef ? (
-                          <>
-                            <div className="space-y-2">
-                              {(["refeicao", "alimentacao", "mobilidade"] as BenefitBucket[]).map((b) => (
-                                <div
-                                  key={b}
-                                  className="flex items-center justify-between rounded-lg bg-surface-container-high/40 px-3 py-2"
-                                >
-                                  <span className="text-xs font-medium text-on-surface-variant">
-                                    {BENEFIT_BUCKET_LABEL[b]}
-                                  </span>
-                                  <span className="font-headline text-sm font-black text-primary">
-                                    {formatBRL(c.benefitBalances[b])}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-                            <div className="text-right text-[10px] text-on-surface-variant">
-                              Lançamentos com este cartão atualizam as bolsas.
-                            </div>
-                          </>
-                        ) : (
-                          <>
-                            <div className="flex items-end justify-between gap-2">
-                              <div>
-                                <p className="mb-1 text-xs font-medium text-on-surface-variant">Fatura Atual</p>
-                                <p className="font-headline text-2xl font-black text-primary">
-                                  {formatBRL(c.currentInvoice)}
-                                </p>
-                              </div>
-                              <div className="text-right">
-                                <p className="text-[10px] font-medium text-on-surface-variant">Fechamento</p>
-                                <p className="text-xs font-semibold text-on-surface-variant">
-                                  {formatCardBillingDayLabel(c.closingDay)}
-                                </p>
-                                <p className="mt-1.5 text-[10px] font-medium text-on-surface-variant">
-                                  Vencimento
-                                </p>
-                                <p
-                                  className={`text-sm font-bold ${dueUrgent ? "text-error" : "text-on-surface-variant"}`}
-                                >
-                                  {formatCardBillingDayLabel(c.dueDay)}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="space-y-1.5">
-                              <div className="flex justify-between text-[10px] font-bold">
-                                <span className="text-on-surface-variant">Limite utilizado</span>
-                                <span className="text-primary">
-                                  Limite disponível: {formatBRL(available)}
-                                </span>
-                              </div>
-                              <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-container-high">
-                                <div
-                                  className={`h-full rounded-full ${BAR_COLOR[c.brand]}`}
-                                  style={{ width: `${usedPct}%` }}
-                                />
-                              </div>
-                            </div>
-                          </>
-                        )}
-                      </div>
+                      <DashboardCreditCardTile
+                        card={c}
+                        onEdit={() => {
+                          setCardFormEditing(c);
+                          setCardFormOpen(true);
+                        }}
+                        onTryDelete={() => {
+                          if (confirm(`Remover o cartão "${c.name}"?`)) deleteCreditCard(c.id);
+                        }}
+                      />
                     </div>
-                  );
-                })}
+                  ))}
                 </div>
                 {state.creditCards.length > 2 && (
                   <div className="mt-4 flex flex-wrap items-center justify-between gap-3">

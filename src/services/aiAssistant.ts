@@ -29,7 +29,17 @@ Nenhuma URL de agente está configurada. Para ler **comprovantes de pagamento** 
 }
 \`\`\`
 
-2. **Frontend** — defina no \`.env\`:
+2. **Dev com Vite** — na raiz do projeto, no \`.env\`:
+
+\`\`\`
+OPENAI_API_KEY=sk-...
+OPENAI_MODEL=gpt-4o-mini
+VITE_AI_ASSISTANT_URL=/api/paytrackr/assistant/image
+\`\`\`
+
+(O servidor de desenvolvimento expõe esse endpoint e encaminha para a OpenAI. Em produção estático você precisa de um backend próprio.)
+
+Para hospedar em URL externa:
 
 \`\`\`
 VITE_AI_ASSISTANT_URL=https://seu-servidor.com/api/paytrackr/assistant/image
@@ -95,7 +105,14 @@ export async function analyzePaymentReceiptImage(imageDataUrl: string): Promise<
   }
 
   if (!res.ok) {
-    throw new Error(typeof raw === "string" ? raw : `HTTP ${res.status}`);
+    const apiErr =
+      typeof raw === "object" &&
+      raw !== null &&
+      "error" in raw &&
+      typeof (raw as { error: unknown }).error === "string"
+        ? (raw as { error: string }).error.trim()
+        : "";
+    throw new Error(apiErr || (typeof raw === "string" ? raw : `HTTP ${res.status}`));
   }
 
   const body = raw as AiAssistantImageResponseBody;

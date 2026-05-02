@@ -44,12 +44,18 @@ export function SettingsPage() {
         Dados salvos localmente neste navegador ({state.transactions.length} lançamentos,{" "}
         {state.goals.length} metas, {state.recurringExpenses.length} recorrentes).
       </p>
-      <p className="mb-8">
+      <p className="mb-8 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:gap-x-6">
         <Link
           to="/perfil"
           className="text-sm font-bold text-secondary underline-offset-2 hover:underline"
         >
           Meu perfil — nome e salário mensal
+        </Link>
+        <Link
+          to="/assistente"
+          className="text-sm font-bold text-primary underline-offset-2 hover:underline dark:text-blue-300"
+        >
+          Assistente IA — foto de comprovante / agente (experimental)
         </Link>
       </p>
 

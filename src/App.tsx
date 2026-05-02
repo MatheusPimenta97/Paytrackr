@@ -30,6 +30,9 @@ const PontosPage = lazy(() => import("./pages/PontosPage").then((m) => ({ defaul
 const CreditCardDetailPage = lazy(() =>
   import("./pages/CreditCardDetailPage").then((m) => ({ default: m.CreditCardDetailPage }))
 );
+const AiAssistantPage = lazy(() =>
+  import("./pages/AiAssistantPage").then((m) => ({ default: m.AiAssistantPage }))
+);
 
 function RouteFallback() {
   return (
@@ -80,6 +83,7 @@ export default function App() {
           <Route path="/payments" element={<LancamentosPage />} />
           <Route path="/perfil" element={<ProfilePage />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/assistente" element={<AiAssistantPage />} />
         </Route>
         </Route>
       </Route>

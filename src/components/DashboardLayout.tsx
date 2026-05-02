@@ -12,6 +12,7 @@ const sidebarNav = [
   { to: "/valores-a-receber", label: "Recebíveis", icon: "request_quote" },
   { to: "/pontos", label: "Pontos", icon: "stars" },
   { to: "/metas", label: "Metas", icon: "flag" },
+  { to: "/assistente", label: "Comprovantes IA", icon: "document_scanner" },
 ] as const;
 
 export function DashboardLayout() {

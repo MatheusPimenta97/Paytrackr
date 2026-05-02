@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
-import { DEMO_EMAIL, DEMO_PASSWORD, useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/AuthContext";
 
 const LOGIN_PRIMARY = "#001430";
 const LOGIN_SURFACE_BRIGHT = "#f7f9fb";
@@ -47,92 +47,94 @@ export function LoginPage() {
     window.setTimeout(() => navigate("/", { replace: true }), 720);
   }
 
+  const inputClass =
+    "h-11 w-full rounded-lg border py-2 pl-11 pr-3 font-body text-sm outline-none transition-all focus:border-transparent focus:ring-2 focus:ring-[#cee6f3] sm:h-12 sm:py-2.5 sm:text-[15px] dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:focus:ring-slate-600 lg:h-11 lg:text-sm";
+
   return (
-    <div className="relative flex min-h-[100dvh] flex-col bg-[#f7f9fb] font-body text-[#191c1e] dark:bg-slate-950 dark:text-slate-100">
-      <div className="pointer-events-none fixed inset-0 -z-10 opacity-40">
+    <div className="flex min-h-dvh flex-col bg-[#f7f9fb] font-body text-[#191c1e] dark:bg-slate-950 dark:text-slate-100">
+      <div className="pointer-events-none fixed inset-0 -z-10 opacity-40 lg:hidden">
         <div
-          className="absolute -right-[10%] -top-[10%] h-[500px] w-[500px] rounded-full blur-[100px]"
+          className="absolute -right-[10%] -top-[10%] h-[min(500px,50vh)] w-[min(500px,90vw)] rounded-full blur-[100px]"
           style={{ backgroundColor: LOGIN_SECONDARY_CONTAINER }}
         />
         <div
-          className="absolute -bottom-[10%] -left-[10%] h-[400px] w-[400px] rounded-full blur-[100px]"
+          className="absolute -bottom-[10%] -left-[10%] h-[min(400px,45vh)] w-[min(400px,80vw)] rounded-full blur-[100px]"
           style={{ backgroundColor: LOGIN_PRIMARY_FIXED_DIM }}
         />
       </div>
 
       <main
-        className={`relative z-10 flex flex-grow flex-col justify-center px-4 py-10 sm:px-6 lg:py-14 transition-all duration-700 ease-out ${
+        className={`relative z-10 flex flex-1 flex-col lg:grid lg:min-h-0 lg:grid-cols-2 lg:gap-0 transition-all duration-700 ease-out ${
           exiting ? "login-page-exit-bg" : ""
         }`}
       >
+        {/* Desktop: coluna esquerda — institucional */}
+        <section className="hidden min-h-0 flex-col justify-center overflow-y-auto bg-[#f7f9fb] px-8 py-6 xl:px-12 lg:flex">
+          <div
+            className="mb-4 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
+            style={{ backgroundColor: LOGIN_SECONDARY_CONTAINER }}
+          >
+            <span className="material-symbols-outlined text-[26px]" style={{ color: LOGIN_PRIMARY }}>
+              account_balance_wallet
+            </span>
+          </div>
+          <h2 className="font-headline text-2xl font-bold leading-tight tracking-tight xl:text-3xl" style={{ color: LOGIN_PRIMARY }}>
+            Suas finanças, um só lugar.
+          </h2>
+          <p className="mt-2 max-w-md text-sm leading-snug xl:text-[15px]" style={{ color: LOGIN_ON_SURFACE_VARIANT }}>
+            Mais espaço para revisar saldos, cartões e metas — o mesmo login seguro do celular.
+          </p>
+          <ul className="mt-4 space-y-2 text-xs font-medium leading-snug xl:text-sm" style={{ color: LOGIN_ON_SURFACE_VARIANT }}>
+            <li className="flex items-start gap-2">
+              <span className="material-symbols-outlined shrink-0 text-lg text-emerald-700">check_circle</span>
+              Dados ficam neste navegador até você configurar nuvem.
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="material-symbols-outlined shrink-0 text-lg text-emerald-700">check_circle</span>
+              Ideal para uso diário em tela grande ou notebook.
+            </li>
+          </ul>
+        </section>
+
+        {/* Mobile + desktop direita: gradiente só em lg */}
         <div
-          className={`mx-auto grid w-full max-w-md gap-10 lg:max-w-6xl lg:grid-cols-[minmax(0,1fr)_minmax(340px,440px)] lg:items-center lg:gap-16 xl:gap-24 ${
+          className={`flex flex-1 flex-col justify-center px-4 py-5 sm:px-6 lg:bg-gradient-to-br lg:from-[#020919] lg:via-[#041e47] lg:to-[#0b4f9c] lg:px-8 lg:py-6 xl:px-10 ${
             exiting ? "login-page-exit-card" : "login-page-enter"
           }`}
         >
-          {/* Desktop: coluna institucional */}
-          <section className="hidden lg:flex lg:flex-col lg:justify-center lg:pr-8">
-            <div
-              className="mb-6 inline-flex h-14 w-14 items-center justify-center rounded-xl"
-              style={{ backgroundColor: LOGIN_SECONDARY_CONTAINER }}
-            >
-              <span className="material-symbols-outlined text-4xl" style={{ color: LOGIN_PRIMARY }}>
-                account_balance_wallet
-              </span>
-            </div>
-            <h2 className="font-headline text-4xl font-bold tracking-tight xl:text-5xl" style={{ color: LOGIN_PRIMARY }}>
-              Suas finanças, um só lugar.
-            </h2>
-            <p className="mt-4 max-w-md text-lg leading-relaxed" style={{ color: LOGIN_ON_SURFACE_VARIANT }}>
-              No desktop você ganha mais espaço para revisar saldos, cartões e metas com calma — o mesmo login seguro do
-              celular.
-            </p>
-            <ul className="mt-8 space-y-4 text-sm font-medium" style={{ color: LOGIN_ON_SURFACE_VARIANT }}>
-              <li className="flex items-center gap-3">
-                <span className="material-symbols-outlined text-xl text-emerald-700">check_circle</span>
-                Dados ficam neste navegador até você configurar nuvem.
-              </li>
-              <li className="flex items-center gap-3">
-                <span className="material-symbols-outlined text-xl text-emerald-700">check_circle</span>
-                Ideal para uso diário em tela grande ou notebook.
-              </li>
-            </ul>
-          </section>
-
-          <div className="flex w-full flex-col items-center lg:items-stretch">
-            {/* Mobile: ícone + título acima do card */}
-            <div className="mb-8 w-full text-center lg:hidden">
-              <div className="mb-4 inline-flex items-center justify-center rounded-xl p-2" style={{ backgroundColor: LOGIN_SECONDARY_CONTAINER }}>
-                <span className="material-symbols-outlined text-3xl" style={{ color: LOGIN_PRIMARY }}>
+          <div className="mx-auto w-full max-w-[400px] lg:my-auto">
+            {/* Mobile: ícone + título */}
+            <div className="mb-5 w-full text-center lg:hidden">
+              <div
+                className="mb-3 inline-flex items-center justify-center rounded-xl p-1.5"
+                style={{ backgroundColor: LOGIN_SECONDARY_CONTAINER }}
+              >
+                <span className="material-symbols-outlined text-[28px]" style={{ color: LOGIN_PRIMARY }}>
                   account_balance_wallet
                 </span>
               </div>
-              <h1 className="font-headline text-[32px] font-bold leading-tight tracking-tight" style={{ color: LOGIN_PRIMARY }}>
+              <h1 className="font-headline text-[26px] font-bold leading-tight tracking-tight sm:text-[28px]" style={{ color: LOGIN_PRIMARY }}>
                 PayTrackr
               </h1>
-              <p className="mt-1 text-base" style={{ color: LOGIN_ON_SURFACE_VARIANT }}>
+              <p className="mt-0.5 text-sm" style={{ color: LOGIN_ON_SURFACE_VARIANT }}>
                 Acesse sua conta com segurança
               </p>
             </div>
 
-            {/* Desktop: título compacto dentro da área do formulário */}
-            <div className="mb-8 hidden text-center lg:block lg:text-left">
-              <h1 className="font-headline text-[32px] font-bold leading-tight tracking-tight" style={{ color: LOGIN_PRIMARY }}>
-                PayTrackr
-              </h1>
-              <p className="mt-1 text-base" style={{ color: LOGIN_ON_SURFACE_VARIANT }}>
-                Acesse sua conta com segurança
-              </p>
+            {/* Desktop: título sobre o gradiente */}
+            <div className="mb-4 hidden lg:block">
+              <h1 className="font-headline text-2xl font-bold tracking-tight text-white xl:text-[28px]">PayTrackr</h1>
+              <p className="mt-0.5 text-sm text-blue-100/85">Acesse sua conta com segurança</p>
             </div>
 
             <div
-              className="w-full rounded-xl border bg-white p-6 shadow-[0px_4px_12px_rgba(0,40,85,0.05)] sm:p-8 dark:border-slate-700 dark:bg-slate-900"
+              className="w-full rounded-xl border bg-white p-4 shadow-[0px_4px_12px_rgba(0,40,85,0.08)] sm:p-5 dark:border-slate-700 dark:bg-slate-900"
               style={{ borderColor: `${LOGIN_OUTLINE_VARIANT}4d` }}
             >
-              <form className="space-y-6" onSubmit={handleSubmit} noValidate>
-                <div className="space-y-2">
+              <form className="space-y-4" onSubmit={handleSubmit} noValidate>
+                <div className="space-y-1.5">
                   <label
-                    className="block text-xs font-semibold uppercase tracking-[0.05em]"
+                    className="block text-[10px] font-semibold uppercase tracking-[0.06em]"
                     style={{ color: LOGIN_ON_SURFACE_VARIANT }}
                     htmlFor="email"
                   >
@@ -140,10 +142,10 @@ export function LoginPage() {
                   </label>
                   <div className="group relative">
                     <div
-                      className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 transition-colors group-focus-within:text-[#001430]"
+                      className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 transition-colors group-focus-within:text-[#001430]"
                       style={{ color: LOGIN_OUTLINE }}
                     >
-                      <span className="material-symbols-outlined text-xl">mail</span>
+                      <span className="material-symbols-outlined text-lg">mail</span>
                     </div>
                     <input
                       id="email"
@@ -155,21 +157,19 @@ export function LoginPage() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="seu@email.com"
-                      className="h-14 w-full rounded-lg border py-3 pl-12 pr-4 font-body text-base outline-none transition-all focus:border-transparent focus:ring-2 focus:ring-[#cee6f3] dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:focus:ring-slate-600"
-                      style={
-                        {
-                          backgroundColor: LOGIN_SURFACE_BRIGHT,
-                          borderColor: LOGIN_OUTLINE_VARIANT,
-                          color: LOGIN_ON_SURFACE,
-                        } as React.CSSProperties
-                      }
+                      className={inputClass}
+                      style={{
+                        backgroundColor: LOGIN_SURFACE_BRIGHT,
+                        borderColor: LOGIN_OUTLINE_VARIANT,
+                        color: LOGIN_ON_SURFACE,
+                      }}
                     />
                   </div>
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <label
-                    className="block text-xs font-semibold uppercase tracking-[0.05em]"
+                    className="block text-[10px] font-semibold uppercase tracking-[0.06em]"
                     style={{ color: LOGIN_ON_SURFACE_VARIANT }}
                     htmlFor="password"
                   >
@@ -177,10 +177,10 @@ export function LoginPage() {
                   </label>
                   <div className="group relative">
                     <div
-                      className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 transition-colors group-focus-within:text-[#001430]"
+                      className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 transition-colors group-focus-within:text-[#001430]"
                       style={{ color: LOGIN_OUTLINE }}
                     >
-                      <span className="material-symbols-outlined text-xl">lock</span>
+                      <span className="material-symbols-outlined text-lg">lock</span>
                     </div>
                     <input
                       id="password"
@@ -191,23 +191,21 @@ export function LoginPage() {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="••••••••"
-                      className="h-14 w-full rounded-lg border py-3 pl-12 pr-12 font-body text-base outline-none transition-all focus:border-transparent focus:ring-2 focus:ring-[#cee6f3] dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:focus:ring-slate-600"
-                      style={
-                        {
-                          backgroundColor: LOGIN_SURFACE_BRIGHT,
-                          borderColor: LOGIN_OUTLINE_VARIANT,
-                          color: LOGIN_ON_SURFACE,
-                        } as React.CSSProperties
-                      }
+                      className={`${inputClass} pr-11`}
+                      style={{
+                        backgroundColor: LOGIN_SURFACE_BRIGHT,
+                        borderColor: LOGIN_OUTLINE_VARIANT,
+                        color: LOGIN_ON_SURFACE,
+                      }}
                     />
                     <button
                       type="button"
-                      className="absolute inset-y-0 right-0 flex items-center pr-3 transition-colors hover:opacity-80"
+                      className="absolute inset-y-0 right-0 flex items-center pr-2.5 transition-colors hover:opacity-80"
                       style={{ color: LOGIN_OUTLINE }}
                       onClick={() => setShowPassword((v) => !v)}
                       aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
                     >
-                      <span className="material-symbols-outlined text-xl">
+                      <span className="material-symbols-outlined text-lg">
                         {showPassword ? "visibility_off" : "visibility"}
                       </span>
                     </button>
@@ -215,12 +213,12 @@ export function LoginPage() {
                 </div>
 
                 {error && (
-                  <p className="rounded-lg bg-error-container px-3 py-2 text-sm font-medium text-on-error-container dark:bg-red-950/40 dark:text-red-200">
+                  <p className="rounded-lg bg-error-container px-2.5 py-1.5 text-xs font-medium text-on-error-container dark:bg-red-950/40 dark:text-red-200">
                     {error}
                   </p>
                 )}
 
-                <div className="flex flex-col gap-4 pt-1 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-2.5 pt-0.5 sm:flex-row sm:items-center sm:justify-between">
                   <label className="flex cursor-pointer items-center gap-2">
                     <input
                       id="remember-me"
@@ -228,15 +226,15 @@ export function LoginPage() {
                       type="checkbox"
                       checked={remember}
                       onChange={(e) => setRemember(e.target.checked)}
-                      className="h-5 w-5 rounded border text-primary focus:ring-2 focus:ring-offset-0 dark:border-slate-500 dark:bg-slate-800"
+                      className="h-4 w-4 rounded border text-primary focus:ring-2 focus:ring-offset-0 dark:border-slate-500 dark:bg-slate-800"
                       style={{ borderColor: LOGIN_OUTLINE_VARIANT }}
                     />
-                    <span className="text-sm" style={{ color: LOGIN_ON_SURFACE_VARIANT }}>
+                    <span className="text-xs sm:text-sm" style={{ color: LOGIN_ON_SURFACE_VARIANT }}>
                       Lembrar de mim
                     </span>
                   </label>
                   <span
-                    className="cursor-not-allowed text-center text-sm font-semibold opacity-60 sm:text-right"
+                    className="cursor-not-allowed text-center text-xs font-semibold opacity-60 sm:text-right sm:text-sm"
                     style={{ color: LOGIN_PRIMARY }}
                   >
                     Esqueci minha senha
@@ -246,20 +244,20 @@ export function LoginPage() {
                 <button
                   type="submit"
                   disabled={exiting}
-                  className="h-14 w-full rounded-lg font-semibold text-[15px] text-white shadow-sm transition-all hover:opacity-95 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-80 dark:bg-slate-700"
+                  className="h-11 w-full rounded-lg text-sm font-semibold text-white shadow-sm transition-all hover:opacity-95 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-80 sm:h-12 sm:text-[15px] dark:bg-slate-700"
                   style={{ backgroundColor: LOGIN_PRIMARY }}
                 >
                   {exiting ? "Entrando…" : "Entrar"}
                 </button>
               </form>
 
-              <div className="relative my-8">
+              <div className="relative my-5">
                 <div className="absolute inset-0 flex items-center">
                   <span className="w-full border-t" style={{ borderColor: LOGIN_OUTLINE_VARIANT }} />
                 </div>
                 <div className="relative flex justify-center">
                   <span
-                    className="bg-white px-3 text-xs font-semibold uppercase tracking-wide dark:bg-slate-900"
+                    className="bg-white px-2 text-[10px] font-semibold uppercase tracking-wide dark:bg-slate-900 sm:text-xs"
                     style={{ color: LOGIN_OUTLINE }}
                   >
                     Ou acesse com
@@ -267,64 +265,59 @@ export function LoginPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
                   disabled
                   title="Disponível em breve"
-                  className="flex h-12 cursor-not-allowed items-center justify-center gap-2 rounded-lg border opacity-70 dark:border-slate-600"
+                  className="flex h-10 cursor-not-allowed items-center justify-center gap-1.5 rounded-lg border opacity-70 dark:border-slate-600 sm:h-11"
                   style={{ borderColor: LOGIN_OUTLINE_VARIANT, backgroundColor: LOGIN_SURFACE_BRIGHT }}
                 >
-                  <img src={GOOGLE_ICON_SRC} alt="" className="h-5 w-5 shrink-0" loading="lazy" />
-                  <span className="text-sm font-medium dark:text-slate-300">Google</span>
+                  <img src={GOOGLE_ICON_SRC} alt="" className="h-4 w-4 shrink-0 sm:h-5 sm:w-5" loading="lazy" />
+                  <span className="text-xs font-medium dark:text-slate-300 sm:text-sm">Google</span>
                 </button>
                 <button
                   type="button"
                   disabled
                   title="Disponível em breve"
-                  className="flex h-12 cursor-not-allowed items-center justify-center gap-2 rounded-lg border opacity-70 dark:border-slate-600"
+                  className="flex h-10 cursor-not-allowed items-center justify-center gap-1.5 rounded-lg border opacity-70 dark:border-slate-600 sm:h-11"
                   style={{ borderColor: LOGIN_OUTLINE_VARIANT, backgroundColor: LOGIN_SURFACE_BRIGHT }}
                 >
-                  <span className="material-symbols-outlined text-xl dark:text-slate-300">ios</span>
-                  <span className="text-sm font-medium dark:text-slate-300">Apple</span>
+                  <span className="material-symbols-outlined text-lg dark:text-slate-300 sm:text-xl">ios</span>
+                  <span className="text-xs font-medium dark:text-slate-300 sm:text-sm">Apple</span>
                 </button>
               </div>
 
-              <p className="mt-8 text-center text-sm" style={{ color: LOGIN_ON_SURFACE_VARIANT }}>
+              <p className="mt-4 text-center text-xs sm:text-sm" style={{ color: LOGIN_ON_SURFACE_VARIANT }}>
                 Não tem uma conta?{" "}
                 <span className="ml-1 cursor-not-allowed font-bold opacity-60" style={{ color: LOGIN_PRIMARY }}>
                   Cadastre-se
                 </span>
-              </p>
-
-              <p className="mt-6 rounded-lg border border-dashed px-3 py-2 text-center text-xs dark:border-slate-600 dark:text-slate-400" style={{ borderColor: LOGIN_OUTLINE_VARIANT, color: LOGIN_ON_SURFACE_VARIANT }}>
-                Demonstração: use <strong className="font-semibold text-[#001430] dark:text-slate-200">{DEMO_EMAIL}</strong> e senha{" "}
-                <strong>{DEMO_PASSWORD}</strong>.
               </p>
             </div>
           </div>
         </div>
       </main>
 
-      <footer className="relative z-10 mt-auto w-full border-t border-slate-200 bg-slate-50 py-8 px-6 dark:border-slate-800 dark:bg-slate-950">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-6 md:flex-row md:items-start">
-          <div className="flex flex-col items-center md:items-start">
-            <span className="font-headline font-bold text-blue-900 dark:text-slate-200">PayTrackr</span>
-            <p className="mt-1 text-center font-body text-xs text-slate-500 dark:text-slate-400 md:text-left">
+      <footer className="relative z-10 shrink-0 border-t border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-950 sm:px-6">
+        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 sm:flex-row sm:items-start">
+          <div className="flex flex-col items-center sm:items-start">
+            <span className="font-headline text-sm font-bold text-blue-900 dark:text-slate-200">PayTrackr</span>
+            <p className="mt-0.5 text-center font-body text-[10px] text-slate-500 dark:text-slate-400 sm:text-left sm:text-[11px]">
               © {new Date().getFullYear()} PayTrackr. Todos os direitos reservados.
             </p>
           </div>
-          <nav className="flex flex-wrap justify-center gap-x-6 gap-y-2 md:justify-end">
-            <Link to="/login" className="text-xs text-slate-500 hover:text-blue-900 dark:hover:text-slate-300">
+          <nav className="flex flex-wrap justify-center gap-x-4 gap-y-1 sm:justify-end">
+            <Link to="/login" className="text-[10px] text-slate-500 hover:text-blue-900 dark:hover:text-slate-300 sm:text-xs">
               Privacidade
             </Link>
-            <Link to="/login" className="text-xs text-slate-500 hover:text-blue-900 dark:hover:text-slate-300">
+            <Link to="/login" className="text-[10px] text-slate-500 hover:text-blue-900 dark:hover:text-slate-300 sm:text-xs">
               Termos de uso
             </Link>
-            <Link to="/login" className="text-xs text-slate-500 hover:text-blue-900 dark:hover:text-slate-300">
+            <Link to="/login" className="text-[10px] text-slate-500 hover:text-blue-900 dark:hover:text-slate-300 sm:text-xs">
               Cookies
             </Link>
-            <Link to="/login" className="text-xs text-slate-500 hover:text-blue-900 dark:hover:text-slate-300">
+            <Link to="/login" className="text-[10px] text-slate-500 hover:text-blue-900 dark:hover:text-slate-300 sm:text-xs">
               Contato
             </Link>
           </nav>

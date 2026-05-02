@@ -539,61 +539,63 @@ export function DashboardPage() {
         </section>
       </div>
 
-    <div className="relative hidden md:ml-[calc(50%-50vw)] md:flex md:h-[calc(100vh-7rem)] md:min-h-0 md:w-screen md:max-w-[100vw] md:overflow-hidden dark:bg-slate-950">
-      {/* Painel esquerdo — saldo, resumo mensal e ações */}
-      <aside className="relative flex min-h-0 w-[400px] shrink-0 flex-col overflow-hidden border-r border-primary-container bg-primary text-white">
-        <div className="pointer-events-none absolute -left-24 -top-24 h-64 w-64 rounded-full bg-primary-container opacity-20 blur-3xl" />
-        <div className="custom-scrollbar relative z-10 flex min-h-0 flex-1 flex-col gap-12 overflow-y-auto p-8">
+    <div className="relative hidden md:ml-[calc(50%-50vw)] md:flex md:h-[calc(100vh-7rem)] md:min-h-0 md:w-screen md:max-w-[100vw] md:overflow-hidden md:text-[13px] md:leading-snug dark:bg-slate-950">
+      {/* Painel esquerdo — saldo, resumo mensal e ações (compacto para 100% zoom) */}
+      <aside className="relative flex min-h-0 w-[min(272px,24vw)] max-w-[300px] shrink-0 flex-col overflow-hidden border-r border-primary-container bg-primary text-white">
+        <div className="pointer-events-none absolute -left-16 -top-16 h-48 w-48 rounded-full bg-primary-container opacity-20 blur-3xl" />
+        <div className="custom-scrollbar relative z-10 flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-4 md:gap-6 md:p-5">
           <section>
-            <div className="mb-3 flex items-center gap-2 text-primary-fixed">
-              <span className="material-symbols-outlined text-[18px]">account_balance_wallet</span>
-              <span className="text-xs font-semibold uppercase tracking-wider text-primary-fixed">
+            <div className="mb-2 flex items-center gap-1.5 text-primary-fixed">
+              <span className="material-symbols-outlined text-base">account_balance_wallet</span>
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-primary-fixed">
                 Saldo total disponível
               </span>
             </div>
-            <div className="space-y-2">
-              <h1 className="font-headline text-4xl font-black tracking-tight text-white md:text-5xl">
+            <div className="space-y-1.5">
+              <h1 className="font-headline text-2xl font-black tracking-tight text-white lg:text-[1.65rem]">
                 {formatBRL(primaryBalance)}
               </h1>
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-center gap-1.5">
                 {balanceTrendVsPrevMonthPct !== null && Number.isFinite(balanceTrendVsPrevMonthPct) && (
                   <span
-                    className={`flex items-center rounded-full px-2 py-0.5 text-sm font-medium ${
+                    className={`flex items-center rounded-full px-1.5 py-0.5 text-[11px] font-medium ${
                       balanceTrendVsPrevMonthPct >= 0
                         ? "bg-emerald-400/10 text-emerald-400"
                         : "bg-red-400/15 text-red-200"
                     }`}
                   >
-                    <span className="material-symbols-outlined mr-1 text-[16px]">
+                    <span className="material-symbols-outlined mr-0.5 text-sm">
                       {balanceTrendVsPrevMonthPct >= 0 ? "trending_up" : "trending_down"}
                     </span>
                     {balanceTrendVsPrevMonthPct >= 0 ? "+" : ""}
                     {Math.round(balanceTrendVsPrevMonthPct * 10) / 10}%
                   </span>
                 )}
-                <span className="text-sm text-on-primary-container">em relação ao mês passado</span>
+                <span className="text-[11px] leading-tight text-on-primary-container">
+                  em relação ao mês passado
+                </span>
               </div>
             </div>
           </section>
 
-          <section className="space-y-6">
+          <section className="space-y-3">
             <div className="flex items-center justify-between">
-              <span className="font-headline text-xl font-semibold text-white">Resumo mensal</span>
+              <span className="font-headline text-sm font-semibold text-white">Resumo mensal</span>
               <button
                 type="button"
-                className="material-symbols-outlined text-primary-fixed opacity-80 hover:opacity-100"
+                className="material-symbols-outlined text-base text-primary-fixed opacity-80 hover:opacity-100"
                 aria-label="Opções do resumo"
               >
                 more_horiz
               </button>
             </div>
-            <div className="flex h-48 items-end justify-between gap-2 rounded-xl border border-white/5 bg-primary-container/50 p-6">
+            <div className="flex h-[7.25rem] items-end justify-between gap-1 rounded-lg border border-white/5 bg-primary-container/50 p-3 md:h-32 md:gap-1.5 md:p-3.5">
               {monthlyBars.map((bar, idx) => (
                 <div
                   key={idx}
                   className={`w-full rounded-t-sm transition-colors ${
                     bar.highlight
-                      ? "bg-primary-fixed shadow-[0_0_20px_rgba(215,226,255,0.35)]"
+                      ? "bg-primary-fixed shadow-[0_0_12px_rgba(215,226,255,0.28)]"
                       : "bg-on-primary-container/20"
                   }`}
                   style={{ height: `${bar.heightPct}%` }}
@@ -601,44 +603,44 @@ export function DashboardPage() {
                 />
               ))}
             </div>
-            <p className="text-sm italic leading-snug text-on-primary-container">{desktopInsightLine}</p>
+            <p className="text-[11px] italic leading-snug text-on-primary-container">{desktopInsightLine}</p>
           </section>
 
-          <div className="space-y-3">
+          <div className="space-y-2">
             <button
               type="button"
               onClick={() => navigate("/lancamentos?novo=1")}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary-fixed py-4 text-[15px] font-semibold text-primary shadow-xl shadow-black/20 transition-colors hover:bg-white active:scale-[0.99]"
+              className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-primary-fixed py-2.5 text-xs font-semibold text-primary shadow-lg shadow-black/15 transition-colors hover:bg-white active:scale-[0.99] md:text-[13px]"
             >
-              <span className="material-symbols-outlined">add_circle</span>
+              <span className="material-symbols-outlined text-lg">add_circle</span>
               Novo lançamento
             </button>
             <button
               type="button"
               onClick={() => setDepositOpen(true)}
-              className="w-full rounded-xl border border-white/15 py-2.5 text-sm font-semibold text-primary-fixed transition-colors hover:bg-white/5"
+              className="w-full rounded-lg border border-white/15 py-2 text-xs font-semibold text-primary-fixed transition-colors hover:bg-white/5 md:text-[13px]"
             >
               Depositar na conta principal
             </button>
             <Link
               to="/settings#saldo-real"
-              className="block text-center text-sm font-medium text-on-primary-container underline-offset-2 hover:text-white hover:underline"
+              className="block text-center text-[11px] font-medium text-on-primary-container underline-offset-2 hover:text-white hover:underline md:text-xs"
             >
               Definir saldo real
             </Link>
           </div>
         </div>
 
-        <div className="relative z-10 flex shrink-0 items-center justify-between border-t border-white/10 px-8 pb-8 pt-6">
-          <div className="flex min-w-0 items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-container font-headline text-sm font-bold text-primary-fixed">
+        <div className="relative z-10 flex shrink-0 items-center justify-between border-t border-white/10 px-4 pb-4 pt-3 md:px-5 md:pb-5 md:pt-4">
+          <div className="flex min-w-0 items-center gap-2 md:gap-2.5">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-container font-headline text-[11px] font-bold text-primary-fixed md:h-9 md:w-9 md:text-xs">
               {initialsFromDisplayName(state.profile.displayName)}
             </div>
             <div className="min-w-0">
-              <p className="truncate font-headline text-sm font-semibold leading-tight text-white">
+              <p className="truncate font-headline text-xs font-semibold leading-tight text-white md:text-[13px]">
                 {state.profile.displayName}
               </p>
-              <p className="truncate text-sm text-on-primary-container">
+              <p className="truncate text-[10px] text-on-primary-container md:text-[11px]">
                 PayTrackr · dados no seu dispositivo
               </p>
             </div>
@@ -646,7 +648,7 @@ export function DashboardPage() {
           <button
             type="button"
             onClick={() => logout()}
-            className="material-symbols-outlined shrink-0 text-on-primary-container transition-colors hover:text-white"
+            className="material-symbols-outlined shrink-0 text-lg text-on-primary-container transition-colors hover:text-white md:text-xl"
             aria-label="Sair"
           >
             logout
@@ -656,20 +658,20 @@ export function DashboardPage() {
 
       {/* Painel direito — scroll */}
       <section className="custom-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto bg-surface-container-low dark:bg-slate-900/50">
-        <div className="mx-auto max-w-[1000px] space-y-12 px-8 py-10 pb-16">
+        <div className="mx-auto w-full max-w-[min(100%,920px)] space-y-6 px-4 py-5 pb-10 lg:space-y-7 lg:px-6 lg:py-6 xl:max-w-[960px]">
           <section>
-            <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <h2 className="font-headline text-2xl font-semibold tracking-tight text-primary dark:text-slate-100">
+            <div className="mb-3 flex flex-col gap-2 sm:mb-4 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+              <h2 className="font-headline text-lg font-semibold tracking-tight text-primary dark:text-slate-100 lg:text-xl">
                 Meus cartões
               </h2>
-              <div className="flex flex-wrap items-center gap-3">
+              <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"
                   onClick={() => {
                     setCardFormEditing(null);
                     setCardFormOpen(true);
                   }}
-                  className="flex items-center gap-1 rounded-lg border border-secondary/40 bg-secondary-container/30 px-3 py-2 text-sm font-bold text-secondary transition-colors hover:bg-secondary-container/50 dark:border-emerald-800/40 dark:bg-emerald-950/40 dark:text-emerald-200"
+                  className="flex items-center gap-1 rounded-md border border-secondary/40 bg-secondary-container/30 px-2 py-1.5 text-xs font-bold text-secondary transition-colors hover:bg-secondary-container/50 dark:border-emerald-800/40 dark:bg-emerald-950/40 dark:text-emerald-200 md:text-[13px]"
                 >
                   <span className="material-symbols-outlined text-base">add_card</span>
                   Incluir cartão
@@ -678,15 +680,15 @@ export function DashboardPage() {
                   type="button"
                   onClick={() => setLimitsOpen(true)}
                   disabled={state.creditCards.length === 0}
-                  className="flex items-center gap-1 font-headline text-[15px] font-semibold text-blue-950 hover:underline disabled:pointer-events-none disabled:opacity-40 dark:text-blue-200"
+                  className="flex items-center gap-0.5 font-headline text-xs font-semibold text-blue-950 hover:underline disabled:pointer-events-none disabled:opacity-40 dark:text-blue-200 md:text-[13px]"
                 >
                   Ver todos
-                  <span className="material-symbols-outlined text-[18px]">chevron_right</span>
+                  <span className="material-symbols-outlined text-base">chevron_right</span>
                 </button>
               </div>
             </div>
             {state.creditCards.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-outline-variant/40 bg-white p-12 text-center shadow-[0px_4px_12px_rgba(0,40,85,0.05)] dark:border-slate-600 dark:bg-slate-800/80">
+              <div className="rounded-xl border border-dashed border-outline-variant/40 bg-white p-6 text-center shadow-[0px_4px_12px_rgba(0,40,85,0.05)] dark:border-slate-600 dark:bg-slate-800/80 md:p-8">
                 <p className="mb-4 text-on-surface-variant dark:text-slate-400">
                   Nenhum cartão cadastrado. Inclua os seus para acompanhar limite e faturas.
                 </p>
@@ -702,7 +704,7 @@ export function DashboardPage() {
                 </button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4 lg:gap-5">
                 {carouselCreditCards.map((c, idx) => {
                   const avail =
                     c.kind === "beneficios"
@@ -715,29 +717,31 @@ export function DashboardPage() {
                     <Link
                       key={c.id}
                       to={`/cartao/${c.id}`}
-                      className={`group relative flex aspect-[1.58/1] flex-col justify-between overflow-hidden rounded-2xl p-8 text-white shadow-[0px_8px_24px_rgba(0,40,85,0.12)] transition-transform hover:scale-[1.01] ${desktopWalletGradient(c)}`}
+                      className={`group relative flex max-h-[148px] min-h-[118px] flex-col justify-between overflow-hidden rounded-xl p-4 text-white shadow-[0px_6px_18px_rgba(0,40,85,0.1)] transition-transform hover:scale-[1.005] md:max-h-[156px] md:p-5 lg:max-h-none lg:min-h-[128px] lg:aspect-[2.05/1] ${desktopWalletGradient(c)}`}
                     >
                       <img
                         alt=""
                         src={texUrl}
                         className="absolute inset-0 h-full w-full object-cover opacity-40 mix-blend-overlay transition-opacity group-hover:opacity-50"
                       />
-                      <div className="relative z-10 flex items-start justify-between">
-                        <div className="space-y-1">
-                          <p className="text-xs font-semibold uppercase tracking-wider opacity-70">
+                      <div className="relative z-10 flex items-start justify-between gap-2">
+                        <div className="min-w-0 space-y-0.5">
+                          <p className="truncate text-[10px] font-semibold uppercase tracking-wider opacity-80 md:text-[11px]">
                             {c.name}
                           </p>
-                          <p className="text-base font-medium tracking-wide">
+                          <p className="text-xs font-medium tracking-wide md:text-sm">
                             •••• •••• •••• {c.last4}
                           </p>
                         </div>
-                        <span className="material-symbols-outlined text-[32px] opacity-90">{iconRight}</span>
+                        <span className="material-symbols-outlined shrink-0 text-[22px] opacity-90 md:text-2xl">
+                          {iconRight}
+                        </span>
                       </div>
                       <div className="relative z-10">
-                        <p className="mb-1 text-xs font-semibold uppercase tracking-wider opacity-70">
+                        <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-wider opacity-75 md:text-[11px]">
                           {labelAvail}
                         </p>
-                        <p className="font-headline text-2xl font-bold">{formatBRL(avail)}</p>
+                        <p className="font-headline text-lg font-bold tabular-nums md:text-xl">{formatBRL(avail)}</p>
                       </div>
                     </Link>
                   );
@@ -746,9 +750,9 @@ export function DashboardPage() {
             )}
           </section>
 
-          <div className="grid grid-cols-1 gap-12 lg:grid-cols-3 lg:gap-16">
-            <section className="space-y-6 lg:col-span-1">
-              <h2 className="font-headline text-2xl font-semibold tracking-tight text-primary dark:text-slate-100">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:gap-8 xl:gap-10">
+            <section className="space-y-3 lg:col-span-1">
+              <h2 className="font-headline text-lg font-semibold tracking-tight text-primary dark:text-slate-100 lg:text-xl">
                 Contas
               </h2>
               <div className="divide-y divide-slate-100 overflow-hidden rounded-xl bg-white shadow-[0px_4px_12px_rgba(0,40,85,0.05)] dark:divide-slate-700 dark:bg-slate-800/60">
@@ -757,11 +761,11 @@ export function DashboardPage() {
                     key={acc.id}
                     type="button"
                     onClick={() => setEditAccountId(acc.id)}
-                    className="group flex w-full cursor-pointer items-center justify-between p-4 text-left transition-colors hover:bg-slate-50 dark:hover:bg-slate-700/50"
+                    className="group flex w-full cursor-pointer items-center justify-between px-3 py-2.5 text-left transition-colors hover:bg-slate-50 dark:hover:bg-slate-700/50 md:px-3.5 md:py-3"
                   >
-                    <div className="flex min-w-0 items-center gap-3">
+                    <div className="flex min-w-0 items-center gap-2 md:gap-2.5">
                       <div
-                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
+                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full md:h-9 md:w-9 ${
                           acc.icon === "account_balance"
                             ? "bg-blue-50 text-blue-900 dark:bg-blue-950 dark:text-blue-200"
                             : acc.icon === "savings"
@@ -769,15 +773,17 @@ export function DashboardPage() {
                               : "bg-violet-50 text-violet-800 dark:bg-violet-950 dark:text-violet-200"
                         }`}
                       >
-                        <span className="material-symbols-outlined text-xl">{acc.icon}</span>
+                        <span className="material-symbols-outlined text-lg md:text-xl">{acc.icon}</span>
                       </div>
                       <div className="min-w-0">
-                        <p className="truncate font-semibold text-primary dark:text-slate-100">{acc.name}</p>
-                        <p className="text-sm text-outline dark:text-slate-400">{accountSubtitleMobile(acc)}</p>
+                        <p className="truncate text-sm font-semibold text-primary dark:text-slate-100">{acc.name}</p>
+                        <p className="text-xs text-outline dark:text-slate-400">{accountSubtitleMobile(acc)}</p>
                       </div>
                     </div>
                     <div className="flex shrink-0 items-center gap-1 pl-2 text-right">
-                      <p className="font-semibold text-primary dark:text-slate-100">{formatBRL(acc.balance)}</p>
+                      <p className="text-sm font-semibold tabular-nums text-primary dark:text-slate-100">
+                        {formatBRL(acc.balance)}
+                      </p>
                       <span className="material-symbols-outlined text-outline transition-transform group-hover:translate-x-0.5 dark:text-slate-500">
                         chevron_right
                       </span>
@@ -790,19 +796,19 @@ export function DashboardPage() {
                     <Link
                       key={card.id}
                       to={`/cartao/${card.id}`}
-                      className="group flex items-center justify-between p-4 transition-colors hover:bg-slate-50 dark:hover:bg-slate-700/50"
+                      className="group flex items-center justify-between px-3 py-2.5 transition-colors hover:bg-slate-50 dark:hover:bg-slate-700/50 md:px-3.5 md:py-3"
                     >
-                      <div className="flex min-w-0 items-center gap-3">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-teal-50 text-teal-800 dark:bg-teal-950 dark:text-teal-200">
-                          <span className="material-symbols-outlined text-xl">restaurant</span>
+                      <div className="flex min-w-0 items-center gap-2 md:gap-2.5">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-teal-50 text-teal-800 dark:bg-teal-950 dark:text-teal-200 md:h-9 md:w-9">
+                          <span className="material-symbols-outlined text-lg md:text-xl">restaurant</span>
                         </div>
                         <div className="min-w-0">
-                          <p className="truncate font-semibold text-primary dark:text-slate-100">{card.name}</p>
-                          <p className="text-sm text-outline dark:text-slate-400">Cartão de benefícios</p>
+                          <p className="truncate text-sm font-semibold text-primary dark:text-slate-100">{card.name}</p>
+                          <p className="text-xs text-outline dark:text-slate-400">Cartão de benefícios</p>
                         </div>
                       </div>
                       <div className="flex shrink-0 items-center gap-1 pl-2 text-right">
-                        <p className="font-semibold text-primary dark:text-slate-100">
+                        <p className="text-sm font-semibold tabular-nums text-primary dark:text-slate-100">
                           {formatBRL(benefitBucketsTotal(card))}
                         </p>
                         <span className="material-symbols-outlined text-outline transition-transform group-hover:translate-x-0.5 dark:text-slate-500">
@@ -815,36 +821,36 @@ export function DashboardPage() {
               <button
                 type="button"
                 onClick={() => navigate("/settings")}
-                className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-200 py-3 text-[15px] font-semibold text-outline transition-all hover:border-primary-container hover:text-primary dark:border-slate-600 dark:text-slate-400 dark:hover:border-blue-400 dark:hover:text-blue-200"
+                className="flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-slate-200 py-2 text-xs font-semibold text-outline transition-all hover:border-primary-container hover:text-primary dark:border-slate-600 dark:text-slate-400 dark:hover:border-blue-400 dark:hover:text-blue-200 md:py-2.5 md:text-[13px]"
               >
-                <span className="material-symbols-outlined text-[20px]">link</span>
+                <span className="material-symbols-outlined text-lg md:text-xl">link</span>
                 Conectar nova conta
               </button>
             </section>
 
-            <section className="space-y-6 lg:col-span-2">
-              <div className="flex flex-wrap items-center justify-between gap-4">
-                <h2 className="font-headline text-2xl font-semibold tracking-tight text-primary dark:text-slate-100">
+            <section className="space-y-3 lg:col-span-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h2 className="font-headline text-lg font-semibold tracking-tight text-primary dark:text-slate-100 lg:text-xl">
                   Extrato recente
                 </h2>
-                <div className="flex gap-2">
+                <div className="flex gap-1.5">
                   <button
                     type="button"
                     onClick={() => navigate("/lancamentos")}
-                    className="rounded-lg border border-outline-variant p-2 transition-colors hover:bg-white dark:border-slate-600 dark:hover:bg-slate-800"
+                    className="rounded-md border border-outline-variant p-1.5 transition-colors hover:bg-white dark:border-slate-600 dark:hover:bg-slate-800 md:p-2"
                     aria-label="Filtrar lançamentos"
                   >
-                    <span className="material-symbols-outlined text-[20px] text-on-surface-variant dark:text-slate-300">
+                    <span className="material-symbols-outlined text-lg text-on-surface-variant dark:text-slate-300 md:text-xl">
                       filter_list
                     </span>
                   </button>
                   <button
                     type="button"
                     onClick={() => exportBackup()}
-                    className="rounded-lg border border-outline-variant p-2 transition-colors hover:bg-white dark:border-slate-600 dark:hover:bg-slate-800"
+                    className="rounded-md border border-outline-variant p-1.5 transition-colors hover:bg-white dark:border-slate-600 dark:hover:bg-slate-800 md:p-2"
                     aria-label="Exportar backup"
                   >
-                    <span className="material-symbols-outlined text-[20px] text-on-surface-variant dark:text-slate-300">
+                    <span className="material-symbols-outlined text-lg text-on-surface-variant dark:text-slate-300 md:text-xl">
                       download
                     </span>
                   </button>
@@ -853,19 +859,19 @@ export function DashboardPage() {
 
               <div className="overflow-hidden rounded-xl bg-white shadow-[0px_4px_12px_rgba(0,40,85,0.05)] dark:bg-slate-800/60">
                 <div className="overflow-x-auto">
-                  <table className="w-full min-w-[640px] border-collapse text-left">
+                  <table className="w-full min-w-[520px] border-collapse text-left text-[13px]">
                     <thead className="border-b border-slate-100 bg-surface-container-low dark:border-slate-700 dark:bg-slate-900/80">
                       <tr>
-                        <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-outline dark:text-slate-400">
+                        <th className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-outline dark:text-slate-400 md:px-4 md:py-2.5">
                           Transação
                         </th>
-                        <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-outline dark:text-slate-400">
+                        <th className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-outline dark:text-slate-400 md:px-4 md:py-2.5">
                           Categoria
                         </th>
-                        <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-outline dark:text-slate-400">
+                        <th className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-outline dark:text-slate-400 md:px-4 md:py-2.5">
                           Data
                         </th>
-                        <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-wider text-outline dark:text-slate-400">
+                        <th className="px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-outline dark:text-slate-400 md:px-4 md:py-2.5">
                           Valor
                         </th>
                       </tr>
@@ -873,7 +879,7 @@ export function DashboardPage() {
                     <tbody className="divide-y divide-slate-50 dark:divide-slate-700/80">
                       {recentDesktop.length === 0 ? (
                         <tr>
-                          <td colSpan={4} className="px-6 py-10 text-center text-sm text-on-surface-variant">
+                          <td colSpan={4} className="px-4 py-8 text-center text-xs text-on-surface-variant md:text-sm">
                             Sem lançamentos. Inclua movimentações em Lançamentos.
                           </td>
                         </tr>
@@ -882,15 +888,15 @@ export function DashboardPage() {
                           const wrap = iconWrapForCategory(t.category, t.amount);
                           return (
                             <tr key={t.id} className="transition-colors hover:bg-slate-50 dark:hover:bg-slate-700/40">
-                              <td className="px-6 py-4">
-                                <div className="flex min-w-0 items-center gap-3">
+                              <td className="px-3 py-2 md:px-4 md:py-2.5">
+                                <div className="flex min-w-0 items-center gap-2 md:gap-2.5">
                                   <div
-                                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${wrap}`}
+                                    className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md md:h-8 md:w-8 ${wrap}`}
                                   >
-                                    <span className="material-symbols-outlined text-[18px]">{t.icon}</span>
+                                    <span className="material-symbols-outlined text-base md:text-lg">{t.icon}</span>
                                   </div>
                                   <div className="min-w-0">
-                                    <p className="truncate font-medium text-primary dark:text-slate-100">
+                                    <p className="truncate text-[13px] font-medium text-primary dark:text-slate-100">
                                       {t.description}
                                     </p>
                                     {t.paymentAttachmentDataUrl && (
@@ -907,9 +913,9 @@ export function DashboardPage() {
                                   </div>
                                 </div>
                               </td>
-                              <td className="px-6 py-4">
+                              <td className="px-3 py-2 md:px-4 md:py-2.5">
                                 <span
-                                  className={`inline-flex max-w-[160px] truncate px-3 py-1 text-[10px] font-bold uppercase tracking-wider ${
+                                  className={`inline-flex max-w-[132px] truncate px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider md:max-w-[150px] md:px-2.5 md:text-[10px] ${
                                     t.amount >= 0
                                       ? "rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200"
                                       : categoryPillClass(t.category)
@@ -918,11 +924,11 @@ export function DashboardPage() {
                                   {t.amount >= 0 ? "Receita" : t.category}
                                 </span>
                               </td>
-                              <td className="whitespace-nowrap px-6 py-4 text-sm text-outline dark:text-slate-400">
+                              <td className="whitespace-nowrap px-3 py-2 text-[12px] text-outline dark:text-slate-400 md:px-4 md:py-2.5 md:text-[13px]">
                                 {formatDateTimeShort(t.date + "T12:00:00")}
                               </td>
                               <td
-                                className={`whitespace-nowrap px-6 py-4 text-right text-sm font-bold ${
+                                className={`whitespace-nowrap px-3 py-2 text-right text-[13px] font-bold md:px-4 md:py-2.5 ${
                                   t.amount >= 0 ? "text-secondary dark:text-emerald-400" : "text-error dark:text-red-400"
                                 }`}
                               >
@@ -935,11 +941,11 @@ export function DashboardPage() {
                     </tbody>
                   </table>
                 </div>
-                <div className="border-t border-slate-50 p-4 text-center dark:border-slate-700">
+                <div className="border-t border-slate-50 p-2.5 text-center dark:border-slate-700 md:p-3">
                   <button
                     type="button"
                     onClick={() => navigate("/lancamentos")}
-                    className="font-headline text-[15px] font-semibold text-blue-950 hover:underline dark:text-blue-300"
+                    className="font-headline text-xs font-semibold text-blue-950 hover:underline dark:text-blue-300 md:text-[13px]"
                   >
                     Carregar mais transações
                   </button>
@@ -948,22 +954,22 @@ export function DashboardPage() {
             </section>
           </div>
 
-          <section className="group relative h-48 cursor-pointer overflow-hidden rounded-2xl">
+          <section className="group relative h-32 cursor-pointer overflow-hidden rounded-xl md:h-36 lg:h-40">
             <img
               alt=""
               src={DESKTOP_PROMO_IMG}
               className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
             />
-            <div className="absolute inset-0 flex items-center bg-gradient-to-r from-primary/90 to-transparent px-10 md:px-14">
-              <div className="max-w-md space-y-4">
-                <h3 className="font-headline text-2xl font-semibold text-white">Otimize suas metas hoje</h3>
-                <p className="text-sm text-on-primary-container md:text-base">
+            <div className="absolute inset-0 flex items-center bg-gradient-to-r from-primary/90 to-transparent px-6 md:px-10">
+              <div className="max-w-sm space-y-2 md:max-w-md md:space-y-2.5">
+                <h3 className="font-headline text-base font-semibold text-white md:text-lg">Otimize suas metas hoje</h3>
+                <p className="text-[11px] text-on-primary-container md:text-xs">
                   Acompanhe o progresso das metas e ajuste aportes conforme seu fluxo mensal.
                 </p>
                 <button
                   type="button"
                   onClick={() => navigate("/metas")}
-                  className="rounded-lg bg-white px-6 py-2.5 text-[15px] font-semibold text-primary shadow-lg transition-colors hover:bg-primary-fixed"
+                  className="rounded-md bg-white px-4 py-1.5 text-xs font-semibold text-primary shadow-md transition-colors hover:bg-primary-fixed md:px-5 md:py-2 md:text-[13px]"
                 >
                   Conhecer agora
                 </button>

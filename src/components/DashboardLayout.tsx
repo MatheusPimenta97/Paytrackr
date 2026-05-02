@@ -129,14 +129,14 @@ export function DashboardLayout() {
         </NavLink>
       </nav>
 
-      <div className="fixed bottom-24 right-5 z-40 md:bottom-6 md:right-6">
+      <div className="fixed bottom-24 right-5 z-40 md:bottom-5 md:right-5">
         <button
           type="button"
           onClick={() => setCalcOpen(true)}
-          className="flex h-14 w-14 items-center justify-center rounded-full bg-primary text-white shadow-2xl ring-2 ring-primary/20 transition-transform hover:scale-105 hover:bg-primary-container active:scale-95 dark:ring-white/10"
+          className="flex h-14 w-14 items-center justify-center rounded-full bg-primary text-white shadow-2xl ring-2 ring-primary/20 transition-transform hover:scale-105 hover:bg-primary-container active:scale-95 dark:ring-white/10 md:h-11 md:w-11 md:shadow-lg"
           aria-label="Calculadora rápida"
         >
-          <span className="material-symbols-outlined text-[28px]">calculate</span>
+          <span className="material-symbols-outlined text-[28px] md:text-[22px]">calculate</span>
         </button>
       </div>
 

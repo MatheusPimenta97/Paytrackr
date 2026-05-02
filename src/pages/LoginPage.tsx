@@ -68,27 +68,33 @@ export function LoginPage() {
           exiting ? "login-page-exit-bg" : ""
         }`}
       >
-        {/* Desktop: coluna ESQUERDA — gradiente + boas-vindas (referência) */}
-        <section className="relative hidden min-h-0 flex-col justify-between overflow-y-auto bg-gradient-to-br from-[#020919] via-[#041e47] to-[#0b4f9c] px-8 py-8 text-white xl:px-12 xl:py-10 lg:flex">
-          <div>
+        {/* Desktop: coluna ESQUERDA — espelha referência (gradiente vertical + copy) */}
+        <section className="relative hidden h-full min-h-0 flex-col justify-between overflow-y-auto bg-gradient-to-b from-[#050a14] via-[#0d2340] to-[#5a6d7e] px-10 py-10 text-left text-white xl:px-14 xl:py-12 lg:flex">
+          <div className="max-w-xl">
             <p className="font-headline text-lg font-bold tracking-tight text-white xl:text-xl">PayTrackr</p>
-            <h2 className="mt-10 font-headline text-2xl font-bold leading-tight tracking-tight xl:mt-14 xl:text-3xl">
-              Bem-vindo ao PayTrackr
+
+            <h2 className="mt-14 font-headline leading-[1.12] tracking-tight text-white xl:mt-16">
+              <span className="block text-[1.65rem] font-semibold xl:text-[1.85rem]">Bem-vindo ao</span>
+              <span className="mt-1 block text-[2.15rem] font-extrabold xl:text-[2.65rem]">PayTrackr</span>
             </h2>
-            <p className="mt-3 max-w-md text-sm leading-relaxed text-blue-100/90 xl:text-[15px]">
-              A plataforma para organizar suas finanças pessoais: saldos, cartões, metas e recorrências — com a mesma
-              clareza no celular ou no computador.
+
+            <p className="mt-8 max-w-[26rem] text-[15px] font-normal leading-[1.65] text-white/88 xl:mt-10 xl:max-w-lg xl:text-base xl:leading-relaxed">
+              A plataforma definitiva para gestão financeira corporativa. Acompanhe fluxos de caixa, gerencie ativos e
+              proteja seu patrimônio com segurança de nível bancário.
             </p>
           </div>
-          <div className="mt-8 rounded-xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm xl:mt-10">
-            <div className="flex items-start gap-3">
-              <span className="material-symbols-outlined shrink-0 text-2xl text-cyan-200">shield_lock</span>
-              <div>
-                <p className="font-headline text-sm font-bold text-white">Criptografia e privacidade</p>
-                <p className="mt-1 text-xs leading-snug text-blue-100/80">
-                  Seus dados ficam armazenados localmente neste navegador até você optar por sincronização na nuvem.
-                </p>
-              </div>
+
+          <div className="mt-12 flex items-start gap-4 xl:mt-14">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-sky-200/45 bg-white/[0.06]">
+              <span className="material-symbols-outlined filled text-[26px] text-white">shield</span>
+            </div>
+            <div className="min-w-0 pt-0.5">
+              <p className="font-headline text-[15px] font-bold tracking-tight text-white xl:text-base">
+                Criptografia de Ponta
+              </p>
+              <p className="mt-2 max-w-sm text-[13px] leading-snug text-white/72 xl:text-sm xl:leading-relaxed">
+                Seus dados financeiros são protegidos pelos protocolos mais avançados do mercado.
+              </p>
             </div>
           </div>
         </section>

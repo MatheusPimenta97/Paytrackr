@@ -4,8 +4,6 @@ import { useAuth } from "../context/AuthContext";
 
 const LOGIN_PRIMARY = "#001430";
 const LOGIN_SURFACE_BRIGHT = "#f7f9fb";
-const LOGIN_SECONDARY_CONTAINER = "#cee6f3";
-const LOGIN_PRIMARY_FIXED_DIM = "#aac7fd";
 const LOGIN_OUTLINE_VARIANT = "#c4c6d0";
 const LOGIN_ON_SURFACE = "#191c1e";
 const LOGIN_ON_SURFACE_VARIANT = "#43474f";
@@ -51,18 +49,7 @@ export function LoginPage() {
     "h-11 w-full rounded-lg border py-2 pl-11 pr-3 font-body text-sm outline-none transition-all focus:border-transparent focus:ring-2 focus:ring-[#cee6f3] sm:h-12 sm:py-2.5 sm:text-[15px] dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:focus:ring-slate-600 lg:h-11 lg:text-sm";
 
   return (
-    <div className="flex min-h-dvh flex-col bg-[#f7f9fb] font-body text-[#191c1e] dark:bg-slate-950 dark:text-slate-100">
-      <div className="pointer-events-none fixed inset-0 -z-10 opacity-40 lg:hidden">
-        <div
-          className="absolute -right-[10%] -top-[10%] h-[min(500px,50vh)] w-[min(500px,90vw)] rounded-full blur-[100px]"
-          style={{ backgroundColor: LOGIN_SECONDARY_CONTAINER }}
-        />
-        <div
-          className="absolute -bottom-[10%] -left-[10%] h-[min(400px,45vh)] w-[min(400px,80vw)] rounded-full blur-[100px]"
-          style={{ backgroundColor: LOGIN_PRIMARY_FIXED_DIM }}
-        />
-      </div>
-
+    <div className="flex min-h-dvh flex-col bg-gradient-to-b from-[#050a14] via-[#0d2340] to-[#5a6d7e] font-body text-[#191c1e] lg:bg-[#f7f9fb] dark:text-slate-100 lg:dark:bg-slate-950">
       <main
         className={`relative z-10 flex flex-1 flex-col lg:grid lg:min-h-0 lg:grid-cols-2 lg:gap-0 transition-all duration-700 ease-out ${
           exiting ? "login-page-exit-bg" : ""
@@ -99,29 +86,22 @@ export function LoginPage() {
           </div>
         </section>
 
-        {/* Mobile + desktop DIREITA: fundo claro + card */}
+        {/* Mobile: mesmo degradê do desktop (via página); lg: coluna clara + card */}
         <div
-          className={`flex flex-1 flex-col justify-center bg-[#f7f9fb] px-4 py-5 sm:px-6 lg:px-8 lg:py-6 xl:px-10 ${
+          className={`flex flex-1 flex-col justify-center px-4 py-5 sm:px-6 lg:bg-[#f7f9fb] lg:px-8 lg:py-6 xl:px-10 ${
             exiting ? "login-page-exit-card" : "login-page-enter"
           }`}
         >
           <div className="mx-auto w-full max-w-[400px] lg:my-auto">
             {/* Mobile: ícone + título */}
             <div className="mb-5 w-full text-center lg:hidden">
-              <div
-                className="mb-3 inline-flex items-center justify-center rounded-xl p-1.5"
-                style={{ backgroundColor: LOGIN_SECONDARY_CONTAINER }}
-              >
-                <span className="material-symbols-outlined text-[28px]" style={{ color: LOGIN_PRIMARY }}>
-                  account_balance_wallet
-                </span>
+              <div className="mb-3 inline-flex items-center justify-center rounded-xl border border-sky-200/35 bg-white/10 p-1.5 backdrop-blur-[2px]">
+                <span className="material-symbols-outlined text-[28px] text-white">account_balance_wallet</span>
               </div>
-              <h1 className="font-headline text-[26px] font-bold leading-tight tracking-tight sm:text-[28px]" style={{ color: LOGIN_PRIMARY }}>
+              <h1 className="font-headline text-[26px] font-bold leading-tight tracking-tight text-white sm:text-[28px]">
                 PayTrackr
               </h1>
-              <p className="mt-0.5 text-sm" style={{ color: LOGIN_ON_SURFACE_VARIANT }}>
-                Acesse sua conta com segurança
-              </p>
+              <p className="mt-0.5 text-sm text-blue-100/85">Acesse sua conta com segurança</p>
             </div>
 
             <div
@@ -222,23 +202,23 @@ export function LoginPage() {
                   </p>
                 )}
 
-                <div className="flex flex-col gap-2.5 pt-0.5 sm:flex-row sm:items-center sm:justify-between">
-                  <label className="flex cursor-pointer items-center gap-2">
+                <div className="flex w-full flex-row items-center justify-between gap-3 pt-0.5">
+                  <label className="flex min-w-0 cursor-pointer items-center gap-2">
                     <input
                       id="remember-me"
                       name="remember-me"
                       type="checkbox"
                       checked={remember}
                       onChange={(e) => setRemember(e.target.checked)}
-                      className="h-4 w-4 rounded border text-primary focus:ring-2 focus:ring-offset-0 dark:border-slate-500 dark:bg-slate-800"
+                      className="h-4 w-4 shrink-0 rounded border text-primary focus:ring-2 focus:ring-offset-0 dark:border-slate-500 dark:bg-slate-800"
                       style={{ borderColor: LOGIN_OUTLINE_VARIANT }}
                     />
-                    <span className="text-xs sm:text-sm" style={{ color: LOGIN_ON_SURFACE_VARIANT }}>
+                    <span className="truncate text-xs sm:text-sm" style={{ color: LOGIN_ON_SURFACE_VARIANT }}>
                       Lembrar de mim
                     </span>
                   </label>
                   <span
-                    className="cursor-not-allowed text-center text-xs font-semibold opacity-60 sm:text-right sm:text-sm"
+                    className="shrink-0 cursor-not-allowed text-right text-xs font-semibold opacity-70 sm:text-sm"
                     style={{ color: LOGIN_PRIMARY }}
                   >
                     Esqueci minha senha

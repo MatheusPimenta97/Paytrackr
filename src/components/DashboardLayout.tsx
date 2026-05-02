@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { NavLink, Outlet } from "react-router-dom";
 import { DataScopeBanner } from "./DataScopeBanner";
 import { ProfileAvatar } from "./ProfileAvatar";
 import { QuickCalculatorModal } from "./QuickCalculatorModal";
@@ -14,18 +14,17 @@ const topNav = [
 ];
 
 export function DashboardLayout() {
-  const navigate = useNavigate();
   const [calcOpen, setCalcOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-surface font-body text-on-surface antialiased dark:bg-slate-950 dark:text-slate-100">
       <QuickCalculatorModal open={calcOpen} onClose={() => setCalcOpen(false)} />
-      <nav className="fixed top-0 z-50 h-20 w-full bg-[#f3faff]/80 shadow-light backdrop-blur-md dark:bg-[#001d44]/80 dark:shadow-none">
-        <div className="mx-auto flex h-full max-w-7xl items-center justify-between px-6 md:px-12">
+      <nav className="fixed top-0 z-50 h-20 w-full border-b border-slate-200 bg-white shadow-[0px_4px_12px_rgba(0,40,85,0.05)] dark:border-slate-800 dark:bg-slate-950 md:border-transparent md:bg-[#f3faff]/80 md:shadow-light md:backdrop-blur-md md:dark:border-transparent md:dark:bg-[#001d44]/80 md:dark:shadow-none">
+        <div className="mx-auto flex h-full max-w-[1440px] items-center justify-between px-6 md:px-12">
           <div className="flex items-center gap-6 lg:gap-8">
             <NavLink
               to="/"
-              className="font-headline text-2xl font-black tracking-tighter text-[#001d44] dark:text-[#f3faff]"
+              className="font-headline text-2xl font-extrabold tracking-tight text-blue-900 dark:text-blue-100 md:font-black md:tracking-tighter md:text-[#001d44] md:dark:text-[#f3faff]"
             >
               PayTrackr
             </NavLink>
@@ -49,17 +48,17 @@ export function DashboardLayout() {
               ))}
             </div>
           </div>
-          <div className="flex items-center space-x-4 md:space-x-6">
+          <div className="flex items-center gap-3 md:space-x-6 md:gap-0">
             <button
               type="button"
-              className="scale-95 text-[#43474f] transition-colors duration-200 ease-in-out hover:text-[#001d44]"
+              className="rounded-full p-2 text-slate-500 transition-colors hover:bg-slate-50 dark:text-slate-400 dark:hover:bg-slate-800 md:scale-95 md:text-[#43474f] md:hover:bg-transparent md:hover:text-[#001d44]"
               aria-label="Notificações"
             >
               <span className="material-symbols-outlined">notifications</span>
             </button>
             <NavLink
               to="/settings"
-              className="scale-95 text-[#43474f] transition-colors duration-200 ease-in-out hover:text-[#001d44]"
+              className="rounded-full p-2 text-slate-500 transition-colors hover:bg-slate-50 dark:text-slate-400 dark:hover:bg-slate-800 md:scale-95 md:text-[#43474f] md:hover:bg-transparent md:hover:text-[#001d44]"
               aria-label="Configurações"
             >
               <span className="material-symbols-outlined">settings</span>
@@ -74,107 +73,63 @@ export function DashboardLayout() {
         <Outlet />
       </main>
 
-      <nav className="fixed bottom-0 z-50 flex h-16 w-full items-center justify-start gap-1 overflow-x-auto bg-[#f3faff]/80 px-2 shadow-ambient-up backdrop-blur-md md:hidden [&::-webkit-scrollbar]:hidden">
+      <nav className="fixed bottom-0 left-0 right-0 z-50 flex h-16 w-full items-center justify-around border-t border-slate-100 bg-white dark:border-slate-800 dark:bg-slate-950 md:hidden">
         <NavLink
           to="/"
           end
           className={({ isActive }) =>
-            `flex min-w-[3.25rem] shrink-0 flex-col items-center ${isActive ? "text-[#1b6d24]" : "text-slate-500"}`
+            `flex flex-col items-center gap-1 ${isActive ? "text-[#001430] dark:text-blue-300" : "text-slate-400"}`
           }
         >
           {({ isActive }) => (
             <>
-              <span className={`material-symbols-outlined ${isActive ? "filled" : ""}`}>home</span>
-              <span className="text-[10px] font-bold">Home</span>
+              <span className={`material-symbols-outlined ${isActive ? "filled" : ""}`}>dashboard</span>
+              <span className={`text-[10px] ${isActive ? "font-bold" : "font-medium"}`}>Início</span>
             </>
           )}
         </NavLink>
         <NavLink
           to="/lancamentos"
           className={({ isActive }) =>
-            `flex min-w-[3.25rem] shrink-0 flex-col items-center ${isActive ? "text-[#1b6d24]" : "text-slate-500"}`
+            `flex flex-col items-center gap-1 ${isActive ? "text-[#001430] dark:text-blue-300" : "text-slate-400"}`
           }
         >
           {({ isActive }) => (
             <>
-              <span className={`material-symbols-outlined ${isActive ? "filled" : ""}`}>
-                receipt_long
-              </span>
-              <span className="max-w-[4.5rem] text-center text-[10px] font-bold leading-tight">
-                Lançamentos
-              </span>
+              <span className={`material-symbols-outlined ${isActive ? "filled" : ""}`}>account_balance_wallet</span>
+              <span className={`text-[10px] ${isActive ? "font-bold" : "font-medium"}`}>Carteira</span>
             </>
           )}
         </NavLink>
         <NavLink
-          to="/valores-a-receber"
+          to="/gastos-recorrentes"
           className={({ isActive }) =>
-            `flex min-w-[3.25rem] shrink-0 flex-col items-center ${isActive ? "text-[#1b6d24]" : "text-slate-500"}`
+            `flex flex-col items-center gap-1 ${isActive ? "text-[#001430] dark:text-blue-300" : "text-slate-400"}`
           }
         >
           {({ isActive }) => (
             <>
-              <span className={`material-symbols-outlined ${isActive ? "filled" : ""}`}>
-                account_balance_wallet
-              </span>
-              <span className="max-w-[4rem] text-center text-[10px] font-bold leading-tight">
-                A receber
-              </span>
-            </>
-          )}
-        </NavLink>
-        <button
-          type="button"
-          onClick={() => navigate("/lancamentos?novo=1")}
-          className="-mt-8 flex h-12 w-12 shrink-0 items-center justify-center rounded-[9999px] bg-primary text-white shadow-lg"
-          aria-label="Adicionar"
-        >
-          <span className="material-symbols-outlined">add</span>
-        </button>
-        <NavLink
-          to="/pontos"
-          className={({ isActive }) =>
-            `flex min-w-[3.25rem] shrink-0 flex-col items-center ${isActive ? "text-[#1b6d24]" : "text-slate-500"}`
-          }
-        >
-          {({ isActive }) => (
-            <>
-              <span className={`material-symbols-outlined ${isActive ? "filled" : ""}`}>stars</span>
-              <span className="text-[10px] font-bold">Pontos</span>
-            </>
-          )}
-        </NavLink>
-        <NavLink
-          to="/metas"
-          className={({ isActive }) =>
-            `flex min-w-[3.25rem] shrink-0 flex-col items-center ${isActive ? "text-[#1b6d24]" : "text-slate-500"}`
-          }
-        >
-          {({ isActive }) => (
-            <>
-              <span className={`material-symbols-outlined ${isActive ? "filled" : ""}`}>
-                pie_chart
-              </span>
-              <span className="text-[10px] font-bold">Metas</span>
+              <span className={`material-symbols-outlined ${isActive ? "filled" : ""}`}>analytics</span>
+              <span className={`text-[10px] ${isActive ? "font-bold" : "font-medium"}`}>Análise</span>
             </>
           )}
         </NavLink>
         <NavLink
           to="/perfil"
           className={({ isActive }) =>
-            `flex min-w-[3.25rem] shrink-0 flex-col items-center ${isActive ? "text-[#1b6d24]" : "text-slate-500"}`
+            `flex flex-col items-center gap-1 ${isActive ? "text-[#001430] dark:text-blue-300" : "text-slate-400"}`
           }
         >
           {({ isActive }) => (
             <>
               <span className={`material-symbols-outlined ${isActive ? "filled" : ""}`}>person</span>
-              <span className="text-[10px] font-bold">Perfil</span>
+              <span className={`text-[10px] ${isActive ? "font-bold" : "font-medium"}`}>Perfil</span>
             </>
           )}
         </NavLink>
       </nav>
 
-      <div className="fixed bottom-32 right-6 z-40 md:bottom-6">
+      <div className="fixed bottom-24 right-5 z-40 md:bottom-6 md:right-6">
         <button
           type="button"
           onClick={() => setCalcOpen(true)}
@@ -185,7 +140,7 @@ export function DashboardLayout() {
         </button>
       </div>
 
-      <div className="fixed bottom-20 right-6 z-40 md:hidden">
+      <div className="fixed bottom-[5.5rem] right-5 z-40 md:hidden">
         <button
           type="button"
           className="flex h-14 w-14 items-center justify-center rounded-[9999px] bg-gradient-to-br from-secondary to-on-secondary-container text-white shadow-2xl"

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { CreditCardLimitsModal } from "../components/CreditCardLimitsModal";
 import { EditAccountModal } from "../components/EditAccountModal";
@@ -38,6 +38,30 @@ function cardStatusLabel(s: ReturnType<typeof creditCardDueStatus>) {
   if (s === "overdue") return "Fatura atrasada";
   if (s === "soon") return "Próximo vencimento";
   return "Fatura em aberto";
+}
+
+function mobileWalletCardBg(card: CreditCard): string {
+  if (card.kind === "beneficios") {
+    return "bg-gradient-to-br from-emerald-950 via-teal-900 to-slate-900";
+  }
+  switch (card.brand) {
+    case "visa":
+      return "bg-gradient-to-br from-[#0a1628] via-[#152b52] to-[#3d5a8c]";
+    case "master":
+      return "bg-gradient-to-br from-[#1c1408] via-[#4a3518] to-[#b8860b]";
+    case "elo":
+      return "bg-gradient-to-br from-[#1a237e] via-[#3949ab] to-[#7986cb]";
+    case "amex":
+      return "bg-gradient-to-br from-[#263238] via-[#455a64] to-[#78909c]";
+    default:
+      return "bg-gradient-to-br from-slate-900 via-slate-800 to-slate-700";
+  }
+}
+
+function accountSubtitleMobile(acc: { icon: string }): string {
+  if (acc.icon === "savings") return "Reserva · disponível";
+  if (acc.icon === "show_chart") return "Investimentos";
+  return "Conta corrente";
 }
 
 export function DashboardPage() {
@@ -103,8 +127,198 @@ export function DashboardPage() {
     });
   }, [state.creditCards]);
 
+  const netMonthlyFlow = monthlyIncome - monthlyExpense;
+  const flowPctVsIncome =
+    monthlyIncome > 0 ? Math.round((netMonthlyFlow / monthlyIncome) * 1000) / 10 : null;
+
   return (
-    <div className="mx-auto max-w-7xl px-6 pb-12 md:px-12">
+    <Fragment>
+      {/* Dashboard mobile — layout compacto estilo mock */}
+      <div className="mx-auto max-w-md space-y-5 px-4 pb-28 pt-24 md:hidden">
+        <section className="rounded-xl border border-slate-100 bg-white p-5 shadow-[0px_4px_12px_rgba(0,40,85,0.05)] dark:border-slate-800 dark:bg-slate-900">
+          <div className="mb-3 flex items-start justify-between gap-3">
+            <div>
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant">
+                Saldo total
+              </h2>
+              <p className="mt-1 font-headline text-3xl font-bold tracking-tight text-primary dark:text-slate-100">
+                {formatBRL(primaryBalance)}
+              </p>
+            </div>
+            {flowPctVsIncome !== null && Number.isFinite(flowPctVsIncome) && (
+              <span
+                className={`flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-[10px] font-semibold uppercase tracking-wide ${
+                  netMonthlyFlow >= 0
+                    ? "bg-secondary-container text-on-secondary-container dark:bg-emerald-950/50 dark:text-emerald-200"
+                    : "bg-error-container text-on-error-container dark:bg-red-950/40 dark:text-red-200"
+                }`}
+              >
+                <span className="material-symbols-outlined text-[14px]">
+                  {netMonthlyFlow >= 0 ? "trending_up" : "trending_down"}
+                </span>
+                {netMonthlyFlow >= 0 ? "+" : ""}
+                {flowPctVsIncome}%
+              </span>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => navigate("/lancamentos?novo=1")}
+            className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-3 text-[15px] font-semibold text-white transition-transform active:scale-[0.98] dark:bg-primary"
+          >
+            <span className="material-symbols-outlined text-xl">add</span>
+            Novo lançamento
+          </button>
+        </section>
+
+        <section className="space-y-3">
+          <div className="flex items-center justify-between px-1">
+            <h3 className="font-headline text-lg font-semibold text-primary dark:text-slate-100">Meus cartões</h3>
+            <button
+              type="button"
+              onClick={() => setLimitsOpen(true)}
+              disabled={state.creditCards.length === 0}
+              className="text-sm font-semibold text-on-primary-container hover:underline disabled:opacity-40 dark:text-blue-300"
+            >
+              Ver todos
+            </button>
+          </div>
+          {state.creditCards.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-outline-variant/40 bg-surface-container-lowest p-6 text-center dark:bg-slate-900">
+              <p className="mb-3 text-sm text-on-surface-variant">Nenhum cartão cadastrado.</p>
+              <button
+                type="button"
+                onClick={() => {
+                  setCardFormEditing(null);
+                  setCardFormOpen(true);
+                }}
+                className="rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white"
+              >
+                Incluir cartão
+              </button>
+            </div>
+          ) : (
+            <div className="no-scrollbar flex snap-x gap-4 overflow-x-auto pb-1">
+              {carouselCreditCards.map((c) => (
+                <Link
+                  key={c.id}
+                  to={`/cartao/${c.id}`}
+                  className={`relative flex min-h-[180px] min-w-[280px] shrink-0 snap-center flex-col justify-between rounded-xl p-5 text-white shadow-lg ${mobileWalletCardBg(c)}`}
+                >
+                  <div className="relative z-10 flex items-start justify-between">
+                    <span className="material-symbols-outlined text-3xl opacity-90">contactless</span>
+                    <span className="max-w-[60%] text-right font-headline text-lg font-semibold italic leading-tight">
+                      {c.name}
+                    </span>
+                  </div>
+                  <div className="relative z-10">
+                    <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider opacity-80">
+                      Número do cartão
+                    </p>
+                    <p className="font-headline text-lg tracking-[0.18em]">•••• {c.last4}</p>
+                  </div>
+                  <div className="pointer-events-none absolute inset-0 rounded-xl bg-black/15" aria-hidden />
+                </Link>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section className="overflow-hidden rounded-xl border border-slate-100 bg-white shadow-[0px_4px_12px_rgba(0,40,85,0.05)] dark:border-slate-800 dark:bg-slate-900">
+          <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3 dark:border-slate-800">
+            <h3 className="font-headline text-lg font-semibold text-primary dark:text-slate-100">Contas</h3>
+            <button
+              type="button"
+              onClick={() => navigate("/settings")}
+              className="material-symbols-outlined text-slate-400 transition-colors hover:text-primary dark:text-slate-500"
+              aria-label="Contas e configurações"
+            >
+              add_circle
+            </button>
+          </div>
+          <div className="divide-y divide-slate-100 dark:divide-slate-800">
+            {state.accounts.map((acc) => (
+              <button
+                key={acc.id}
+                type="button"
+                onClick={() => setEditAccountId(acc.id)}
+                className="flex w-full items-center justify-between px-5 py-4 text-left transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/80"
+              >
+                <div className="flex min-w-0 items-center gap-3">
+                  <div
+                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
+                      acc.icon === "account_balance"
+                        ? "bg-blue-50 text-blue-900 dark:bg-blue-950 dark:text-blue-200"
+                        : acc.icon === "savings"
+                          ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
+                          : "bg-violet-50 text-violet-800 dark:bg-violet-950 dark:text-violet-200"
+                    }`}
+                  >
+                    <span className="material-symbols-outlined">{acc.icon}</span>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold text-primary dark:text-slate-100">{acc.name}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">{accountSubtitleMobile(acc)}</p>
+                  </div>
+                </div>
+                <p className="shrink-0 pl-2 font-semibold text-primary dark:text-slate-100">{formatBRL(acc.balance)}</p>
+              </button>
+            ))}
+          </div>
+        </section>
+
+        <section className="overflow-hidden rounded-xl border border-slate-100 bg-white shadow-[0px_4px_12px_rgba(0,40,85,0.05)] dark:border-slate-800 dark:bg-slate-900">
+          <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3 dark:border-slate-800">
+            <h3 className="font-headline text-lg font-semibold text-primary dark:text-slate-100">
+              Transações recentes
+            </h3>
+            <button
+              type="button"
+              onClick={() => navigate("/lancamentos")}
+              className="text-sm font-semibold text-on-primary-container hover:underline dark:text-blue-300"
+            >
+              Ver todas
+            </button>
+          </div>
+          <div className="divide-y divide-slate-100 dark:divide-slate-800">
+            {recent.length === 0 ? (
+              <p className="px-5 py-6 text-center text-sm text-on-surface-variant">Sem lançamentos recentes.</p>
+            ) : (
+              recent.map((t) => {
+                const wrap = iconWrapForCategory(t.category, t.amount);
+                const positive = t.amount >= 0;
+                return (
+                  <div
+                    key={t.id}
+                    className="flex items-center justify-between px-5 py-4 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/80"
+                  >
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div
+                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${wrap}`}
+                      >
+                        <span className="material-symbols-outlined text-lg">{t.icon}</span>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold text-primary dark:text-slate-100">{t.description}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          {formatDateTimeShort(t.date + "T12:00:00")}
+                        </p>
+                      </div>
+                    </div>
+                    <p
+                      className={`shrink-0 pl-2 text-sm font-bold ${positive ? "text-emerald-600 dark:text-emerald-400" : "text-error dark:text-red-400"}`}
+                    >
+                      {formatBRL(t.amount, { showSign: true })}
+                    </p>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </section>
+      </div>
+
+    <div className="mx-auto hidden max-w-7xl px-6 pb-12 md:block md:px-12">
       <QuickIncomeModal
         open={depositOpen}
         title="Depositar"
@@ -663,5 +877,6 @@ export function DashboardPage() {
         </aside>
       </div>
     </div>
+    </Fragment>
   );
 }

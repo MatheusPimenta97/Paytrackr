@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { CreditCardLimitsModal } from "../components/CreditCardLimitsModal";
 import { EditAccountModal } from "../components/EditAccountModal";
@@ -71,10 +71,13 @@ function DashboardCreditCardTile({
   card: c,
   onEdit,
   onTryDelete,
+  compact = false,
 }: {
   card: CreditCard;
   onEdit: () => void;
   onTryDelete: () => void;
+  /** Layout mais baixo para carrossel na coluna do dashboard desktop */
+  compact?: boolean;
 }) {
   const isBenef = c.kind === "beneficios";
   const due = isBenef ? ("open" as const) : creditCardDueStatus(c.dueDay);
@@ -86,13 +89,19 @@ function DashboardCreditCardTile({
   const dueUrgent = !isBenef && (due === "overdue" || due === "soon");
 
   return (
-    <div className="rounded-xl border border-outline-variant/10 bg-surface-container-lowest p-6 shadow-light dark:border-slate-700 dark:bg-slate-900">
-      <div className="mb-6 flex items-start justify-between gap-2">
-        <div className="flex min-w-0 items-center space-x-3">
+    <div
+      className={`rounded-xl border border-outline-variant/10 bg-surface-container-lowest shadow-light dark:border-slate-700 dark:bg-slate-900 ${compact ? "p-4" : "p-6"}`}
+    >
+      <div className={`flex items-start justify-between gap-2 ${compact ? "mb-3" : "mb-6"}`}>
+        <div className={`flex min-w-0 items-center ${compact ? "space-x-2" : "space-x-3"}`}>
           <CardBrandLogo
             brand={c.brand}
-            className="!h-10 !w-[4.25rem] shadow-sm"
-            imgClassName="max-h-8 w-full max-w-[3.5rem] object-contain object-center"
+            className={compact ? "!h-8 !w-[3.25rem] shadow-sm" : "!h-10 !w-[4.25rem] shadow-sm"}
+            imgClassName={
+              compact
+                ? "max-h-6 w-full max-w-[2.75rem] object-contain object-center"
+                : "max-h-8 w-full max-w-[3.5rem] object-contain object-center"
+            }
           />
           <div className="min-w-0">
             <p className="truncate text-xs font-bold uppercase tracking-wider text-on-surface-variant dark:text-slate-400">
@@ -101,7 +110,7 @@ function DashboardCreditCardTile({
             <p className="font-mono text-[10px] text-outline dark:text-slate-500">•••• {c.last4}</p>
           </div>
         </div>
-        <div className="flex shrink-0 flex-col items-end gap-2">
+        <div className={`flex shrink-0 flex-col items-end ${compact ? "gap-1" : "gap-2"}`}>
           <span
             className={`rounded px-2 py-1 text-[10px] font-black uppercase ${
               isBenef
@@ -120,7 +129,7 @@ function DashboardCreditCardTile({
               aria-label="Detalhes do cartão"
               title="Detalhes"
             >
-              <span className="material-symbols-outlined text-lg">visibility</span>
+              <span className={`material-symbols-outlined ${compact ? "text-base" : "text-lg"}`}>visibility</span>
             </Link>
             <button
               type="button"
@@ -128,7 +137,7 @@ function DashboardCreditCardTile({
               className="rounded p-1 text-on-surface-variant hover:bg-surface-container-high dark:text-slate-400 dark:hover:bg-slate-800"
               aria-label="Editar cartão"
             >
-              <span className="material-symbols-outlined text-lg">edit</span>
+              <span className={`material-symbols-outlined ${compact ? "text-base" : "text-lg"}`}>edit</span>
             </button>
             <button
               type="button"
@@ -136,12 +145,12 @@ function DashboardCreditCardTile({
               className="rounded p-1 text-error hover:bg-error-container/30"
               aria-label="Remover cartão"
             >
-              <span className="material-symbols-outlined text-lg">delete</span>
+              <span className={`material-symbols-outlined ${compact ? "text-base" : "text-lg"}`}>delete</span>
             </button>
           </div>
         </div>
       </div>
-      <div className="space-y-4">
+      <div className={compact ? "space-y-3" : "space-y-4"}>
         {isBenef ? (
           <>
             <div className="space-y-2">
@@ -167,10 +176,12 @@ function DashboardCreditCardTile({
           <>
             <div className="flex items-end justify-between gap-2">
               <div>
-                <p className="mb-1 text-xs font-medium text-on-surface-variant dark:text-slate-400">
+                <p className="mb-0.5 text-xs font-medium text-on-surface-variant dark:text-slate-400">
                   Fatura Atual
                 </p>
-                <p className="font-headline text-2xl font-black text-primary dark:text-slate-100">
+                <p
+                  className={`font-headline font-black text-primary dark:text-slate-100 ${compact ? "text-xl" : "text-2xl"}`}
+                >
                   {formatBRL(c.currentInvoice)}
                 </p>
               </div>
@@ -178,20 +189,22 @@ function DashboardCreditCardTile({
                 <p className="text-[10px] font-medium text-on-surface-variant dark:text-slate-400">
                   Fechamento
                 </p>
-                <p className="text-xs font-semibold text-on-surface-variant dark:text-slate-300">
+                <p
+                  className={`font-semibold text-on-surface-variant dark:text-slate-300 ${compact ? "text-[11px]" : "text-xs"}`}
+                >
                   {formatCardBillingDayLabel(c.closingDay)}
                 </p>
-                <p className="mt-1.5 text-[10px] font-medium text-on-surface-variant dark:text-slate-400">
+                <p className={`font-medium text-on-surface-variant dark:text-slate-400 ${compact ? "mt-1 text-[9px]" : "mt-1.5 text-[10px]"}`}>
                   Vencimento
                 </p>
                 <p
-                  className={`text-sm font-bold ${dueUrgent ? "text-error" : "text-on-surface-variant dark:text-slate-300"}`}
+                  className={`font-bold ${dueUrgent ? "text-error" : "text-on-surface-variant dark:text-slate-300"} ${compact ? "text-xs" : "text-sm"}`}
                 >
                   {formatCardBillingDayLabel(c.dueDay)}
                 </p>
               </div>
             </div>
-            <div className="space-y-1.5">
+            <div className={compact ? "space-y-1" : "space-y-1.5"}>
               <div className="flex justify-between text-[10px] font-bold">
                 <span className="text-on-surface-variant dark:text-slate-400">Limite utilizado</span>
                 <span className="text-primary dark:text-blue-200">
@@ -235,6 +248,7 @@ export function DashboardPage() {
   const [cardFormEditing, setCardFormEditing] = useState<CreditCard | null>(null);
   const [limitsOpen, setLimitsOpen] = useState(false);
   const [editAccountId, setEditAccountId] = useState<string | null>(null);
+  const [desktopCardCarouselIdx, setDesktopCardCarouselIdx] = useState(0);
 
   const recent = useMemo(
     () =>
@@ -259,6 +273,12 @@ export function DashboardPage() {
       return rank(a.kind) - rank(b.kind);
     });
   }, [state.creditCards]);
+
+  useEffect(() => {
+    setDesktopCardCarouselIdx((i) =>
+      carouselCreditCards.length === 0 ? 0 : Math.min(i, carouselCreditCards.length - 1),
+    );
+  }, [carouselCreditCards.length]);
 
   const netMonthlyFlow = monthlyIncome - monthlyExpense;
   const flowPctVsIncome =
@@ -819,20 +839,64 @@ export function DashboardPage() {
                     </button>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 gap-3">
-                    {carouselCreditCards.map((c) => (
-                      <DashboardCreditCardTile
-                        key={c.id}
-                        card={c}
-                        onEdit={() => {
-                          setCardFormEditing(c);
-                          setCardFormOpen(true);
-                        }}
-                        onTryDelete={() => {
-                          if (confirm(`Remover o cartão "${c.name}"?`)) deleteCreditCard(c.id);
-                        }}
-                      />
-                    ))}
+                  <div>
+                    <div className="flex items-stretch gap-1.5">
+                      {carouselCreditCards.length > 1 && (
+                        <button
+                          type="button"
+                          aria-label="Cartão anterior"
+                          disabled={desktopCardCarouselIdx === 0}
+                          onClick={() => setDesktopCardCarouselIdx((i) => Math.max(0, i - 1))}
+                          className="flex h-7 w-7 shrink-0 items-center justify-center self-center rounded-full border border-slate-200/90 bg-white text-primary shadow-sm transition-colors hover:bg-slate-50 disabled:pointer-events-none disabled:opacity-35 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
+                        >
+                          <span className="material-symbols-outlined text-[20px]">chevron_left</span>
+                        </button>
+                      )}
+                      <div className="min-w-0 flex-1 overflow-hidden rounded-xl">
+                        <div
+                          className="flex transition-transform duration-300 ease-out"
+                          style={{
+                            transform: `translateX(-${desktopCardCarouselIdx * 100}%)`,
+                          }}
+                        >
+                          {carouselCreditCards.map((c) => (
+                            <div key={c.id} className="w-full shrink-0">
+                              <DashboardCreditCardTile
+                                compact
+                                card={c}
+                                onEdit={() => {
+                                  setCardFormEditing(c);
+                                  setCardFormOpen(true);
+                                }}
+                                onTryDelete={() => {
+                                  if (confirm(`Remover o cartão "${c.name}"?`)) deleteCreditCard(c.id);
+                                }}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      {carouselCreditCards.length > 1 && (
+                        <button
+                          type="button"
+                          aria-label="Próximo cartão"
+                          disabled={desktopCardCarouselIdx >= carouselCreditCards.length - 1}
+                          onClick={() =>
+                            setDesktopCardCarouselIdx((i) =>
+                              Math.min(carouselCreditCards.length - 1, i + 1),
+                            )
+                          }
+                          className="flex h-7 w-7 shrink-0 items-center justify-center self-center rounded-full border border-slate-200/90 bg-white text-primary shadow-sm transition-colors hover:bg-slate-50 disabled:pointer-events-none disabled:opacity-35 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
+                        >
+                          <span className="material-symbols-outlined text-[20px]">chevron_right</span>
+                        </button>
+                      )}
+                    </div>
+                    {carouselCreditCards.length > 1 && (
+                      <p className="mt-2 text-center text-[10px] font-medium tabular-nums text-outline dark:text-slate-500">
+                        {desktopCardCarouselIdx + 1} / {carouselCreditCards.length}
+                      </p>
+                    )}
                   </div>
                 )}
               </section>

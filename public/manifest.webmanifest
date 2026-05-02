@@ -1,0 +1,18 @@
+{
+  "name": "PayTrackr",
+  "short_name": "PayTrackr",
+  "description": "Controle financeiro pessoal",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f0f4f8",
+  "theme_color": "#001d44",
+  "lang": "pt-BR",
+  "icons": [
+    {
+      "src": "/paytrackr-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

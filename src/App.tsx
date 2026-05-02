@@ -1,39 +1,74 @@
+import { lazy, Suspense } from "react";
 import { Routes, Route, Navigate, Outlet } from "react-router-dom";
-import { DashboardLayout } from "./components/DashboardLayout";
 import { useAuth } from "./context/AuthContext";
-import { DashboardPage } from "./pages/DashboardPage";
-import { LancamentosPage } from "./pages/LancamentosPage";
 import { LoginPage } from "./pages/LoginPage";
-import { MetasPage } from "./pages/MetasPage";
-import GastosRecorrentesPage from "./pages/GastosRecorrentesPage";
-import { ProfilePage } from "./pages/ProfilePage";
-import { SettingsPage } from "./pages/SettingsPage";
-import { ValoresAReceberPage } from "./pages/ValoresAReceberPage";
-import { PontosPage } from "./pages/PontosPage";
-import { CreditCardDetailPage } from "./pages/CreditCardDetailPage";
+
+const FinanceShell = lazy(() => import("./routes/FinanceShell"));
+
+const DashboardLayout = lazy(() =>
+  import("./components/DashboardLayout").then((m) => ({ default: m.DashboardLayout }))
+);
+
+const DashboardPage = lazy(() =>
+  import("./pages/DashboardPage").then((m) => ({ default: m.DashboardPage }))
+);
+const LancamentosPage = lazy(() =>
+  import("./pages/LancamentosPage").then((m) => ({ default: m.LancamentosPage }))
+);
+const MetasPage = lazy(() => import("./pages/MetasPage").then((m) => ({ default: m.MetasPage })));
+const GastosRecorrentesPage = lazy(() => import("./pages/GastosRecorrentesPage"));
+const ProfilePage = lazy(() =>
+  import("./pages/ProfilePage").then((m) => ({ default: m.ProfilePage }))
+);
+const SettingsPage = lazy(() =>
+  import("./pages/SettingsPage").then((m) => ({ default: m.SettingsPage }))
+);
+const ValoresAReceberPage = lazy(() =>
+  import("./pages/ValoresAReceberPage").then((m) => ({ default: m.ValoresAReceberPage }))
+);
+const PontosPage = lazy(() => import("./pages/PontosPage").then((m) => ({ default: m.PontosPage })));
+const CreditCardDetailPage = lazy(() =>
+  import("./pages/CreditCardDetailPage").then((m) => ({ default: m.CreditCardDetailPage }))
+);
+
+function RouteFallback() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background font-body text-on-surface-variant dark:bg-slate-950 dark:text-slate-400">
+      <div className="flex flex-col items-center gap-3">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+        <span className="text-sm font-medium">Carregando…</span>
+      </div>
+    </div>
+  );
+}
 
 function RequireAuth() {
   const { isAuthenticated, ready } = useAuth();
-  if (!ready) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background font-body text-on-surface-variant dark:bg-slate-950 dark:text-slate-400">
-        <div className="flex flex-col items-center gap-3">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-          <span className="text-sm font-medium">Carregando…</span>
-        </div>
-      </div>
-    );
-  }
+  if (!ready) return <RouteFallback />;
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   return <Outlet />;
 }
 
 export default function App() {
   return (
+    <Suspense fallback={<RouteFallback />}>
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route element={<RequireAuth />}>
-        <Route element={<DashboardLayout />}>
+        <Route
+          element={
+            <Suspense fallback={<RouteFallback />}>
+              <FinanceShell />
+            </Suspense>
+          }
+        >
+        <Route
+          element={
+            <Suspense fallback={<RouteFallback />}>
+              <DashboardLayout />
+            </Suspense>
+          }
+        >
           <Route path="/" element={<DashboardPage />} />
           <Route path="/metas" element={<MetasPage />} />
           <Route path="/gastos-recorrentes" element={<GastosRecorrentesPage />} />
@@ -46,8 +81,10 @@ export default function App() {
           <Route path="/perfil" element={<ProfilePage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>
+        </Route>
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </Suspense>
   );
 }

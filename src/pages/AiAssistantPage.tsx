@@ -74,7 +74,9 @@ export function AiAssistantPage() {
     }
   }, [preview]);
 
-  const configured = Boolean(import.meta.env.VITE_AI_ASSISTANT_URL?.trim());
+  const explicitAssistantUrl = import.meta.env.VITE_AI_ASSISTANT_URL?.trim();
+  const usesDevProxy = import.meta.env.DEV && !explicitAssistantUrl;
+  const configured = Boolean(explicitAssistantUrl) || import.meta.env.DEV;
 
   return (
     <div className="mx-auto max-w-3xl px-6 pb-28 pt-24 md:ml-[72px] md:pb-12 md:pt-8">
@@ -96,12 +98,18 @@ export function AiAssistantPage() {
         className={`mb-6 rounded-xl border px-4 py-3 text-sm ${configured ? "border-secondary-container/50 bg-secondary-container/15 text-on-secondary-container dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-200" : "border-outline-variant/30 bg-surface-container-low dark:border-slate-700 dark:bg-slate-900/80"}`}
       >
         <p className="font-semibold text-primary dark:text-slate-100">
-          {configured ? "Endpoint configurado (VITE_AI_ASSISTANT_URL)" : "Modo demo — sem chamada externa"}
+          {usesDevProxy
+            ? "Desenvolvimento — proxy local (/api/paytrackr/assistant/image)"
+            : !configured
+              ? "Modo demo — sem chamada externa"
+              : "Endpoint configurado (VITE_AI_ASSISTANT_URL)"}
         </p>
         <p className="mt-1 text-on-surface-variant dark:text-slate-400">
-          {configured
-            ? "As fotos dos comprovantes vão ao seu servidor; contenham dados sensíveis — revise LGPD e custo da API de visão."
-            : "Configure VITE_AI_ASSISTANT_URL no .env para apontar ao seu backend com o agente (OpenAI, Claude, Gemini, etc.)."}
+          {usesDevProxy
+            ? "O Vite encaminha para a OpenAI usando OPENAI_API_KEY do .env (reinicie o dev server após alterar o .env). Fotos seguem dados sensíveis."
+            : configured
+              ? "As fotos dos comprovantes vão ao seu servidor; contenham dados sensíveis — revise LGPD e custo da API de visão."
+              : "Configure VITE_AI_ASSISTANT_URL no .env (e faça novo build) ou use npm run dev com o proxy local."}
         </p>
       </div>
 

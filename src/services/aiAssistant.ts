@@ -73,13 +73,22 @@ function stripDataUrlPrefix(dataUrl: string): { base64: string; mimeType: string
   return { base64: m[2], mimeType: m[1] || "image/jpeg" };
 }
 
+/** URL do POST do assistente: env explícito, ou em dev o proxy do Vite na mesma origem. */
+function resolveAssistantEndpoint(): string {
+  const fromEnv = import.meta.env.VITE_AI_ASSISTANT_URL?.trim();
+  if (fromEnv) return fromEnv;
+  if (import.meta.env.DEV) return "/api/paytrackr/assistant/image";
+  return "";
+}
+
 /**
  * Envia foto de **comprovante de pagamento** para o seu agente (OCR + interpretação).
- * Sem \`VITE_AI_ASSISTANT_URL\`, devolve texto demo (não chama rede).
+ * Em **desenvolvimento**, sem \`VITE_AI_ASSISTANT_URL\`, usa o proxy local do Vite.
+ * Em **produção**, sem URL configurada, devolve texto demo (não chama rede).
  */
 export async function analyzePaymentReceiptImage(imageDataUrl: string): Promise<AiAssistantImageResult> {
   const { base64, mimeType } = stripDataUrlPrefix(imageDataUrl);
-  const endpoint = import.meta.env.VITE_AI_ASSISTANT_URL?.trim();
+  const endpoint = resolveAssistantEndpoint();
 
   if (!endpoint) {
     return { ok: true, markdown: DEMO_MARKDOWN, demoMode: true };

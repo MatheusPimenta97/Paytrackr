@@ -1,15 +1,15 @@
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { CreditCardLimitsModal } from "../components/CreditCardLimitsModal";
 import { EditAccountModal } from "../components/EditAccountModal";
 import { ManageCreditCardModal } from "../components/ManageCreditCardModal";
 import { QuickIncomeModal } from "../components/QuickIncomeModal";
 import { useFinance, formatBRL } from "../context/FinanceContext";
-import { iconWrapForCategory } from "../domain/categories";
 import { CardBrandLogo } from "../components/CardBrandLogo";
-import { GreetingTimeIcon } from "../components/GreetingTimeIcon";
+import { useAuth } from "../context/AuthContext";
+import { categoryPillClass, iconWrapForCategory } from "../domain/categories";
 import { BENEFIT_BUCKET_LABEL, BENEFIT_BUCKETS } from "../domain/cardWallet";
-import type { BenefitBucket, CreditCard } from "../domain/types";
+import type { BenefitBucket, CreditCard, Transaction } from "../domain/types";
 import {
   creditCardDueStatus,
   formatCardBillingDayLabel,
@@ -17,14 +17,13 @@ import {
   roundMoney,
 } from "../domain/money";
 
-const INSIGHT_IMG =
-  "https://lh3.googleusercontent.com/aida-public/AB6AXuBqvfc0f7AM-bF6Hh7T7vyOEdPevfVFW7Cq7J5_80vzNfiHIxQtWDkD0KCo_lE2aWl3zmDbdyfjzM_rbGuJ1C2lwVx3L0OJ8AXiUamDp726p5DhpIKCDmM9eUg5yWsMUOVq7FqMOlz0_NKcDWlOQl6FhNazOK2PV2YD01tb0qZZiw96C9V_bfvFeEH4mIv5vueHkb6sNbErtTs6ztSG7rR-jLFUVwN33gD_o0V9mfEvzZZ60jsZSrVh9JCpbQPY6AB_Hsch_uUv80U";
+const DESKTOP_PROMO_IMG =
+  "https://lh3.googleusercontent.com/aida/ADBb0ugDtfl0mnVik0vcJ38GlQ8aS150PZqiaGT19dj42zqxq0fqsJmGauewvhJFNbQFyMrJ8FoWfE32K8yup3Izfkvuo9BkUdwPvpEP14gdEdjd7SqD7Me4__mdRaY9Vxd0bvoWoF5w7hjRneBhk6PQZR_AkReRBokZEOq4kntT2QRWsS1gBvtj4i9WAMmuOPhuMu6EUb9YKfEmCSWGhrCq92oe0_ElFqZJxUMLZqS3vHhky8qKiHU5mmexV9KAExDPRqjUU16f7fyqzg";
 
-const STATUS_LEDGER: Record<string, string> = {
-  confirmado: "Aprovado",
-  pendente: "Pendente",
-  recebido: "Liquidado",
-};
+const WALLET_TEX_URLS = [
+  "https://lh3.googleusercontent.com/aida/ADBb0ug3Ufqy9pb2u67Ux9tDC329Jmml301zOKZ4KtODUZQ2eY1B8_qzOyOQSEkFaUa0U9vq1uokUx4EI3nGcFFZvADr4TcrKysUdyrnJ8X1QypnQEhaNvTF59iIlkO7qQVsk4fwCJXQLI_TyGLkuuB9_lDGWAIQmHLPWruy1vM4fnz916pPMtccukobJmbZ-Zd_NMn8iwOlSYnUger1hZrSGrrroTulgzXgRl9X2q7WMl61RAIDC42tpoxTdy82-EPiUOU0Ea1ZAT8lpg",
+  "https://lh3.googleusercontent.com/aida/ADBb0uhmHheKpn_fYoRll-odHuvqNrb9sJMTTMbVeYQOMnRpjBy4cc0NdZNfHHcCzRk24_O8pbcU2UKgd-_cga1JsBP8lckVuklJgf3_rdrlQUi96Hs1EBRzfIUNw1FIF6wIi5XziTtpmaZfDvoDrtuTlgrP-9N9V39Qv8VlGnCZAenkmNLCv_tZARFo4ryOTqLqjnRgE5wpsAWq4rNBGU9ta34pKcb_gtlTAnxWP20ZqifFPk5vX0bHdSAOM5cSSszlWolOtjHQj9p0yUw",
+];
 
 const BAR_COLOR: Record<CreditCard["brand"], string> = {
   visa: "bg-secondary",
@@ -38,6 +37,52 @@ function cardStatusLabel(s: ReturnType<typeof creditCardDueStatus>) {
   if (s === "overdue") return "Fatura atrasada";
   if (s === "soon") return "Próximo vencimento";
   return "Fatura em aberto";
+}
+
+function initialsFromDisplayName(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "PT";
+  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
+  return `${parts[0]![0] ?? ""}${parts[parts.length - 1]![0] ?? ""}`.toUpperCase();
+}
+
+function ymFromOffset(monthsAgo: number): string {
+  const d = new Date();
+  const t = new Date(d.getFullYear(), d.getMonth() - monthsAgo, 1);
+  return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function monthNet(transactions: Transaction[], ym: string): number {
+  let inc = 0;
+  let exp = 0;
+  for (const tx of transactions) {
+    if (!tx.date.startsWith(ym)) continue;
+    if (tx.amount > 0) inc += tx.amount;
+    else exp += Math.abs(tx.amount);
+  }
+  return roundMoney(inc - exp);
+}
+
+function desktopWalletGradient(card: CreditCard): string {
+  if (card.kind === "beneficios") {
+    return "bg-gradient-to-br from-emerald-900 via-teal-900 to-slate-950";
+  }
+  switch (card.brand) {
+    case "visa":
+      return "bg-gradient-to-br from-slate-900 to-blue-950";
+    case "master":
+      return "bg-gradient-to-br from-blue-700 to-indigo-900";
+    case "elo":
+      return "bg-gradient-to-br from-indigo-900 via-blue-900 to-slate-950";
+    case "amex":
+      return "bg-gradient-to-br from-slate-800 via-sky-950 to-slate-950";
+    default:
+      return "bg-gradient-to-br from-slate-900 via-slate-800 to-blue-950";
+  }
+}
+
+function benefitBucketsTotal(card: CreditCard): number {
+  return roundMoney(BENEFIT_BUCKETS.reduce((s, b) => s + card.benefitBalances[b], 0));
 }
 
 function DashboardCreditCardTile({
@@ -190,56 +235,35 @@ function accountSubtitleMobile(acc: { icon: string }): string {
 
 export function DashboardPage() {
   const navigate = useNavigate();
+  const { logout } = useAuth();
   const {
     state,
-    greeting,
     primaryBalance,
-    defaultAccountBalance,
-    benefitLiquidity,
     monthlyIncome,
     monthlyExpense,
     deleteCreditCard,
+    portfolioCompletion,
+    exportBackup,
   } = useFinance();
-  const primaryAcc = state.accounts.find((a) => a.id === state.defaultAccountId);
-  const declaredSalary = state.profile.monthlySalary;
   const [depositOpen, setDepositOpen] = useState(false);
   const [cardFormOpen, setCardFormOpen] = useState(false);
   const [cardFormEditing, setCardFormEditing] = useState<CreditCard | null>(null);
   const [limitsOpen, setLimitsOpen] = useState(false);
   const [editAccountId, setEditAccountId] = useState<string | null>(null);
-  const cardsScrollerRef = useRef<HTMLDivElement>(null);
-  const [cardScroll, setCardScroll] = useState({ canPrev: false, canNext: false });
-
-  const updateCardScroll = useCallback(() => {
-    const el = cardsScrollerRef.current;
-    if (!el) return;
-    const { scrollLeft, scrollWidth, clientWidth } = el;
-    setCardScroll({
-      canPrev: scrollLeft > 2,
-      canNext: scrollLeft + clientWidth < scrollWidth - 2,
-    });
-  }, []);
-
-  useEffect(() => {
-    updateCardScroll();
-    const el = cardsScrollerRef.current;
-    if (!el) return;
-    const ro = new ResizeObserver(() => updateCardScroll());
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [state.creditCards.length, updateCardScroll]);
-
-  const scrollCardsDir = useCallback((dir: -1 | 1) => {
-    const el = cardsScrollerRef.current;
-    if (!el) return;
-    el.scrollBy({ left: dir * el.clientWidth, behavior: "smooth" });
-  }, []);
 
   const recent = useMemo(
     () =>
       [...state.transactions]
         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
         .slice(0, 5),
+    [state.transactions]
+  );
+
+  const recentDesktop = useMemo(
+    () =>
+      [...state.transactions]
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+        .slice(0, 10),
     [state.transactions]
   );
 
@@ -254,6 +278,45 @@ export function DashboardPage() {
   const netMonthlyFlow = monthlyIncome - monthlyExpense;
   const flowPctVsIncome =
     monthlyIncome > 0 ? Math.round((netMonthlyFlow / monthlyIncome) * 1000) / 10 : null;
+
+  const prevMonthNet = useMemo(() => monthNet(state.transactions, ymFromOffset(1)), [state.transactions]);
+
+  const balanceTrendVsPrevMonthPct = useMemo(() => {
+    const cur = netMonthlyFlow;
+    if (prevMonthNet === 0) {
+      if (cur === 0) return null;
+      return cur > 0 ? 100 : -100;
+    }
+    return roundMoney(((cur - prevMonthNet) / Math.abs(prevMonthNet)) * 100);
+  }, [prevMonthNet, netMonthlyFlow]);
+
+  const monthlyBars = useMemo(() => {
+    const raw: number[] = [];
+    for (let i = 6; i >= 0; i--) {
+      raw.push(monthNet(state.transactions, ymFromOffset(i)));
+    }
+    const maxAbs = Math.max(...raw.map((n) => Math.abs(n)), 1);
+    return raw.map((n, idx) => ({
+      net: n,
+      heightPct: Math.max(18, Math.round((Math.abs(n) / maxAbs) * 100)),
+      highlight: idx === raw.length - 1,
+    }));
+  }, [state.transactions]);
+
+  const desktopInsightLine = useMemo(() => {
+    const mes = new Intl.DateTimeFormat("pt-BR", { month: "long" }).format(new Date());
+    const mesCap = mes.charAt(0).toUpperCase() + mes.slice(1);
+    if (portfolioCompletion >= 85) {
+      return `O desempenho de ${mesCap}: suas metas estão ${portfolioCompletion}% avançadas — ótimo ritmo de poupança.`;
+    }
+    if (netMonthlyFlow > 0) {
+      return `Em ${mesCap}, seu fluxo líquido ficou positivo (${formatBRL(netMonthlyFlow)}). Mantenha o controle das categorias.`;
+    }
+    if (netMonthlyFlow < 0) {
+      return `Em ${mesCap}, o fluxo líquido foi ${formatBRL(netMonthlyFlow)}. Vale revisar gastos fixos e cartões.`;
+    }
+    return `Cadastre lançamentos em ${mesCap} para ver tendências e comparativos automáticos.`;
+  }, [portfolioCompletion, netMonthlyFlow]);
 
   return (
     <Fragment>
@@ -476,97 +539,128 @@ export function DashboardPage() {
         </section>
       </div>
 
-    <div className="mx-auto hidden max-w-7xl px-6 pb-12 md:block md:px-12">
-      <header className="mb-12 flex flex-col items-end justify-between md:flex-row">
-        <div className="w-full space-y-6 md:w-auto">
-          <div>
-            <p className="flex items-center gap-2 text-lg font-medium text-on-surface-variant">
-              {greeting},
-              <GreetingTimeIcon />
-            </p>
-            <h1 className="font-headline text-4xl font-black tracking-tight text-primary">
-              {state.profile.displayName}!
-            </h1>
-          </div>
-          <div className="flex flex-wrap items-center gap-8 gap-y-4">
-            <div className="space-y-1">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-outline">
-                receita mensal
-              </p>
-              <p className="font-headline text-2xl font-black text-secondary">
-                {formatBRL(monthlyIncome)}
-              </p>
-              {declaredSalary > 0 && (
-                <p className="text-xs text-on-surface-variant">
-                  Salário no perfil:{" "}
-                  <span className="font-semibold text-primary">{formatBRL(declaredSalary)}</span>
-                </p>
-              )}
-            </div>
-            <div className="h-10 w-px bg-outline-variant/30" />
-            <div className="space-y-1">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-outline">
-                despesa mensal
-              </p>
-              <p className="font-headline text-2xl font-black text-error">
-                {formatBRL(monthlyExpense)}
-              </p>
-            </div>
-            <div className="ml-0 flex items-center justify-center rounded-lg border border-outline-variant/20 bg-white p-2 shadow-sm sm:ml-4">
-              <span className="material-symbols-outlined text-on-surface-variant opacity-60">
-                show_chart
+    <div className="relative hidden md:ml-[calc(50%-50vw)] md:flex md:h-[calc(100vh-7rem)] md:min-h-0 md:w-screen md:max-w-[100vw] md:overflow-hidden dark:bg-slate-950">
+      {/* Painel esquerdo — saldo, resumo mensal e ações */}
+      <aside className="relative flex min-h-0 w-[400px] shrink-0 flex-col overflow-hidden border-r border-primary-container bg-primary text-white">
+        <div className="pointer-events-none absolute -left-24 -top-24 h-64 w-64 rounded-full bg-primary-container opacity-20 blur-3xl" />
+        <div className="custom-scrollbar relative z-10 flex min-h-0 flex-1 flex-col gap-12 overflow-y-auto p-8">
+          <section>
+            <div className="mb-3 flex items-center gap-2 text-primary-fixed">
+              <span className="material-symbols-outlined text-[18px]">account_balance_wallet</span>
+              <span className="text-xs font-semibold uppercase tracking-wider text-primary-fixed">
+                Saldo total disponível
               </span>
             </div>
-          </div>
-        </div>
-        <div className="mt-8 flex w-full flex-col items-stretch space-y-4 md:mt-0 md:w-auto md:items-end">
-          <div className="text-left md:text-right">
-            <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-outline">
-              Saldo Principal
-            </p>
-            <p className="font-headline text-4xl font-black tracking-tighter text-primary">
-              {formatBRL(primaryBalance)}
-            </p>
-            {benefitLiquidity > 0 && (
-              <p className="mt-1 max-w-xs text-left text-xs leading-snug text-on-surface-variant md:text-right md:ml-auto">
-                {primaryAcc?.name ?? "Conta principal"}: {formatBRL(defaultAccountBalance)} · Benefícios:{" "}
-                {formatBRL(benefitLiquidity)}
-              </p>
-            )}
+            <div className="space-y-2">
+              <h1 className="font-headline text-4xl font-black tracking-tight text-white md:text-5xl">
+                {formatBRL(primaryBalance)}
+              </h1>
+              <div className="flex flex-wrap items-center gap-2">
+                {balanceTrendVsPrevMonthPct !== null && Number.isFinite(balanceTrendVsPrevMonthPct) && (
+                  <span
+                    className={`flex items-center rounded-full px-2 py-0.5 text-sm font-medium ${
+                      balanceTrendVsPrevMonthPct >= 0
+                        ? "bg-emerald-400/10 text-emerald-400"
+                        : "bg-red-400/15 text-red-200"
+                    }`}
+                  >
+                    <span className="material-symbols-outlined mr-1 text-[16px]">
+                      {balanceTrendVsPrevMonthPct >= 0 ? "trending_up" : "trending_down"}
+                    </span>
+                    {balanceTrendVsPrevMonthPct >= 0 ? "+" : ""}
+                    {Math.round(balanceTrendVsPrevMonthPct * 10) / 10}%
+                  </span>
+                )}
+                <span className="text-sm text-on-primary-container">em relação ao mês passado</span>
+              </div>
+            </div>
+          </section>
+
+          <section className="space-y-6">
+            <div className="flex items-center justify-between">
+              <span className="font-headline text-xl font-semibold text-white">Resumo mensal</span>
+              <button
+                type="button"
+                className="material-symbols-outlined text-primary-fixed opacity-80 hover:opacity-100"
+                aria-label="Opções do resumo"
+              >
+                more_horiz
+              </button>
+            </div>
+            <div className="flex h-48 items-end justify-between gap-2 rounded-xl border border-white/5 bg-primary-container/50 p-6">
+              {monthlyBars.map((bar, idx) => (
+                <div
+                  key={idx}
+                  className={`w-full rounded-t-sm transition-colors ${
+                    bar.highlight
+                      ? "bg-primary-fixed shadow-[0_0_20px_rgba(215,226,255,0.35)]"
+                      : "bg-on-primary-container/20"
+                  }`}
+                  style={{ height: `${bar.heightPct}%` }}
+                  title={`Fluxo líquido: ${formatBRL(bar.net)}`}
+                />
+              ))}
+            </div>
+            <p className="text-sm italic leading-snug text-on-primary-container">{desktopInsightLine}</p>
+          </section>
+
+          <div className="space-y-3">
+            <button
+              type="button"
+              onClick={() => navigate("/lancamentos?novo=1")}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary-fixed py-4 text-[15px] font-semibold text-primary shadow-xl shadow-black/20 transition-colors hover:bg-white active:scale-[0.99]"
+            >
+              <span className="material-symbols-outlined">add_circle</span>
+              Novo lançamento
+            </button>
+            <button
+              type="button"
+              onClick={() => setDepositOpen(true)}
+              className="w-full rounded-xl border border-white/15 py-2.5 text-sm font-semibold text-primary-fixed transition-colors hover:bg-white/5"
+            >
+              Depositar na conta principal
+            </button>
             <Link
               to="/settings#saldo-real"
-              className="mt-2 inline-block text-sm font-semibold text-secondary underline-offset-2 hover:underline"
+              className="block text-center text-sm font-medium text-on-primary-container underline-offset-2 hover:text-white hover:underline"
             >
               Definir saldo real
             </Link>
           </div>
-          <div className="flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={() => setDepositOpen(true)}
-              className="flex items-center space-x-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-primary/90"
-            >
-              <span className="material-symbols-outlined text-sm">add_circle</span>
-              <span>Depositar</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate("/lancamentos?novo=1")}
-              className="flex items-center space-x-2 rounded-lg border border-outline-variant/20 bg-surface-container-highest px-5 py-2.5 text-sm font-bold text-primary transition-all hover:bg-surface-container-high"
-            >
-              <span className="material-symbols-outlined text-sm">payments</span>
-              <span>Novo lançamento</span>
-            </button>
-          </div>
         </div>
-      </header>
 
-      <div className="grid grid-cols-1 gap-8 md:grid-cols-12">
-        <div className="space-y-8 md:col-span-8">
-          <section id="gestao-cartoes">
+        <div className="relative z-10 flex shrink-0 items-center justify-between border-t border-white/10 px-8 pb-8 pt-6">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-container font-headline text-sm font-bold text-primary-fixed">
+              {initialsFromDisplayName(state.profile.displayName)}
+            </div>
+            <div className="min-w-0">
+              <p className="truncate font-headline text-sm font-semibold leading-tight text-white">
+                {state.profile.displayName}
+              </p>
+              <p className="truncate text-sm text-on-primary-container">
+                PayTrackr · dados no seu dispositivo
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => logout()}
+            className="material-symbols-outlined shrink-0 text-on-primary-container transition-colors hover:text-white"
+            aria-label="Sair"
+          >
+            logout
+          </button>
+        </div>
+      </aside>
+
+      {/* Painel direito — scroll */}
+      <section className="custom-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto bg-surface-container-low dark:bg-slate-900/50">
+        <div className="mx-auto max-w-[1000px] space-y-12 px-8 py-10 pb-16">
+          <section>
             <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <h2 className="font-headline text-2xl font-bold tracking-tight text-primary">
-                Gestão de Cartões
+              <h2 className="font-headline text-2xl font-semibold tracking-tight text-primary dark:text-slate-100">
+                Meus cartões
               </h2>
               <div className="flex flex-wrap items-center gap-3">
                 <button
@@ -575,26 +669,26 @@ export function DashboardPage() {
                     setCardFormEditing(null);
                     setCardFormOpen(true);
                   }}
-                  className="flex items-center space-x-1 rounded-lg border border-secondary/40 bg-secondary-container/30 px-3 py-2 text-sm font-bold text-secondary transition-colors hover:bg-secondary-container/50"
+                  className="flex items-center gap-1 rounded-lg border border-secondary/40 bg-secondary-container/30 px-3 py-2 text-sm font-bold text-secondary transition-colors hover:bg-secondary-container/50 dark:border-emerald-800/40 dark:bg-emerald-950/40 dark:text-emerald-200"
                 >
                   <span className="material-symbols-outlined text-base">add_card</span>
-                  <span>Incluir cartão</span>
+                  Incluir cartão
                 </button>
                 <button
                   type="button"
                   onClick={() => setLimitsOpen(true)}
                   disabled={state.creditCards.length === 0}
-                  className="flex items-center space-x-1 text-sm font-semibold text-secondary hover:underline disabled:pointer-events-none disabled:opacity-40"
+                  className="flex items-center gap-1 font-headline text-[15px] font-semibold text-blue-950 hover:underline disabled:pointer-events-none disabled:opacity-40 dark:text-blue-200"
                 >
-                  <span>Ver todos os limites</span>
-                  <span className="material-symbols-outlined text-sm">arrow_forward</span>
+                  Ver todos
+                  <span className="material-symbols-outlined text-[18px]">chevron_right</span>
                 </button>
               </div>
             </div>
             {state.creditCards.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-outline-variant/40 bg-surface-container-lowest/80 p-10 text-center shadow-light">
-                <p className="mb-4 text-on-surface-variant">
-                  Nenhum cartão cadastrado. Inclua os seus para acompanhar fatura, vencimento e limite.
+              <div className="rounded-2xl border border-dashed border-outline-variant/40 bg-white p-12 text-center shadow-[0px_4px_12px_rgba(0,40,85,0.05)] dark:border-slate-600 dark:bg-slate-800/80">
+                <p className="mb-4 text-on-surface-variant dark:text-slate-400">
+                  Nenhum cartão cadastrado. Inclua os seus para acompanhar limite e faturas.
                 </p>
                 <button
                   type="button"
@@ -602,296 +696,282 @@ export function DashboardPage() {
                     setCardFormEditing(null);
                     setCardFormOpen(true);
                   }}
-                  className="rounded-lg bg-primary px-5 py-2.5 text-sm font-bold text-white"
+                  className="rounded-xl bg-primary px-6 py-3 text-sm font-bold text-white"
                 >
                   Incluir primeiro cartão
                 </button>
               </div>
             ) : (
-              <div>
-                <div
-                  ref={cardsScrollerRef}
-                  onScroll={updateCardScroll}
-                  className="flex gap-6 overflow-x-auto scroll-smooth pb-1 [-ms-overflow-style:none] [scrollbar-width:thin] snap-x snap-mandatory sm:snap-none [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-outline-variant/40"
-                >
-                  {carouselCreditCards.map((c) => (
-                    <div
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                {carouselCreditCards.map((c, idx) => {
+                  const avail =
+                    c.kind === "beneficios"
+                      ? benefitBucketsTotal(c)
+                      : roundMoney(Math.max(0, c.creditLimit - c.currentInvoice));
+                  const texUrl = WALLET_TEX_URLS[idx % WALLET_TEX_URLS.length]!;
+                  const iconRight = idx % 2 === 0 ? "contactless" : "credit_card";
+                  const labelAvail = c.kind === "beneficios" ? "Saldo disponível" : "Limite disponível";
+                  return (
+                    <Link
                       key={c.id}
-                      className="relative max-sm:w-full max-sm:min-w-[min(100%,22rem)] shrink-0 snap-center sm:w-[calc(50%-0.75rem)] sm:min-w-[calc(50%-0.75rem)] sm:max-w-[calc(50%-0.75rem)]"
+                      to={`/cartao/${c.id}`}
+                      className={`group relative flex aspect-[1.58/1] flex-col justify-between overflow-hidden rounded-2xl p-8 text-white shadow-[0px_8px_24px_rgba(0,40,85,0.12)] transition-transform hover:scale-[1.01] ${desktopWalletGradient(c)}`}
                     >
-                      <DashboardCreditCardTile
-                        card={c}
-                        onEdit={() => {
-                          setCardFormEditing(c);
-                          setCardFormOpen(true);
-                        }}
-                        onTryDelete={() => {
-                          if (confirm(`Remover o cartão "${c.name}"?`)) deleteCreditCard(c.id);
-                        }}
+                      <img
+                        alt=""
+                        src={texUrl}
+                        className="absolute inset-0 h-full w-full object-cover opacity-40 mix-blend-overlay transition-opacity group-hover:opacity-50"
                       />
-                    </div>
-                  ))}
-                </div>
-                {state.creditCards.length > 2 && (
-                  <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-                    <p className="text-xs text-on-surface-variant">
-                      Deslize ou use as setas para ver os demais cartões
-                    </p>
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        aria-label="Cartões anteriores"
-                        disabled={!cardScroll.canPrev}
-                        onClick={() => scrollCardsDir(-1)}
-                        className="flex h-9 w-9 items-center justify-center rounded-lg border border-outline-variant/30 bg-surface-container-lowest text-primary shadow-sm transition-colors hover:bg-surface-container-high disabled:pointer-events-none disabled:opacity-35"
-                      >
-                        <span className="material-symbols-outlined">chevron_left</span>
-                      </button>
-                      <button
-                        type="button"
-                        aria-label="Próximos cartões"
-                        disabled={!cardScroll.canNext}
-                        onClick={() => scrollCardsDir(1)}
-                        className="flex h-9 w-9 items-center justify-center rounded-lg border border-outline-variant/30 bg-surface-container-lowest text-primary shadow-sm transition-colors hover:bg-surface-container-high disabled:pointer-events-none disabled:opacity-35"
-                      >
-                        <span className="material-symbols-outlined">chevron_right</span>
-                      </button>
-                    </div>
-                  </div>
-                )}
+                      <div className="relative z-10 flex items-start justify-between">
+                        <div className="space-y-1">
+                          <p className="text-xs font-semibold uppercase tracking-wider opacity-70">
+                            {c.name}
+                          </p>
+                          <p className="text-base font-medium tracking-wide">
+                            •••• •••• •••• {c.last4}
+                          </p>
+                        </div>
+                        <span className="material-symbols-outlined text-[32px] opacity-90">{iconRight}</span>
+                      </div>
+                      <div className="relative z-10">
+                        <p className="mb-1 text-xs font-semibold uppercase tracking-wider opacity-70">
+                          {labelAvail}
+                        </p>
+                        <p className="font-headline text-2xl font-bold">{formatBRL(avail)}</p>
+                      </div>
+                    </Link>
+                  );
+                })}
               </div>
             )}
           </section>
 
-          <section>
-            <div className="rounded-xl border border-white/40 bg-surface-container-low p-8">
-              <div className="mb-8 flex items-center justify-between">
-                <h2 className="font-headline text-xl font-bold tracking-tight text-primary">
-                  Extrato do Ledger
+          <div className="grid grid-cols-1 gap-12 lg:grid-cols-3 lg:gap-16">
+            <section className="space-y-6 lg:col-span-1">
+              <h2 className="font-headline text-2xl font-semibold tracking-tight text-primary dark:text-slate-100">
+                Contas
+              </h2>
+              <div className="divide-y divide-slate-100 overflow-hidden rounded-xl bg-white shadow-[0px_4px_12px_rgba(0,40,85,0.05)] dark:divide-slate-700 dark:bg-slate-800/60">
+                {state.accounts.map((acc) => (
+                  <button
+                    key={acc.id}
+                    type="button"
+                    onClick={() => setEditAccountId(acc.id)}
+                    className="group flex w-full cursor-pointer items-center justify-between p-4 text-left transition-colors hover:bg-slate-50 dark:hover:bg-slate-700/50"
+                  >
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div
+                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
+                          acc.icon === "account_balance"
+                            ? "bg-blue-50 text-blue-900 dark:bg-blue-950 dark:text-blue-200"
+                            : acc.icon === "savings"
+                              ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
+                              : "bg-violet-50 text-violet-800 dark:bg-violet-950 dark:text-violet-200"
+                        }`}
+                      >
+                        <span className="material-symbols-outlined text-xl">{acc.icon}</span>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold text-primary dark:text-slate-100">{acc.name}</p>
+                        <p className="text-sm text-outline dark:text-slate-400">{accountSubtitleMobile(acc)}</p>
+                      </div>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1 pl-2 text-right">
+                      <p className="font-semibold text-primary dark:text-slate-100">{formatBRL(acc.balance)}</p>
+                      <span className="material-symbols-outlined text-outline transition-transform group-hover:translate-x-0.5 dark:text-slate-500">
+                        chevron_right
+                      </span>
+                    </div>
+                  </button>
+                ))}
+                {state.creditCards
+                  .filter((c) => c.kind === "beneficios")
+                  .map((card) => (
+                    <Link
+                      key={card.id}
+                      to={`/cartao/${card.id}`}
+                      className="group flex items-center justify-between p-4 transition-colors hover:bg-slate-50 dark:hover:bg-slate-700/50"
+                    >
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-teal-50 text-teal-800 dark:bg-teal-950 dark:text-teal-200">
+                          <span className="material-symbols-outlined text-xl">restaurant</span>
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate font-semibold text-primary dark:text-slate-100">{card.name}</p>
+                          <p className="text-sm text-outline dark:text-slate-400">Cartão de benefícios</p>
+                        </div>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-1 pl-2 text-right">
+                        <p className="font-semibold text-primary dark:text-slate-100">
+                          {formatBRL(benefitBucketsTotal(card))}
+                        </p>
+                        <span className="material-symbols-outlined text-outline transition-transform group-hover:translate-x-0.5 dark:text-slate-500">
+                          chevron_right
+                        </span>
+                      </div>
+                    </Link>
+                  ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => navigate("/settings")}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-200 py-3 text-[15px] font-semibold text-outline transition-all hover:border-primary-container hover:text-primary dark:border-slate-600 dark:text-slate-400 dark:hover:border-blue-400 dark:hover:text-blue-200"
+              >
+                <span className="material-symbols-outlined text-[20px]">link</span>
+                Conectar nova conta
+              </button>
+            </section>
+
+            <section className="space-y-6 lg:col-span-2">
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <h2 className="font-headline text-2xl font-semibold tracking-tight text-primary dark:text-slate-100">
+                  Extrato recente
                 </h2>
-                <div className="flex space-x-2">
+                <div className="flex gap-2">
                   <button
                     type="button"
                     onClick={() => navigate("/lancamentos")}
-                    className="rounded p-2 transition-colors hover:bg-surface-container-high"
-                    aria-label="Ver lançamentos"
+                    className="rounded-lg border border-outline-variant p-2 transition-colors hover:bg-white dark:border-slate-600 dark:hover:bg-slate-800"
+                    aria-label="Filtrar lançamentos"
                   >
-                    <span className="material-symbols-outlined text-on-surface-variant">
+                    <span className="material-symbols-outlined text-[20px] text-on-surface-variant dark:text-slate-300">
                       filter_list
                     </span>
                   </button>
                   <button
                     type="button"
-                    className="rounded p-2 transition-colors hover:bg-surface-container-high"
-                    aria-label="Download"
+                    onClick={() => exportBackup()}
+                    className="rounded-lg border border-outline-variant p-2 transition-colors hover:bg-white dark:border-slate-600 dark:hover:bg-slate-800"
+                    aria-label="Exportar backup"
                   >
-                    <span className="material-symbols-outlined text-on-surface-variant">
+                    <span className="material-symbols-outlined text-[20px] text-on-surface-variant dark:text-slate-300">
                       download
                     </span>
                   </button>
                 </div>
               </div>
-              <div className="space-y-2">
-                {recent.map((t) => {
-                  const wrap = iconWrapForCategory(t.category, t.amount);
-                  return (
-                    <div
-                      key={t.id}
-                      className="group flex items-center justify-between rounded-lg bg-surface-container-lowest p-4 transition-all duration-300 hover:translate-x-1"
-                    >
-                      <div className="flex items-center space-x-4">
-                        <div
-                          className={`flex h-10 w-10 items-center justify-center rounded-[9999px] ${wrap}`}
-                        >
-                          <span className="material-symbols-outlined">{t.icon}</span>
-                        </div>
-                        <div>
-                          <p className="text-sm font-bold text-primary">{t.description}</p>
-                          <p className="text-[10px] text-on-surface-variant">
-                            {t.category} • {formatDateTimeShort(t.date + "T12:00:00")}
-                            {t.amount < 0 &&
-                              !t.creditCardId &&
-                              t.paymentMethod === "pix" &&
-                              " · PIX"}
-                            {t.amount < 0 &&
-                              !t.creditCardId &&
-                              t.paymentMethod === "boleto" &&
-                              " · Boleto"}
-                          </p>
-                          {t.paymentAttachmentDataUrl && (
-                            <a
-                              href={t.paymentAttachmentDataUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="mt-0.5 inline-flex items-center gap-0.5 text-[10px] font-bold text-secondary hover:underline"
-                            >
-                              <span className="material-symbols-outlined text-xs">attach_file</span>
-                              Abrir comprovante
-                            </a>
-                          )}
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p
-                          className={`text-sm font-black ${t.amount >= 0 ? "text-secondary" : "text-error"}`}
-                        >
-                          {formatBRL(t.amount, { showSign: true })}
-                        </p>
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-outline">
-                          {STATUS_LEDGER[t.status] ?? t.status}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
+
+              <div className="overflow-hidden rounded-xl bg-white shadow-[0px_4px_12px_rgba(0,40,85,0.05)] dark:bg-slate-800/60">
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[640px] border-collapse text-left">
+                    <thead className="border-b border-slate-100 bg-surface-container-low dark:border-slate-700 dark:bg-slate-900/80">
+                      <tr>
+                        <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-outline dark:text-slate-400">
+                          Transação
+                        </th>
+                        <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-outline dark:text-slate-400">
+                          Categoria
+                        </th>
+                        <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-outline dark:text-slate-400">
+                          Data
+                        </th>
+                        <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-wider text-outline dark:text-slate-400">
+                          Valor
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50 dark:divide-slate-700/80">
+                      {recentDesktop.length === 0 ? (
+                        <tr>
+                          <td colSpan={4} className="px-6 py-10 text-center text-sm text-on-surface-variant">
+                            Sem lançamentos. Inclua movimentações em Lançamentos.
+                          </td>
+                        </tr>
+                      ) : (
+                        recentDesktop.map((t) => {
+                          const wrap = iconWrapForCategory(t.category, t.amount);
+                          return (
+                            <tr key={t.id} className="transition-colors hover:bg-slate-50 dark:hover:bg-slate-700/40">
+                              <td className="px-6 py-4">
+                                <div className="flex min-w-0 items-center gap-3">
+                                  <div
+                                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${wrap}`}
+                                  >
+                                    <span className="material-symbols-outlined text-[18px]">{t.icon}</span>
+                                  </div>
+                                  <div className="min-w-0">
+                                    <p className="truncate font-medium text-primary dark:text-slate-100">
+                                      {t.description}
+                                    </p>
+                                    {t.paymentAttachmentDataUrl && (
+                                      <a
+                                        href={t.paymentAttachmentDataUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="mt-0.5 inline-flex items-center gap-0.5 text-[11px] font-semibold text-secondary hover:underline"
+                                      >
+                                        <span className="material-symbols-outlined text-xs">attach_file</span>
+                                        Comprovante
+                                      </a>
+                                    )}
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4">
+                                <span
+                                  className={`inline-flex max-w-[160px] truncate px-3 py-1 text-[10px] font-bold uppercase tracking-wider ${
+                                    t.amount >= 0
+                                      ? "rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200"
+                                      : categoryPillClass(t.category)
+                                  }`}
+                                >
+                                  {t.amount >= 0 ? "Receita" : t.category}
+                                </span>
+                              </td>
+                              <td className="whitespace-nowrap px-6 py-4 text-sm text-outline dark:text-slate-400">
+                                {formatDateTimeShort(t.date + "T12:00:00")}
+                              </td>
+                              <td
+                                className={`whitespace-nowrap px-6 py-4 text-right text-sm font-bold ${
+                                  t.amount >= 0 ? "text-secondary dark:text-emerald-400" : "text-error dark:text-red-400"
+                                }`}
+                              >
+                                {formatBRL(t.amount, { showSign: true })}
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="border-t border-slate-50 p-4 text-center dark:border-slate-700">
+                  <button
+                    type="button"
+                    onClick={() => navigate("/lancamentos")}
+                    className="font-headline text-[15px] font-semibold text-blue-950 hover:underline dark:text-blue-300"
+                  >
+                    Carregar mais transações
+                  </button>
+                </div>
               </div>
-              <button
-                type="button"
-                onClick={() => navigate("/lancamentos")}
-                className="mt-8 w-full rounded-lg border border-outline-variant/30 py-3 text-sm font-bold text-primary transition-colors hover:bg-surface-container"
-              >
-                Ver extrato completo
-              </button>
+            </section>
+          </div>
+
+          <section className="group relative h-48 cursor-pointer overflow-hidden rounded-2xl">
+            <img
+              alt=""
+              src={DESKTOP_PROMO_IMG}
+              className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+            />
+            <div className="absolute inset-0 flex items-center bg-gradient-to-r from-primary/90 to-transparent px-10 md:px-14">
+              <div className="max-w-md space-y-4">
+                <h3 className="font-headline text-2xl font-semibold text-white">Otimize suas metas hoje</h3>
+                <p className="text-sm text-on-primary-container md:text-base">
+                  Acompanhe o progresso das metas e ajuste aportes conforme seu fluxo mensal.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => navigate("/metas")}
+                  className="rounded-lg bg-white px-6 py-2.5 text-[15px] font-semibold text-primary shadow-lg transition-colors hover:bg-primary-fixed"
+                >
+                  Conhecer agora
+                </button>
+              </div>
             </div>
           </section>
         </div>
-
-        <aside className="space-y-8 md:col-span-4">
-          <section className="rounded-xl bg-surface-container-high p-6">
-            <h3 className="mb-6 font-headline text-lg font-extrabold text-primary">Minhas Contas</h3>
-            <div className="space-y-4">
-              {state.accounts.map((acc) => (
-                <div
-                  key={acc.id}
-                  className="flex items-center justify-between gap-2 rounded-lg border border-white/20 bg-white/40 p-3"
-                >
-                  <div className="flex min-w-0 flex-1 items-center space-x-3">
-                    <div
-                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded ${
-                        acc.icon === "account_balance"
-                          ? "bg-primary-container text-on-primary-container"
-                          : acc.icon === "savings"
-                            ? "bg-secondary-container text-on-secondary-container"
-                            : "bg-tertiary-fixed text-on-tertiary-fixed"
-                      }`}
-                    >
-                      <span className="material-symbols-outlined text-sm">{acc.icon}</span>
-                    </div>
-                    <span className="truncate text-xs font-bold text-primary">{acc.name}</span>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-1.5">
-                    <span className="text-xs font-black text-primary">{formatBRL(acc.balance)}</span>
-                    <button
-                      type="button"
-                      onClick={() => setEditAccountId(acc.id)}
-                      className="rounded-md p-1 text-outline transition-colors hover:bg-surface-container-high hover:text-primary"
-                      aria-label={`Editar ${acc.name}`}
-                    >
-                      <span className="material-symbols-outlined text-lg">edit</span>
-                    </button>
-                  </div>
-                </div>
-              ))}
-
-              {state.creditCards.filter((c) => c.kind === "beneficios").map((card) => (
-                <div
-                  key={card.id}
-                  className="rounded-lg border border-tertiary-fixed/30 bg-white/50 p-3"
-                >
-                  <div className="mb-2 flex items-center gap-2">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-tertiary-fixed text-on-tertiary-fixed-variant">
-                      <span className="material-symbols-outlined text-sm">restaurant</span>
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-xs font-bold text-primary">{card.name}</p>
-                      <p className="text-[10px] font-medium text-on-surface-variant">Cartão de benefícios</p>
-                    </div>
-                    <Link
-                      to={`/cartao/${card.id}`}
-                      className="shrink-0 rounded p-1 text-primary hover:bg-white/40"
-                      aria-label={`Detalhes — ${card.name}`}
-                      title="Detalhes"
-                    >
-                      <span className="material-symbols-outlined text-lg">visibility</span>
-                    </Link>
-                  </div>
-                  <ul className="space-y-1.5 border-t border-outline-variant/15 pt-2">
-                    {BENEFIT_BUCKETS.map((b) => (
-                      <li
-                        key={b}
-                        className="flex items-center justify-between gap-2 text-[11px] text-on-surface-variant"
-                      >
-                        <span>{BENEFIT_BUCKET_LABEL[b]}</span>
-                        <span className="font-bold text-primary">{formatBRL(card.benefitBalances[b])}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-            </div>
-            <button
-              type="button"
-              className="mt-6 w-full rounded-lg border-2 border-dashed border-outline-variant/50 py-3 text-xs font-bold text-outline transition-all hover:border-secondary hover:text-secondary"
-            >
-              + Conectar Nova Conta
-            </button>
-          </section>
-
-          <section className="rounded-xl bg-primary p-6 text-white">
-            <div className="mb-6 flex items-center space-x-2">
-              <span className="material-symbols-outlined text-secondary-fixed">security</span>
-              <h3 className="font-headline text-lg font-bold">Segurança do Cartão</h3>
-            </div>
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-bold">Bloqueio Temporário</p>
-                  <p className="text-[10px] opacity-60">Inativa o cartão instantaneamente</p>
-                </div>
-                <div className="relative h-5 w-10 cursor-pointer rounded-full bg-on-primary-fixed">
-                  <div className="absolute left-1 top-1 h-3 w-3 rounded-[9999px] bg-white" />
-                </div>
-              </div>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-bold">Compras Online</p>
-                  <p className="text-[10px] opacity-60">Uso exclusivo em e-commerce</p>
-                </div>
-                <div className="relative h-5 w-10 cursor-pointer rounded-full bg-secondary">
-                  <div className="absolute right-1 top-1 h-3 w-3 rounded-[9999px] bg-white" />
-                </div>
-              </div>
-            </div>
-            <hr className="my-6 border-white/10" />
-            <button
-              type="button"
-              className="w-full text-center text-xs font-bold text-secondary-fixed transition-colors hover:text-white"
-            >
-              Gerar Cartão Virtual Dinâmico
-            </button>
-          </section>
-
-          <div className="overflow-hidden rounded-xl shadow-light">
-            <img alt="" src={INSIGHT_IMG} className="h-32 w-full object-cover" />
-            <div className="bg-surface-container-lowest p-6">
-              <h4 className="mb-2 text-sm font-black tracking-tight text-primary">
-                Análise de IA: Seu limite pode aumentar.
-              </h4>
-              <p className="text-xs leading-relaxed text-on-surface-variant">
-                Detectamos um fluxo de caixa estável nos últimos 90 dias. Você tem 85% de chance de
-                aprovação para um upgrade.
-              </p>
-              <button
-                type="button"
-                className="mt-4 flex items-center space-x-1 text-xs font-extrabold text-secondary"
-              >
-                <span>Saber mais</span>
-                <span className="material-symbols-outlined text-xs">open_in_new</span>
-              </button>
-            </div>
-          </div>
-        </aside>
-      </div>
+      </section>
     </div>
     </Fragment>
   );

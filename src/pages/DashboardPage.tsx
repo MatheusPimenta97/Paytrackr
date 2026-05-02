@@ -20,11 +20,6 @@ import {
 const DESKTOP_PROMO_IMG =
   "https://lh3.googleusercontent.com/aida/ADBb0ugDtfl0mnVik0vcJ38GlQ8aS150PZqiaGT19dj42zqxq0fqsJmGauewvhJFNbQFyMrJ8FoWfE32K8yup3Izfkvuo9BkUdwPvpEP14gdEdjd7SqD7Me4__mdRaY9Vxd0bvoWoF5w7hjRneBhk6PQZR_AkReRBokZEOq4kntT2QRWsS1gBvtj4i9WAMmuOPhuMu6EUb9YKfEmCSWGhrCq92oe0_ElFqZJxUMLZqS3vHhky8qKiHU5mmexV9KAExDPRqjUU16f7fyqzg";
 
-const WALLET_TEX_URLS = [
-  "https://lh3.googleusercontent.com/aida/ADBb0ug3Ufqy9pb2u67Ux9tDC329Jmml301zOKZ4KtODUZQ2eY1B8_qzOyOQSEkFaUa0U9vq1uokUx4EI3nGcFFZvADr4TcrKysUdyrnJ8X1QypnQEhaNvTF59iIlkO7qQVsk4fwCJXQLI_TyGLkuuB9_lDGWAIQmHLPWruy1vM4fnz916pPMtccukobJmbZ-Zd_NMn8iwOlSYnUger1hZrSGrrroTulgzXgRl9X2q7WMl61RAIDC42tpoxTdy82-EPiUOU0Ea1ZAT8lpg",
-  "https://lh3.googleusercontent.com/aida/ADBb0uhmHheKpn_fYoRll-odHuvqNrb9sJMTTMbVeYQOMnRpjBy4cc0NdZNfHHcCzRk24_O8pbcU2UKgd-_cga1JsBP8lckVuklJgf3_rdrlQUi96Hs1EBRzfIUNw1FIF6wIi5XziTtpmaZfDvoDrtuTlgrP-9N9V39Qv8VlGnCZAenkmNLCv_tZARFo4ryOTqLqjnRgE5wpsAWq4rNBGU9ta34pKcb_gtlTAnxWP20ZqifFPk5vX0bHdSAOM5cSSszlWolOtjHQj9p0yUw",
-];
-
 const BAR_COLOR: Record<CreditCard["brand"], string> = {
   visa: "bg-secondary",
   master: "bg-primary",
@@ -61,24 +56,6 @@ function monthNet(transactions: Transaction[], ym: string): number {
     else exp += Math.abs(tx.amount);
   }
   return roundMoney(inc - exp);
-}
-
-function desktopWalletGradient(card: CreditCard): string {
-  if (card.kind === "beneficios") {
-    return "bg-gradient-to-br from-emerald-900 via-teal-900 to-slate-950";
-  }
-  switch (card.brand) {
-    case "visa":
-      return "bg-gradient-to-br from-slate-900 to-blue-950";
-    case "master":
-      return "bg-gradient-to-br from-blue-700 to-indigo-900";
-    case "elo":
-      return "bg-gradient-to-br from-indigo-900 via-blue-900 to-slate-950";
-    case "amex":
-      return "bg-gradient-to-br from-slate-800 via-sky-950 to-slate-950";
-    default:
-      return "bg-gradient-to-br from-slate-900 via-slate-800 to-blue-950";
-  }
 }
 
 function benefitBucketsTotal(card: CreditCard): number {
@@ -342,36 +319,38 @@ export function DashboardPage() {
       />
       {/* Dashboard mobile — layout compacto estilo mock */}
       <div className="mx-auto max-w-md space-y-5 px-4 pb-28 pt-24 md:hidden">
-        <section className="rounded-xl border border-slate-100 bg-white p-5 shadow-[0px_4px_12px_rgba(0,40,85,0.05)] dark:border-slate-800 dark:bg-slate-900">
-          <div className="mb-3 flex items-start justify-between gap-3">
-            <div>
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant">
-                Saldo total
-              </h2>
-              <p className="mt-1 font-headline text-3xl font-bold tracking-tight text-primary dark:text-slate-100">
+        <section className="rounded-3xl bg-[#00224D] p-6 shadow-[0px_8px_24px_rgba(0,17,61,0.25)] dark:bg-[#001935]">
+          <div className="mb-6 flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-slate-400">Saldo disponível</p>
+              <p className="mt-1 font-headline text-2xl font-bold tabular-nums tracking-tight text-white">
                 {formatBRL(primaryBalance)}
               </p>
             </div>
-            {flowPctVsIncome !== null && Number.isFinite(flowPctVsIncome) && (
-              <span
-                className={`flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-[10px] font-semibold uppercase tracking-wide ${
-                  netMonthlyFlow >= 0
-                    ? "bg-secondary-container text-on-secondary-container dark:bg-emerald-950/50 dark:text-emerald-200"
-                    : "bg-error-container text-on-error-container dark:bg-red-950/40 dark:text-red-200"
-                }`}
-              >
-                <span className="material-symbols-outlined text-[14px]">
-                  {netMonthlyFlow >= 0 ? "trending_up" : "trending_down"}
+            <div className="shrink-0 pt-0.5">
+              {balanceTrendVsPrevMonthPct !== null && Number.isFinite(balanceTrendVsPrevMonthPct) ? (
+                <span className="flex items-center gap-0.5 rounded-full bg-black/30 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-sm">
+                  <span className="material-symbols-outlined text-[18px]">
+                    {balanceTrendVsPrevMonthPct >= 0 ? "trending_up" : "trending_down"}
+                  </span>
+                  {balanceTrendVsPrevMonthPct >= 0 ? "+" : ""}
+                  {Math.round(balanceTrendVsPrevMonthPct * 10) / 10}%
                 </span>
-                {netMonthlyFlow >= 0 ? "+" : ""}
-                {flowPctVsIncome}%
-              </span>
-            )}
+              ) : flowPctVsIncome !== null && Number.isFinite(flowPctVsIncome) ? (
+                <span className="flex items-center gap-0.5 rounded-full bg-black/30 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-sm">
+                  <span className="material-symbols-outlined text-[18px]">
+                    {netMonthlyFlow >= 0 ? "trending_up" : "trending_down"}
+                  </span>
+                  {netMonthlyFlow >= 0 ? "+" : ""}
+                  {flowPctVsIncome}%
+                </span>
+              ) : null}
+            </div>
           </div>
           <button
             type="button"
             onClick={() => navigate("/lancamentos?novo=1")}
-            className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-3 text-[15px] font-semibold text-white transition-transform active:scale-[0.98] dark:bg-primary"
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-sky-100 py-4 text-[15px] font-semibold text-[#00224D] shadow-sm transition-transform active:scale-[0.98] dark:bg-sky-200 dark:text-[#00152e]"
           >
             <span className="material-symbols-outlined text-xl">add</span>
             Novo lançamento
@@ -659,12 +638,12 @@ export function DashboardPage() {
       {/* Painel direito — scroll */}
       <section className="custom-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto bg-surface-container-low dark:bg-slate-900/50">
         <div className="mx-auto w-full max-w-[min(100%,920px)] space-y-6 px-4 py-5 pb-10 lg:space-y-7 lg:px-6 lg:py-6 xl:max-w-[960px]">
-          <section>
+          <section id="gestao-cartoes-desktop">
             <div className="mb-3 flex flex-col gap-2 sm:mb-4 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
               <h2 className="font-headline text-lg font-semibold tracking-tight text-primary dark:text-slate-100 lg:text-xl">
-                Meus cartões
+                Gestão de Cartões
               </h2>
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2 md:gap-3">
                 <button
                   type="button"
                   onClick={() => {
@@ -680,17 +659,17 @@ export function DashboardPage() {
                   type="button"
                   onClick={() => setLimitsOpen(true)}
                   disabled={state.creditCards.length === 0}
-                  className="flex items-center gap-0.5 font-headline text-xs font-semibold text-blue-950 hover:underline disabled:pointer-events-none disabled:opacity-40 dark:text-blue-200 md:text-[13px]"
+                  className="flex items-center gap-1 text-xs font-semibold text-secondary hover:underline disabled:pointer-events-none disabled:opacity-40 dark:text-emerald-300 md:text-[13px]"
                 >
-                  Ver todos
-                  <span className="material-symbols-outlined text-base">chevron_right</span>
+                  Ver todos os limites
+                  <span className="material-symbols-outlined text-sm">arrow_forward</span>
                 </button>
               </div>
             </div>
             {state.creditCards.length === 0 ? (
               <div className="rounded-xl border border-dashed border-outline-variant/40 bg-white p-6 text-center shadow-[0px_4px_12px_rgba(0,40,85,0.05)] dark:border-slate-600 dark:bg-slate-800/80 md:p-8">
                 <p className="mb-4 text-on-surface-variant dark:text-slate-400">
-                  Nenhum cartão cadastrado. Inclua os seus para acompanhar limite e faturas.
+                  Nenhum cartão cadastrado. Inclua os seus para acompanhar fatura, vencimento e limite.
                 </p>
                 <button
                   type="button"
@@ -698,54 +677,26 @@ export function DashboardPage() {
                     setCardFormEditing(null);
                     setCardFormOpen(true);
                   }}
-                  className="rounded-xl bg-primary px-6 py-3 text-sm font-bold text-white"
+                  className="rounded-lg bg-primary px-5 py-2.5 text-sm font-bold text-white"
                 >
                   Incluir primeiro cartão
                 </button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4 lg:gap-5">
-                {carouselCreditCards.map((c, idx) => {
-                  const avail =
-                    c.kind === "beneficios"
-                      ? benefitBucketsTotal(c)
-                      : roundMoney(Math.max(0, c.creditLimit - c.currentInvoice));
-                  const texUrl = WALLET_TEX_URLS[idx % WALLET_TEX_URLS.length]!;
-                  const iconRight = idx % 2 === 0 ? "contactless" : "credit_card";
-                  const labelAvail = c.kind === "beneficios" ? "Saldo disponível" : "Limite disponível";
-                  return (
-                    <Link
-                      key={c.id}
-                      to={`/cartao/${c.id}`}
-                      className={`group relative flex max-h-[148px] min-h-[118px] flex-col justify-between overflow-hidden rounded-xl p-4 text-white shadow-[0px_6px_18px_rgba(0,40,85,0.1)] transition-transform hover:scale-[1.005] md:max-h-[156px] md:p-5 lg:max-h-none lg:min-h-[128px] lg:aspect-[2.05/1] ${desktopWalletGradient(c)}`}
-                    >
-                      <img
-                        alt=""
-                        src={texUrl}
-                        className="absolute inset-0 h-full w-full object-cover opacity-40 mix-blend-overlay transition-opacity group-hover:opacity-50"
-                      />
-                      <div className="relative z-10 flex items-start justify-between gap-2">
-                        <div className="min-w-0 space-y-0.5">
-                          <p className="truncate text-[10px] font-semibold uppercase tracking-wider opacity-80 md:text-[11px]">
-                            {c.name}
-                          </p>
-                          <p className="text-xs font-medium tracking-wide md:text-sm">
-                            •••• •••• •••• {c.last4}
-                          </p>
-                        </div>
-                        <span className="material-symbols-outlined shrink-0 text-[22px] opacity-90 md:text-2xl">
-                          {iconRight}
-                        </span>
-                      </div>
-                      <div className="relative z-10">
-                        <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-wider opacity-75 md:text-[11px]">
-                          {labelAvail}
-                        </p>
-                        <p className="font-headline text-lg font-bold tabular-nums md:text-xl">{formatBRL(avail)}</p>
-                      </div>
-                    </Link>
-                  );
-                })}
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5">
+                {carouselCreditCards.map((c) => (
+                  <DashboardCreditCardTile
+                    key={c.id}
+                    card={c}
+                    onEdit={() => {
+                      setCardFormEditing(c);
+                      setCardFormOpen(true);
+                    }}
+                    onTryDelete={() => {
+                      if (confirm(`Remover o cartão "${c.name}"?`)) deleteCreditCard(c.id);
+                    }}
+                  />
+                ))}
               </div>
             )}
           </section>

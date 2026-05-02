@@ -4,6 +4,8 @@ import { useAuth } from "../context/AuthContext";
 
 const LOGIN_PRIMARY = "#001430";
 const LOGIN_SURFACE_BRIGHT = "#f7f9fb";
+/** Chip do ícone no hero mobile (fundo claro) */
+const LOGIN_SECONDARY_CONTAINER = "#cee6f3";
 const LOGIN_OUTLINE_VARIANT = "#c4c6d0";
 const LOGIN_ON_SURFACE = "#191c1e";
 const LOGIN_ON_SURFACE_VARIANT = "#43474f";
@@ -49,7 +51,7 @@ export function LoginPage() {
     "h-11 w-full rounded-lg border py-2 pl-11 pr-3 font-body text-sm outline-none transition-all focus:border-transparent focus:ring-2 focus:ring-[#cee6f3] sm:h-12 sm:py-2.5 sm:text-[15px] dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:focus:ring-slate-600 lg:h-11 lg:text-sm";
 
   return (
-    <div className="flex min-h-dvh flex-col bg-gradient-to-b from-[#050a14] via-[#0d2340] to-[#5a6d7e] font-body text-[#191c1e] lg:bg-[#f7f9fb] dark:text-slate-100 lg:dark:bg-slate-950">
+    <div className="flex min-h-dvh flex-col bg-gradient-to-b from-[#f7fbff] via-[#eaf2fc] to-[#dceaf7] font-body text-[#191c1e] lg:bg-[#f7f9fb] dark:text-slate-100 dark:from-[#1a2433] dark:via-[#243447] dark:to-[#2f4558] lg:dark:bg-slate-950">
       <main
         className={`relative z-10 flex flex-1 flex-col lg:grid lg:min-h-0 lg:grid-cols-2 lg:gap-0 transition-all duration-700 ease-out ${
           exiting ? "login-page-exit-bg" : ""
@@ -86,7 +88,7 @@ export function LoginPage() {
           </div>
         </section>
 
-        {/* Mobile: mesmo degradê do desktop (via página); lg: coluna clara + card */}
+        {/* Mobile: degradê azul bem claro (página); lg: coluna #f7f9fb + card */}
         <div
           className={`flex flex-1 flex-col justify-center px-4 py-5 sm:px-6 lg:bg-[#f7f9fb] lg:px-8 lg:py-6 xl:px-10 ${
             exiting ? "login-page-exit-card" : "login-page-enter"
@@ -95,13 +97,20 @@ export function LoginPage() {
           <div className="mx-auto w-full max-w-[400px] lg:my-auto">
             {/* Mobile: ícone + título */}
             <div className="mb-5 w-full text-center lg:hidden">
-              <div className="mb-3 inline-flex items-center justify-center rounded-xl border border-sky-200/35 bg-white/10 p-1.5 backdrop-blur-[2px]">
-                <span className="material-symbols-outlined text-[28px] text-white">account_balance_wallet</span>
+              <div
+                className="mb-3 inline-flex items-center justify-center rounded-xl p-1.5 shadow-sm ring-1 ring-[#001430]/8 dark:ring-white/10"
+                style={{ backgroundColor: LOGIN_SECONDARY_CONTAINER }}
+              >
+                <span className="material-symbols-outlined text-[28px]" style={{ color: LOGIN_PRIMARY }}>
+                  account_balance_wallet
+                </span>
               </div>
-              <h1 className="font-headline text-[26px] font-bold leading-tight tracking-tight text-white sm:text-[28px]">
+              <h1 className="font-headline text-[26px] font-bold leading-tight tracking-tight sm:text-[28px]" style={{ color: LOGIN_PRIMARY }}>
                 PayTrackr
               </h1>
-              <p className="mt-0.5 text-sm text-blue-100/85">Acesse sua conta com segurança</p>
+              <p className="mt-0.5 text-sm dark:text-slate-300" style={{ color: LOGIN_ON_SURFACE_VARIANT }}>
+                Acesse sua conta com segurança
+              </p>
             </div>
 
             <div

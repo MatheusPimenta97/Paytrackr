@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { parseMoneyInput } from "../domain/money";
 import type { CreditCardStatement, CreditCardStatementStatus } from "../domain/types";
+import { StatementAiPreviewModal } from "./StatementAiPreviewModal";
+import {
+  analyzeCreditCardStatementDocument,
+  resolveStatementAssistantEndpoint,
+  type StatementAiSuggestedTxn,
+} from "../services/statementAi";
 
 const MAX_FILE = 900 * 1024;
 
@@ -17,6 +23,8 @@ export type CreditCardStatementFormData = {
 type Props = {
   open: boolean;
   creditCardId: string;
+  /** Cartão de crédito: habilita extração de lançamentos por IA no anexo */
+  enableStatementAi?: boolean;
   editing: CreditCardStatement | null;
   /** Preenche mês e valor ao abrir (ex.: fatura atual do cartão) */
   prefill?: { referenceMonth: string; amount: number } | null;
@@ -26,7 +34,8 @@ type Props = {
 
 export function CreditCardStatementModal({
   open,
-  creditCardId: _creditCardId,
+  creditCardId,
+  enableStatementAi = false,
   editing,
   prefill,
   onClose,
@@ -41,6 +50,18 @@ export function CreditCardStatementModal({
   const [attachmentName, setAttachmentName] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiErr, setAiErr] = useState<string | null>(null);
+  const [aiPreviewOpen, setAiPreviewOpen] = useState(false);
+  const [aiMarkdown, setAiMarkdown] = useState("");
+  const [aiGuess, setAiGuess] = useState<number | null>(null);
+  const [aiSuggestions, setAiSuggestions] = useState<StatementAiSuggestedTxn[]>([]);
+
+  const statementAiAvailable =
+    enableStatementAi &&
+    Boolean(attachmentDataUrl) &&
+    Boolean(resolveStatementAssistantEndpoint());
 
   useEffect(() => {
     if (!open) return;
@@ -71,6 +92,11 @@ export function CreditCardStatementModal({
       setAttachmentName(null);
     }
     if (fileRef.current) fileRef.current.value = "";
+    setAiErr(null);
+    setAiPreviewOpen(false);
+    setAiMarkdown("");
+    setAiGuess(null);
+    setAiSuggestions([]);
   }, [open, editing, prefill]);
 
   if (!open) return null;
@@ -106,6 +132,31 @@ export function CreditCardStatementModal({
     r.readAsDataURL(f);
   }
 
+  async function runStatementAi() {
+    if (!attachmentDataUrl || !statementAiAvailable) return;
+    if (!/^\d{4}-\d{2}$/.test(month)) {
+      setAiErr("Defina um mês de referência válido antes de usar a IA.");
+      return;
+    }
+    setAiErr(null);
+    setAiBusy(true);
+    try {
+      const out = await analyzeCreditCardStatementDocument(attachmentDataUrl, { referenceMonth: month });
+      if (out.demoMode) {
+        setAiErr("Configure o endpoint da IA (mesmo do comprovante) para usar esta função.");
+        return;
+      }
+      setAiMarkdown(out.markdown);
+      setAiGuess(out.statementTotalGuess);
+      setAiSuggestions(out.suggestedTransactions);
+      setAiPreviewOpen(true);
+    } catch (e) {
+      setAiErr(e instanceof Error ? e.message : "Falha ao analisar a fatura.");
+    } finally {
+      setAiBusy(false);
+    }
+  }
+
   function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -134,6 +185,14 @@ export function CreditCardStatementModal({
 
   return (
     <div className="fixed inset-0 z-[130] flex items-end justify-center bg-primary/40 p-4 sm:items-center">
+      <StatementAiPreviewModal
+        open={aiPreviewOpen}
+        creditCardId={creditCardId}
+        markdown={aiMarkdown}
+        statementTotalGuess={aiGuess}
+        suggestedTransactions={aiSuggestions}
+        onClose={() => setAiPreviewOpen(false)}
+      />
       <button type="button" className="absolute inset-0 cursor-default" aria-label="Fechar" onClick={onClose} />
       <div
         className="relative max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl bg-surface-container-lowest p-6 shadow-2xl"
@@ -213,7 +272,23 @@ export function CreditCardStatementModal({
                 </button>
               </p>
             )}
+            {statementAiAvailable && (
+              <div className="mt-2">
+                <button
+                  type="button"
+                  disabled={aiBusy}
+                  onClick={() => void runStatementAi()}
+                  className="rounded-lg border border-secondary/40 bg-secondary-container/20 px-3 py-2 text-xs font-bold text-secondary hover:bg-secondary-container/35 disabled:opacity-50 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200"
+                >
+                  {aiBusy ? "Analisando fatura…" : "Extrair lançamentos com IA"}
+                </button>
+                <p className="mt-1 text-[10px] text-on-surface-variant">
+                  PDF com texto ou imagem da fatura. Revise tudo antes de importar nos lançamentos do cartão.
+                </p>
+              </div>
+            )}
           </div>
+          {aiErr && <p className="text-xs font-semibold text-error">{aiErr}</p>}
           {error && <p className="text-sm font-semibold text-error">{error}</p>}
           <div className="flex justify-end gap-2 pt-2">
             <button

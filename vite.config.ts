@@ -5,14 +5,19 @@ import { fileURLToPath } from "node:url";
 import react from "@vitejs/plugin-react";
 import { defineConfig, loadEnv } from "vite";
 
-import { analyzeReceiptWithOpenAI } from "./server/openaiReceiptAnalyze";
+import {
+  ASSISTANT_IMAGE_BODY_MAX_BYTES,
+  ASSISTANT_IMAGE_HTTP_PATH,
+  handleAssistantImagePost,
+} from "./server/assistantImageRoute";
+import {
+  ASSISTANT_STATEMENT_HTTP_PATH,
+  handleStatementAnalyzePost,
+  STATEMENT_DOCUMENT_BODY_MAX_BYTES,
+} from "./server/statementAnalyzeRoute";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SYNC_FILE = path.join(__dirname, ".paytrackr-lan-sync.json");
-
-const ASSISTANT_PATH = "/api/paytrackr/assistant/image";
-const IMAGE_BODY_MAX_BYTES = 14 * 1024 * 1024;
-const ALLOWED_IMAGE_MIME = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 
 function readBody(req: IncomingMessage): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -54,7 +59,7 @@ function sendJson(res: ServerResponse, status: number, body: unknown) {
 function createAssistantMiddleware(openaiKey: string | undefined, openaiModel: string) {
   return async (req: IncomingMessage, res: ServerResponse, next: () => void) => {
     const pathname = req.url?.split("?")[0] ?? "";
-    if (pathname !== ASSISTANT_PATH) {
+    if (pathname !== ASSISTANT_IMAGE_HTTP_PATH) {
       next();
       return;
     }
@@ -75,79 +80,53 @@ function createAssistantMiddleware(openaiKey: string | undefined, openaiModel: s
       return;
     }
 
-    if (!openaiKey) {
-      sendJson(res, 503, {
-        error:
-          "OPENAI_API_KEY não configurada. Crie uma chave em https://platform.openai.com/api-keys e defina OPENAI_API_KEY no .env na raiz do projeto. Assinatura ChatGPT Plus/Pro não inclui uso pela API.",
-      });
-      return;
-    }
-
     let bodyRaw: string;
     try {
-      bodyRaw = await readBodyLimited(req, IMAGE_BODY_MAX_BYTES);
+      bodyRaw = await readBodyLimited(req, ASSISTANT_IMAGE_BODY_MAX_BYTES);
     } catch {
       sendJson(res, 413, { error: "Corpo da requisição muito grande." });
       return;
     }
 
-    let payload: unknown;
+    const result = await handleAssistantImagePost(bodyRaw, { openaiKey, openaiModel });
+    sendJson(res, result.status, result.json);
+  };
+}
+
+function createStatementAssistantMiddleware(openaiKey: string | undefined, openaiModel: string) {
+  return async (req: IncomingMessage, res: ServerResponse, next: () => void) => {
+    const pathname = req.url?.split("?")[0] ?? "";
+    if (pathname !== ASSISTANT_STATEMENT_HTTP_PATH) {
+      next();
+      return;
+    }
+
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Accept");
+
+    if (req.method === "OPTIONS") {
+      res.statusCode = 204;
+      res.end();
+      return;
+    }
+
+    if (req.method !== "POST") {
+      res.statusCode = 405;
+      res.end();
+      return;
+    }
+
+    let bodyRaw: string;
     try {
-      payload = JSON.parse(bodyRaw) as unknown;
+      bodyRaw = await readBodyLimited(req, STATEMENT_DOCUMENT_BODY_MAX_BYTES);
     } catch {
-      sendJson(res, 400, { error: "JSON inválido." });
+      sendJson(res, 413, { error: "Corpo da requisição muito grande." });
       return;
     }
 
-    const p = payload as {
-      intent?: unknown;
-      imageBase64?: unknown;
-      mimeType?: unknown;
-    };
-
-    if (p.intent !== "payment_receipt") {
-      sendJson(res, 400, { error: 'intent deve ser "payment_receipt".' });
-      return;
-    }
-
-    if (typeof p.imageBase64 !== "string" || !p.imageBase64.trim()) {
-      sendJson(res, 400, { error: "imageBase64 obrigatório." });
-      return;
-    }
-
-    const mimeType =
-      typeof p.mimeType === "string" && ALLOWED_IMAGE_MIME.has(p.mimeType.trim())
-        ? p.mimeType.trim()
-        : null;
-
-    if (!mimeType) {
-      sendJson(res, 400, {
-        error: `mimeType deve ser um de: ${[...ALLOWED_IMAGE_MIME].join(", ")}.`,
-      });
-      return;
-    }
-
-    const approxBytes = Math.floor((p.imageBase64.length * 3) / 4);
-    if (approxBytes > 10 * 1024 * 1024) {
-      sendJson(res, 413, { error: "Imagem muito grande (máx. ~10 MB)." });
-      return;
-    }
-
-    try {
-      const { markdown } = await analyzeReceiptWithOpenAI({
-        apiKey: openaiKey,
-        model: openaiModel,
-        mimeType,
-        imageBase64: p.imageBase64.trim(),
-      });
-      sendJson(res, 200, { markdown });
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.error("[paytrackr-assistant]", msg);
-      sendJson(res, 502, {
-        error: msg.length > 400 ? `${msg.slice(0, 400)}…` : msg,
-      });
-    }
+    const result = await handleStatementAnalyzePost(bodyRaw, { openaiKey, openaiModel });
+    sendJson(res, result.status, result.json);
   };
 }
 
@@ -156,6 +135,7 @@ export default defineConfig(({ mode }) => {
   const openaiKey = env.OPENAI_API_KEY?.trim() || undefined;
   const openaiModel = env.OPENAI_MODEL?.trim() || "gpt-4o-mini";
   const assistantMw = createAssistantMiddleware(openaiKey, openaiModel);
+  const statementMw = createStatementAssistantMiddleware(openaiKey, openaiModel);
 
   return {
     plugins: [
@@ -222,9 +202,11 @@ export default defineConfig(({ mode }) => {
             return res.end();
           });
           server.middlewares.use(assistantMw);
+          server.middlewares.use(statementMw);
         },
         configurePreviewServer(server) {
           server.middlewares.use(assistantMw);
+          server.middlewares.use(statementMw);
         },
       },
     ],

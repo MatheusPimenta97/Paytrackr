@@ -86,6 +86,7 @@ export function CreditCardDetailPage() {
       <CreditCardStatementModal
         open={statementOpen}
         creditCardId={card.id}
+        enableStatementAi={isCredito}
         editing={statementEditing}
         prefill={statementEditing ? null : statementPrefill}
         onClose={() => {

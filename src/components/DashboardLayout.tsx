@@ -26,14 +26,14 @@ export function DashboardLayout() {
 
       {/* Sidebar desktop — 72px, expande no hover */}
       <aside className="group/dash-sidebar fixed left-0 top-0 z-[60] hidden h-screen w-[72px] shrink-0 flex-col overflow-hidden border-r border-white/10 bg-gradient-to-b from-[#001430] to-[#002855] shadow-2xl transition-[width] duration-300 ease-in-out hover:w-[260px] md:flex">
-        <div className="flex h-20 items-center overflow-hidden px-6">
-          <span className="material-symbols-outlined shrink-0 text-3xl text-white">account_balance_wallet</span>
-          <span className="ml-4 max-w-0 overflow-hidden whitespace-nowrap font-headline text-xl font-semibold tracking-tight text-white opacity-0 transition-[max-width,opacity] duration-300 ease-in-out group-hover/dash-sidebar:max-w-[180px] group-hover/dash-sidebar:opacity-100">
+        <div className="flex h-14 items-center overflow-hidden px-4">
+          <span className="material-symbols-outlined shrink-0 text-2xl text-white">account_balance_wallet</span>
+          <span className="ml-3 max-w-0 overflow-hidden whitespace-nowrap font-headline text-base font-semibold tracking-tight text-white opacity-0 transition-[max-width,opacity] duration-300 ease-in-out group-hover/dash-sidebar:max-w-[180px] group-hover/dash-sidebar:opacity-100">
             PayTrackr
           </span>
         </div>
 
-        <nav className="mt-4 flex flex-1 flex-col gap-2 overflow-hidden px-4">
+        <nav className="mt-2 flex flex-1 flex-col gap-1 overflow-hidden px-3">
           {sidebarNav.map((item) => (
             <NavLink
               key={item.to}
@@ -41,7 +41,7 @@ export function DashboardLayout() {
               end={item.to === "/"}
               className={({ isActive }) =>
                 [
-                  "flex h-12 shrink-0 items-center rounded-xl px-3 transition-all duration-200",
+                  "flex h-9 shrink-0 items-center rounded-lg px-2.5 transition-all duration-200",
                   isActive
                     ? "-ml-1 border-l-4 border-white bg-white/10 font-semibold text-white"
                     : "font-medium text-white/70 hover:bg-white/10 hover:text-white",
@@ -51,7 +51,7 @@ export function DashboardLayout() {
               {({ isActive }) => (
                 <>
                   <span
-                    className={`material-symbols-outlined shrink-0 text-2xl ${isActive ? "filled" : ""}`}
+                    className={`material-symbols-outlined shrink-0 text-xl ${isActive ? "filled" : ""}`}
                   >
                     {item.icon}
                   </span>
@@ -64,12 +64,12 @@ export function DashboardLayout() {
           ))}
         </nav>
 
-        <div className="overflow-hidden border-t border-white/10 p-4">
+        <div className="overflow-hidden border-t border-white/10 p-3">
           <NavLink
             to="/settings"
             className={({ isActive }) =>
               [
-                "flex h-12 items-center rounded-xl px-3 transition-all duration-200",
+                "flex h-9 items-center rounded-lg px-2.5 transition-all duration-200",
                 isActive
                   ? "-ml-1 border-l-4 border-white bg-white/10 font-semibold text-white"
                   : "font-medium text-white/70 hover:bg-white/10 hover:text-white",
@@ -78,7 +78,7 @@ export function DashboardLayout() {
           >
             {({ isActive }) => (
               <>
-                <span className={`material-symbols-outlined shrink-0 text-2xl ${isActive ? "filled" : ""}`}>
+                <span className={`material-symbols-outlined shrink-0 text-xl ${isActive ? "filled" : ""}`}>
                   settings
                 </span>
                 <span className="ml-4 max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-[max-width,opacity] duration-300 ease-in-out group-hover/dash-sidebar:max-w-[200px] group-hover/dash-sidebar:opacity-100">
@@ -90,13 +90,13 @@ export function DashboardLayout() {
 
           <NavLink
             to="/perfil"
-            className="mt-4 flex items-center px-2 transition-opacity hover:opacity-95"
+            className="mt-2 flex items-center px-1.5 transition-opacity hover:opacity-95"
           >
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white/20 ring-2 ring-white/30">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white/20 ring-2 ring-white/30">
               {photo ? (
                 <img src={photo} alt="" className="h-full w-full object-cover" />
               ) : (
-                <span className="material-symbols-outlined text-xl text-white">person</span>
+                <span className="material-symbols-outlined text-lg text-white">person</span>
               )}
             </div>
             <div className="ml-3 max-w-0 overflow-hidden opacity-0 transition-[max-width,opacity] duration-300 ease-in-out group-hover/dash-sidebar:max-w-[200px] group-hover/dash-sidebar:opacity-100">
@@ -136,7 +136,7 @@ export function DashboardLayout() {
         </div>
       </nav>
 
-      <main className="pb-24 pt-28 md:ml-[72px] md:pb-12 md:pt-8 dark:[&_.text-on-background]:text-slate-100 dark:[&_.text-on-surface-variant]:text-slate-400 dark:[&_.text-primary]:text-slate-100">
+      <main className="pb-24 pt-28 md:ml-[72px] md:pb-8 md:pt-6 dark:[&_.text-on-background]:text-slate-100 dark:[&_.text-on-surface-variant]:text-slate-400 dark:[&_.text-primary]:text-slate-100">
         <DataScopeBanner />
         <Outlet />
       </main>

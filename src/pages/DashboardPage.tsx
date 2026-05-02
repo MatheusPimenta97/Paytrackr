@@ -594,21 +594,21 @@ export function DashboardPage() {
         </section>
       </div>
 
-      <div className="relative hidden pb-12 md:block md:-mt-8">
+      <div className="relative hidden pb-8 md:block md:-mt-6">
         <header className="sticky top-0 z-50 border-b border-slate-200 bg-white font-manrope tracking-tight shadow-[0px_4px_12px_rgba(0,40,85,0.05)] antialiased dark:border-slate-800 dark:bg-slate-950">
-          <div className="mx-auto flex h-20 max-w-[1440px] items-center justify-between px-8">
-            <div className="flex items-center gap-8">
-              <h1 className="text-2xl font-extrabold text-blue-900 dark:text-blue-100">Dashboard</h1>
-              <nav className="hidden items-center gap-6 lg:flex">
+          <div className="mx-auto flex h-14 max-w-[1440px] items-center justify-between gap-4 px-5">
+            <div className="flex min-w-0 items-center gap-4 lg:gap-6">
+              <h1 className="truncate text-lg font-bold tracking-tight text-blue-900 dark:text-blue-100">Dashboard</h1>
+              <nav className="hidden items-center gap-4 lg:flex">
                 <NavLink
                   to="/"
                   end
                   className={({ isActive }) =>
                     [
-                      "pb-2 font-bold transition-colors",
+                      "pb-1 text-sm font-bold transition-colors",
                       isActive
                         ? "border-b-2 border-blue-900 text-blue-900 dark:border-blue-400 dark:text-blue-100"
-                        : "font-medium text-slate-500 hover:text-blue-800 dark:text-slate-400 dark:hover:text-blue-300",
+                        : "text-sm font-medium text-slate-500 hover:text-blue-800 dark:text-slate-400 dark:hover:text-blue-300",
                     ].join(" ")
                   }
                 >
@@ -618,10 +618,10 @@ export function DashboardPage() {
                   to="/lancamentos"
                   className={({ isActive }) =>
                     [
-                      "pb-2 transition-colors",
+                      "pb-1 text-sm transition-colors",
                       isActive
-                        ? "border-b-2 border-blue-900 pb-2 font-bold text-blue-900 dark:border-blue-400 dark:text-blue-100"
-                        : "font-medium text-slate-500 hover:text-blue-800 dark:text-slate-400 dark:hover:text-blue-300",
+                        ? "border-b-2 border-blue-900 pb-1 font-bold text-blue-900 dark:border-blue-400 dark:text-blue-100"
+                        : "text-sm font-medium text-slate-500 hover:text-blue-800 dark:text-slate-400 dark:hover:text-blue-300",
                     ].join(" ")
                   }
                 >
@@ -631,10 +631,10 @@ export function DashboardPage() {
                   to="/valores-a-receber"
                   className={({ isActive }) =>
                     [
-                      "pb-2 transition-colors",
+                      "pb-1 text-sm transition-colors",
                       isActive
-                        ? "border-b-2 border-blue-900 pb-2 font-bold text-blue-900 dark:border-blue-400 dark:text-blue-100"
-                        : "font-medium text-slate-500 hover:text-blue-800 dark:text-slate-400 dark:hover:text-blue-300",
+                        ? "border-b-2 border-blue-900 pb-1 font-bold text-blue-900 dark:border-blue-400 dark:text-blue-100"
+                        : "text-sm font-medium text-slate-500 hover:text-blue-800 dark:text-slate-400 dark:hover:text-blue-300",
                     ].join(" ")
                   }
                 >
@@ -642,40 +642,41 @@ export function DashboardPage() {
                 </NavLink>
               </nav>
             </div>
-            <div className="flex items-center gap-4">
-              <div className="relative hidden sm:block">
+            <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+              <div className="relative hidden md:block">
                 <input
-                  className="focus:ring-primary-fixed w-64 rounded-full border-none bg-surface-container-low py-2 pl-10 pr-4 text-sm transition-all focus:ring-2 dark:bg-slate-800 dark:text-slate-100"
-                  placeholder="Buscar dados..."
+                  className="focus:ring-primary-fixed w-44 rounded-full border-none bg-surface-container-low py-1.5 pl-8 pr-3 text-xs transition-all focus:ring-2 dark:bg-slate-800 dark:text-slate-100 xl:w-52"
+                  placeholder="Buscar..."
                   type="search"
                   aria-label="Buscar"
                 />
-                <span className="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-outline dark:text-slate-400">
+                <span className="material-symbols-outlined pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-[18px] text-outline dark:text-slate-400">
                   search
                 </span>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5 sm:gap-2">
                 <button
                   type="button"
-                  className="rounded-full p-2 text-slate-600 transition-colors hover:bg-slate-50 dark:text-slate-400 dark:hover:bg-slate-900"
+                  className="rounded-full p-1.5 text-slate-600 transition-colors hover:bg-slate-50 dark:text-slate-400 dark:hover:bg-slate-900"
                   aria-label="Notificações"
                 >
-                  <span className="material-symbols-outlined">notifications</span>
+                  <span className="material-symbols-outlined text-[20px]">notifications</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => navigate("/lancamentos?novo=1")}
-                  className="flex items-center gap-2.5 rounded-xl border border-white/10 bg-primary px-5 py-2.5 text-[15px] font-semibold leading-none text-white shadow-[0_4px_14px_0_rgba(0,20,48,0.2)] transition-all duration-200 active:scale-[0.98]"
+                  className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-primary px-3 py-2 text-xs font-semibold leading-none text-white shadow-[0_4px_14px_0_rgba(0,20,48,0.2)] transition-all duration-200 active:scale-[0.98]"
                 >
-                  <span className="material-symbols-outlined text-xl">add_circle</span>
-                  Novo lançamento
+                  <span className="material-symbols-outlined text-lg">add_circle</span>
+                  <span className="hidden sm:inline">Novo lançamento</span>
+                  <span className="sm:hidden">Novo</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setDepositOpen(true)}
-                  className="flex items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-[15px] font-semibold leading-none text-primary shadow-sm transition-all duration-200 hover:bg-slate-50 active:scale-[0.98] dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
+                  className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold leading-none text-primary shadow-sm transition-all duration-200 hover:bg-slate-50 active:scale-[0.98] dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
                 >
-                  <span className="material-symbols-outlined text-xl">account_balance</span>
+                  <span className="material-symbols-outlined text-lg">account_balance</span>
                   Depositar
                 </button>
               </div>
@@ -683,21 +684,21 @@ export function DashboardPage() {
           </div>
         </header>
 
-        <div className="mx-auto max-w-[1440px] px-8 pt-10">
-          <div className="grid grid-cols-12 gap-6">
-            <section className="col-span-12 overflow-hidden rounded-2xl border border-slate-100/50 bg-white shadow-[0px_4px_24px_rgba(0,40,85,0.08)] dark:border-slate-800 dark:bg-slate-900 lg:col-span-8">
-              <div className="flex flex-col justify-between gap-6 p-8 sm:flex-row sm:items-start">
-                <div>
-                  <p className="mb-3 text-[12px] font-semibold uppercase tracking-[0.05em] tracking-wider text-on-secondary-container opacity-70 dark:text-slate-400">
+        <div className="mx-auto max-w-[1440px] px-5 pt-5">
+          <div className="grid grid-cols-12 gap-4">
+            <section className="col-span-12 overflow-hidden rounded-xl border border-slate-100/50 bg-white shadow-[0px_4px_24px_rgba(0,40,85,0.08)] dark:border-slate-800 dark:bg-slate-900 lg:col-span-8">
+              <div className="flex flex-col justify-between gap-4 p-4 sm:flex-row sm:items-start sm:p-5">
+                <div className="min-w-0">
+                  <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.06em] text-on-secondary-container opacity-75 dark:text-slate-400">
                     {balanceHeadline}
                   </p>
-                  <h2 className="font-headline text-4xl font-extrabold tracking-tight text-primary dark:text-slate-100 sm:text-5xl">
+                  <h2 className="font-headline text-2xl font-bold tabular-nums tracking-tight text-primary dark:text-slate-100 sm:text-3xl">
                     {formatBRL(balanceAmount)}
                   </h2>
                   {(balancePeriod === "month"
                     ? balanceTrendVsPrevMonthPct !== null && Number.isFinite(balanceTrendVsPrevMonthPct)
                     : yearTrendPct !== null && Number.isFinite(yearTrendPct)) && (
-                    <p className="mt-3 flex items-center gap-1.5 text-sm font-bold text-green-600 dark:text-green-400">
+                    <p className="mt-2 flex flex-wrap items-center gap-1 text-xs font-semibold text-green-600 dark:text-green-400">
                       <span className="material-symbols-outlined text-sm font-bold">
                         {(balancePeriod === "month"
                           ? balanceTrendVsPrevMonthPct!
@@ -720,11 +721,11 @@ export function DashboardPage() {
                     </p>
                   )}
                 </div>
-                <div className="flex shrink-0 rounded-xl border border-slate-200/50 bg-surface-container-low p-1.5 dark:border-slate-600 dark:bg-slate-800">
+                <div className="flex shrink-0 rounded-lg border border-slate-200/50 bg-surface-container-low p-1 dark:border-slate-600 dark:bg-slate-800">
                   <button
                     type="button"
                     onClick={() => setBalancePeriod("month")}
-                    className={`rounded-lg px-5 py-2 text-sm font-semibold transition-colors ${
+                    className={`rounded-md px-3 py-1 text-xs font-semibold transition-colors ${
                       balancePeriod === "month"
                         ? "bg-white font-bold text-primary shadow-sm dark:bg-slate-900 dark:text-slate-100"
                         : "text-on-secondary-container hover:text-primary dark:text-slate-400 dark:hover:text-slate-200"
@@ -735,7 +736,7 @@ export function DashboardPage() {
                   <button
                     type="button"
                     onClick={() => setBalancePeriod("year")}
-                    className={`rounded-lg px-5 py-2 text-sm font-semibold transition-colors ${
+                    className={`rounded-md px-3 py-1 text-xs font-semibold transition-colors ${
                       balancePeriod === "year"
                         ? "bg-white font-bold text-primary shadow-sm dark:bg-slate-900 dark:text-slate-100"
                         : "text-on-secondary-container hover:text-primary dark:text-slate-400 dark:hover:text-slate-200"
@@ -745,23 +746,23 @@ export function DashboardPage() {
                   </button>
                 </div>
               </div>
-              <div className="px-8 pb-8">
-                <div className="group relative h-[320px] overflow-hidden rounded-2xl border border-slate-100 bg-gradient-to-br from-primary-container/10 via-surface-container-low to-primary-fixed/25 dark:border-slate-700 dark:from-primary-container/30 dark:to-slate-900">
-                  <div className="absolute inset-0 z-10 flex flex-col justify-end p-6">
-                    <div className="mb-4 w-fit rounded-xl border border-white/60 bg-white/40 p-4 shadow-sm backdrop-blur-md dark:border-slate-600 dark:bg-slate-950/50">
-                      <p className="text-xs font-bold uppercase tracking-tighter text-primary/60 dark:text-slate-400">
+              <div className="px-4 pb-4 sm:px-5 sm:pb-5">
+                <div className="group relative h-[200px] overflow-hidden rounded-xl border border-slate-100 bg-gradient-to-br from-primary-container/10 via-surface-container-low to-primary-fixed/25 dark:border-slate-700 dark:from-primary-container/30 dark:to-slate-900 sm:h-[220px]">
+                  <div className="absolute inset-0 z-10 flex flex-col justify-end p-3 sm:p-4">
+                    <div className="mb-2 max-w-[min(100%,20rem)] rounded-lg border border-white/60 bg-white/40 p-2.5 shadow-sm backdrop-blur-md dark:border-slate-600 dark:bg-slate-950/50">
+                      <p className="text-[10px] font-bold uppercase tracking-tighter text-primary/60 dark:text-slate-400">
                         {balancePeriod === "month" ? "Resumo mensal" : "Últimos 12 meses"}
                       </p>
-                      <p className="line-clamp-2 text-lg font-bold text-primary dark:text-slate-100">
+                      <p className="line-clamp-2 text-xs font-semibold leading-snug text-primary dark:text-slate-100 sm:text-sm">
                         {desktopInsightLine}
                       </p>
                     </div>
                   </div>
-                  <div className="absolute inset-x-10 bottom-12 top-24 flex items-end justify-between gap-1 opacity-90">
+                  <div className="absolute inset-x-6 bottom-8 top-14 flex items-end justify-between gap-0.5 opacity-90 sm:inset-x-8 sm:bottom-10 sm:top-16">
                     {chartBars.map((bar, idx) => (
                       <div
                         key={idx}
-                        className="flex h-full max-h-[180px] min-h-[48px] w-full flex-col justify-end"
+                        className="flex h-full max-h-[120px] min-h-[32px] w-full flex-col justify-end sm:max-h-[130px]"
                         title={`Fluxo líquido: ${formatBRL(bar.net)}`}
                       >
                         <div
@@ -780,53 +781,57 @@ export function DashboardPage() {
               </div>
             </section>
 
-            <div className="col-span-12 flex flex-col gap-6 lg:col-span-4">
-              <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#001430] to-[#002855] p-8 text-white shadow-2xl">
+            <div className="col-span-12 flex flex-col gap-4 lg:col-span-4">
+              <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-[#001430] to-[#002855] p-4 text-white shadow-xl sm:p-5">
                 <div className="relative z-10">
-                  <p className="mb-4 text-[12px] font-semibold uppercase tracking-[0.05em] tracking-widest text-white/60">
+                  <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.06em] text-white/60">
                     Uso do cartão de crédito
                   </p>
-                  <div className="mb-6 flex flex-wrap items-end gap-2">
-                    <span className="text-4xl font-bold tracking-tight">{formatBRL(creditAgg.totalInvoice)}</span>
-                    <span className="pb-1.5 text-sm font-medium text-white/40">
+                  <div className="mb-3 flex flex-wrap items-end gap-1.5">
+                    <span className="text-2xl font-bold tabular-nums tracking-tight sm:text-[1.65rem]">
+                      {formatBRL(creditAgg.totalInvoice)}
+                    </span>
+                    <span className="pb-0.5 text-xs font-medium text-white/45">
                       / {formatBRL(creditAgg.totalLimit)}
                     </span>
                   </div>
-                  <div className="h-3 w-full overflow-hidden rounded-full border border-white/5 bg-white/10">
+                  <div className="h-2 w-full overflow-hidden rounded-full border border-white/5 bg-white/10">
                     <div
                       className="h-full rounded-full bg-white shadow-[0_0_12px_rgba(255,255,255,0.4)]"
                       style={{ width: `${creditAgg.pct}%` }}
                     />
                   </div>
                   {creditAgg.cards.length === 0 && (
-                    <p className="mt-3 text-xs text-white/70">
+                    <p className="mt-2 text-[11px] leading-snug text-white/70">
                       Cadastre um cartão de crédito para acompanhar o uso do limite.
                     </p>
                   )}
                 </div>
-                <span className="material-symbols-outlined pointer-events-none absolute -bottom-6 -right-6 text-[140px] text-white/5">
+                <span className="material-symbols-outlined pointer-events-none absolute -bottom-4 -right-4 text-[88px] text-white/5 sm:text-[100px]">
                   credit_card
                 </span>
               </div>
 
-              <div className="flex flex-col justify-between rounded-2xl border border-blue-100/30 bg-white p-8 shadow-[0px_4px_12px_rgba(0,40,85,0.05)] dark:border-slate-700 dark:bg-slate-900">
+              <div className="flex flex-col justify-between rounded-xl border border-blue-100/30 bg-white p-4 shadow-[0px_4px_12px_rgba(0,40,85,0.05)] dark:border-slate-700 dark:bg-slate-900 sm:p-5">
                 <div>
-                  <div className="mb-4 flex justify-between">
-                    <p className="text-[12px] font-semibold uppercase tracking-[0.05em] tracking-wider text-on-secondary-fixed-variant dark:text-slate-400">
+                  <div className="mb-2 flex justify-between gap-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-on-secondary-fixed-variant dark:text-slate-400">
                       {nextMilestoneGoal?.title ?? "Meta do portfólio"}
                     </p>
-                    <span className="material-symbols-outlined text-primary/40 dark:text-slate-500">savings</span>
+                    <span className="material-symbols-outlined shrink-0 text-lg text-primary/40 dark:text-slate-500">
+                      savings
+                    </span>
                   </div>
-                  <p className="text-3xl font-extrabold text-primary dark:text-slate-100">
+                  <p className="text-xl font-bold tabular-nums text-primary dark:text-slate-100 sm:text-2xl">
                     {formatBRL(nextMilestoneGoal?.target ?? targetTotal)}
                   </p>
                 </div>
-                <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
                   <div className="flex flex-col">
-                    <span className="text-xs font-medium text-on-secondary-container dark:text-slate-400">
+                    <span className="text-[11px] font-medium text-on-secondary-container dark:text-slate-400">
                       {goalPct}% da meta atingida
                     </span>
-                    <div className="mt-2 h-1.5 w-32 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700">
+                    <div className="mt-1.5 h-1 w-28 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700">
                       <div className="h-full rounded-full bg-primary dark:bg-blue-400" style={{ width: `${goalPct}%` }} />
                     </div>
                   </div>
@@ -840,33 +845,33 @@ export function DashboardPage() {
               </div>
             </div>
 
-            <section className="col-span-12 overflow-hidden rounded-xl border border-slate-100 bg-white shadow-[0px_4px_12px_rgba(0,40,85,0.05)] dark:border-slate-800 dark:bg-slate-900 lg:col-span-7">
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 p-6 dark:border-slate-800">
-                <h3 className="font-headline text-xl font-semibold text-primary dark:text-slate-100">
+            <section className="col-span-12 overflow-hidden rounded-lg border border-slate-100 bg-white shadow-[0px_4px_12px_rgba(0,40,85,0.05)] dark:border-slate-800 dark:bg-slate-900 lg:col-span-7">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-4 py-3 dark:border-slate-800">
+                <h3 className="font-headline text-base font-semibold text-primary dark:text-slate-100">
                   Transações recentes
                 </h3>
                 <button
                   type="button"
                   onClick={() => navigate("/lancamentos")}
-                  className="text-sm font-semibold text-primary hover:underline dark:text-blue-300"
+                  className="text-xs font-semibold text-primary hover:underline dark:text-blue-300"
                 >
                   Ver todas
                 </button>
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full">
+                <table className="w-full text-[13px]">
                   <thead>
-                    <tr className="border-b border-slate-50 text-left text-[12px] font-semibold uppercase tracking-[0.05em] text-outline dark:border-slate-800 dark:text-slate-400">
-                      <th className="px-6 py-4">Entidade / Categoria</th>
-                      <th className="px-6 py-4">Status</th>
-                      <th className="px-6 py-4">Data</th>
-                      <th className="px-6 py-4 text-right">Valor</th>
+                    <tr className="border-b border-slate-50 text-left text-[10px] font-semibold uppercase tracking-[0.06em] text-outline dark:border-slate-800 dark:text-slate-400">
+                      <th className="px-4 py-2">Entidade / Categoria</th>
+                      <th className="px-4 py-2">Status</th>
+                      <th className="px-4 py-2">Data</th>
+                      <th className="px-4 py-2 text-right">Valor</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
                     {recentDesktop.length === 0 ? (
                       <tr>
-                        <td colSpan={4} className="px-6 py-10 text-center text-sm text-on-surface-variant dark:text-slate-400">
+                        <td colSpan={4} className="px-4 py-8 text-center text-xs text-on-surface-variant dark:text-slate-400">
                           Sem lançamentos recentes.
                         </td>
                       </tr>
@@ -876,33 +881,33 @@ export function DashboardPage() {
                         const st = txnStatusBadge(t);
                         return (
                           <tr key={t.id} className="group transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/80">
-                            <td className="px-6 py-5">
-                              <div className="flex items-center gap-3">
+                            <td className="px-4 py-2.5">
+                              <div className="flex items-center gap-2">
                                 <div
-                                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 transition-colors group-hover:bg-primary group-hover:text-white dark:bg-slate-800 dark:group-hover:bg-blue-600 ${wrap}`}
+                                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 transition-colors group-hover:bg-primary group-hover:text-white dark:bg-slate-800 dark:group-hover:bg-blue-600 ${wrap}`}
                                 >
-                                  <span className="material-symbols-outlined text-lg">{t.icon}</span>
+                                  <span className="material-symbols-outlined text-base">{t.icon}</span>
                                 </div>
                                 <div className="min-w-0">
-                                  <p className="truncate text-sm font-bold text-primary dark:text-slate-100">
+                                  <p className="truncate text-[13px] font-semibold text-primary dark:text-slate-100">
                                     {t.description}
                                   </p>
-                                  <p className="text-xs text-outline dark:text-slate-400">{t.category}</p>
+                                  <p className="text-[11px] text-outline dark:text-slate-400">{t.category}</p>
                                 </div>
                               </div>
                             </td>
-                            <td className="px-6 py-5">
+                            <td className="px-4 py-2.5">
                               <span
-                                className={`rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wider ${st.className}`}
+                                className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${st.className}`}
                               >
                                 {st.label}
                               </span>
                             </td>
-                            <td className="whitespace-nowrap px-6 py-5 text-sm text-outline dark:text-slate-400">
+                            <td className="whitespace-nowrap px-4 py-2.5 text-[12px] text-outline dark:text-slate-400">
                               {formatDateShort(t.date)}
                             </td>
                             <td
-                              className={`whitespace-nowrap px-6 py-5 text-right text-sm font-bold ${
+                              className={`whitespace-nowrap px-4 py-2.5 text-right text-[13px] font-bold ${
                                 t.amount >= 0 ? "text-green-600 dark:text-green-400" : "text-error dark:text-red-400"
                               }`}
                             >
@@ -917,48 +922,54 @@ export function DashboardPage() {
               </div>
             </section>
 
-            <section className="col-span-12 flex flex-col rounded-xl border border-slate-100 bg-white shadow-[0px_4px_12px_rgba(0,40,85,0.05)] dark:border-slate-800 dark:bg-slate-900 lg:col-span-5">
-              <div className="border-b border-slate-100 p-6 dark:border-slate-800">
-                <h3 className="font-headline text-xl font-semibold text-primary dark:text-slate-100">Saúde financeira</h3>
+            <section className="col-span-12 flex flex-col rounded-lg border border-slate-100 bg-white shadow-[0px_4px_12px_rgba(0,40,85,0.05)] dark:border-slate-800 dark:bg-slate-900 lg:col-span-5">
+              <div className="border-b border-slate-100 px-4 py-3 dark:border-slate-800">
+                <h3 className="font-headline text-base font-semibold text-primary dark:text-slate-100">
+                  Saúde financeira
+                </h3>
               </div>
-              <div className="flex flex-1 flex-col justify-between p-6">
-                <div className="mb-8 flex flex-wrap items-center gap-6">
-                  <div className="relative flex h-24 w-24 shrink-0 items-center justify-center rounded-full border-8 border-primary border-t-primary-fixed dark:border-blue-700 dark:border-t-blue-300">
-                    <span className="text-xl font-bold text-primary dark:text-slate-100">{financeScore}</span>
+              <div className="flex flex-1 flex-col justify-between p-4">
+                <div className="mb-4 flex flex-wrap items-center gap-4">
+                  <div className="relative flex h-16 w-16 shrink-0 items-center justify-center rounded-full border-[5px] border-primary border-t-primary-fixed dark:border-blue-700 dark:border-t-blue-300">
+                    <span className="text-base font-bold tabular-nums text-primary dark:text-slate-100">
+                      {financeScore}
+                    </span>
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="font-bold text-primary dark:text-slate-100">
+                    <p className="text-sm font-semibold text-primary dark:text-slate-100">
                       {portfolioCompletion >= 70 ? "Metas em bom ritmo" : "Há espaço para ajustes"}
                     </p>
-                    <p className="text-sm text-outline dark:text-slate-400">
+                    <p className="text-xs leading-snug text-outline dark:text-slate-400">
                       Metas do portfólio em {portfolioCompletion}%
                       {monthlyIncome > monthlyExpense ? " · fluxo mensal positivo." : " · revise despesas fixas."}
                     </p>
                   </div>
                 </div>
-                <div className="space-y-4">
+                <div className="space-y-3">
                   <Link
                     to="/gastos-recorrentes"
-                    className="flex items-start gap-4 rounded-xl border border-blue-50 bg-surface-container-low p-4 transition-colors hover:bg-surface-container-high dark:border-slate-700 dark:bg-slate-800/80 dark:hover:bg-slate-800"
+                    className="flex items-start gap-3 rounded-lg border border-blue-50 bg-surface-container-low p-3 transition-colors hover:bg-surface-container-high dark:border-slate-700 dark:bg-slate-800/80 dark:hover:bg-slate-800"
                   >
-                    <span className="material-symbols-outlined mt-1 text-primary dark:text-blue-300">auto_awesome</span>
+                    <span className="material-symbols-outlined mt-0.5 text-lg text-primary dark:text-blue-300">
+                      auto_awesome
+                    </span>
                     <div>
-                      <p className="text-sm font-bold text-primary dark:text-slate-100">Gastos recorrentes</p>
-                      <p className="mt-1 text-xs text-on-secondary-container dark:text-slate-400">
+                      <p className="text-xs font-semibold text-primary dark:text-slate-100">Gastos recorrentes</p>
+                      <p className="mt-0.5 text-[11px] leading-snug text-on-secondary-container dark:text-slate-400">
                         Revise assinaturas e compromissos fixos para liberar margem no mês.
                       </p>
                     </div>
                   </Link>
-                  <div className="relative aspect-[16/7] overflow-hidden rounded-xl bg-gradient-to-br from-primary-container via-primary to-slate-900">
-                    <div className="absolute inset-0 flex items-center bg-gradient-to-r from-primary/85 to-transparent p-6">
-                      <div className="max-w-[60%]">
-                        <p className="text-sm font-bold text-white">Planeje o próximo ciclo</p>
-                        <p className="mt-1 text-[11px] text-white/85">
+                  <div className="relative h-[88px] overflow-hidden rounded-lg bg-gradient-to-br from-primary-container via-primary to-slate-900 sm:h-[96px]">
+                    <div className="absolute inset-0 flex items-center bg-gradient-to-r from-primary/85 to-transparent p-4">
+                      <div className="max-w-[75%]">
+                        <p className="text-xs font-semibold text-white">Planeje o próximo ciclo</p>
+                        <p className="mt-0.5 text-[10px] leading-snug text-white/85">
                           Centralize metas e lançamentos para ver projeções mais claras.
                         </p>
                         <Link
                           to="/metas"
-                          className="mt-3 inline-block rounded-lg bg-white px-3 py-1.5 text-[11px] font-bold uppercase text-primary"
+                          className="mt-2 inline-block rounded-md bg-white px-2.5 py-1 text-[10px] font-bold uppercase text-primary"
                         >
                           Ver metas
                         </Link>
@@ -969,50 +980,50 @@ export function DashboardPage() {
               </div>
             </section>
 
-            <section className="col-span-12 grid grid-cols-1 gap-6 md:grid-cols-3">
-              <div className="flex items-center justify-between rounded-xl border border-slate-100 bg-white p-6 shadow-[0px_4px_12px_rgba(0,40,85,0.05)] dark:border-slate-800 dark:bg-slate-900">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-orange-100 text-orange-600 dark:bg-orange-950 dark:text-orange-300">
-                    <span className="material-symbols-outlined">currency_bitcoin</span>
+            <section className="col-span-12 grid grid-cols-1 gap-3 md:grid-cols-3 md:gap-4">
+              <div className="flex items-center justify-between rounded-lg border border-slate-100 bg-white p-3 shadow-[0px_4px_12px_rgba(0,40,85,0.05)] dark:border-slate-800 dark:bg-slate-900 sm:p-4">
+                <div className="flex min-w-0 items-center gap-2">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-orange-100 text-orange-600 dark:bg-orange-950 dark:text-orange-300">
+                    <span className="material-symbols-outlined text-[18px]">currency_bitcoin</span>
                   </div>
-                  <div>
-                    <p className="text-xs font-medium text-outline dark:text-slate-400">Bitcoin (BTC)</p>
-                    <p className="font-bold text-primary dark:text-slate-100">—</p>
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-medium text-outline dark:text-slate-400">Bitcoin (BTC)</p>
+                    <p className="text-sm font-bold text-primary dark:text-slate-100">—</p>
                   </div>
                 </div>
-                <span className="text-xs font-bold text-outline dark:text-slate-500">Ilustrativo</span>
+                <span className="shrink-0 text-[10px] font-bold text-outline dark:text-slate-500">Ilustrativo</span>
               </div>
-              <div className="flex items-center justify-between rounded-xl border border-slate-100 bg-white p-6 shadow-[0px_4px_12px_rgba(0,40,85,0.05)] dark:border-slate-800 dark:bg-slate-900">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 text-blue-600 dark:bg-blue-950 dark:text-blue-300">
-                    <span className="material-symbols-outlined">query_stats</span>
+              <div className="flex items-center justify-between rounded-lg border border-slate-100 bg-white p-3 shadow-[0px_4px_12px_rgba(0,40,85,0.05)] dark:border-slate-800 dark:bg-slate-900 sm:p-4">
+                <div className="flex min-w-0 items-center gap-2">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-blue-100 text-blue-600 dark:bg-blue-950 dark:text-blue-300">
+                    <span className="material-symbols-outlined text-[18px]">query_stats</span>
                   </div>
-                  <div>
-                    <p className="text-xs font-medium text-outline dark:text-slate-400">Índice amplo (ref.)</p>
-                    <p className="font-bold text-primary dark:text-slate-100">—</p>
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-medium text-outline dark:text-slate-400">Índice amplo (ref.)</p>
+                    <p className="text-sm font-bold text-primary dark:text-slate-100">—</p>
                   </div>
                 </div>
-                <span className="text-xs font-bold text-outline dark:text-slate-500">Ilustrativo</span>
+                <span className="shrink-0 text-[10px] font-bold text-outline dark:text-slate-500">Ilustrativo</span>
               </div>
-              <div className="flex items-center justify-between rounded-xl border border-slate-100 bg-white p-6 shadow-[0px_4px_12px_rgba(0,40,85,0.05)] dark:border-slate-800 dark:bg-slate-900">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-300">
-                    <span className="material-symbols-outlined">paid</span>
+              <div className="flex items-center justify-between rounded-lg border border-slate-100 bg-white p-3 shadow-[0px_4px_12px_rgba(0,40,85,0.05)] dark:border-slate-800 dark:bg-slate-900 sm:p-4">
+                <div className="flex min-w-0 items-center gap-2">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-emerald-100 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-300">
+                    <span className="material-symbols-outlined text-[18px]">paid</span>
                   </div>
-                  <div>
-                    <p className="text-xs font-medium text-outline dark:text-slate-400">USD/BRL (ref.)</p>
-                    <p className="font-bold text-primary dark:text-slate-100">—</p>
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-medium text-outline dark:text-slate-400">USD/BRL (ref.)</p>
+                    <p className="text-sm font-bold text-primary dark:text-slate-100">—</p>
                   </div>
                 </div>
-                <span className="text-xs font-bold text-outline dark:text-slate-500">Ilustrativo</span>
+                <span className="shrink-0 text-[10px] font-bold text-outline dark:text-slate-500">Ilustrativo</span>
               </div>
             </section>
           </div>
         </div>
 
-        <footer className="mx-auto mt-12 flex max-w-[1440px] flex-wrap items-center justify-between gap-4 px-8 text-[12px] text-outline dark:text-slate-400">
+        <footer className="mx-auto mt-6 flex max-w-[1440px] flex-wrap items-center justify-between gap-3 px-5 text-[11px] text-outline dark:text-slate-400">
           <p>© {new Date().getFullYear()} PayTrackr. Uso local dos seus dados.</p>
-          <div className="flex flex-wrap gap-6">
+          <div className="flex flex-wrap gap-4">
             <Link className="transition-colors hover:text-primary dark:hover:text-blue-300" to="/settings">
               Privacidade e dados
             </Link>

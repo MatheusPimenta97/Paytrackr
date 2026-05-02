@@ -8,7 +8,7 @@ import {
 
 export const config = {
   api: {
-    bodyParser: false as const,
+    bodyParser: false,
   },
 };
 

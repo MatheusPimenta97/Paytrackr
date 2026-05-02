@@ -68,37 +68,34 @@ export function LoginPage() {
           exiting ? "login-page-exit-bg" : ""
         }`}
       >
-        {/* Desktop: coluna esquerda — institucional */}
-        <section className="hidden min-h-0 flex-col justify-center overflow-y-auto bg-[#f7f9fb] px-8 py-6 xl:px-12 lg:flex">
-          <div
-            className="mb-4 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
-            style={{ backgroundColor: LOGIN_SECONDARY_CONTAINER }}
-          >
-            <span className="material-symbols-outlined text-[26px]" style={{ color: LOGIN_PRIMARY }}>
-              account_balance_wallet
-            </span>
+        {/* Desktop: coluna ESQUERDA — gradiente + boas-vindas (referência) */}
+        <section className="relative hidden min-h-0 flex-col justify-between overflow-y-auto bg-gradient-to-br from-[#020919] via-[#041e47] to-[#0b4f9c] px-8 py-8 text-white xl:px-12 xl:py-10 lg:flex">
+          <div>
+            <p className="font-headline text-lg font-bold tracking-tight text-white xl:text-xl">PayTrackr</p>
+            <h2 className="mt-10 font-headline text-2xl font-bold leading-tight tracking-tight xl:mt-14 xl:text-3xl">
+              Bem-vindo ao PayTrackr
+            </h2>
+            <p className="mt-3 max-w-md text-sm leading-relaxed text-blue-100/90 xl:text-[15px]">
+              A plataforma para organizar suas finanças pessoais: saldos, cartões, metas e recorrências — com a mesma
+              clareza no celular ou no computador.
+            </p>
           </div>
-          <h2 className="font-headline text-2xl font-bold leading-tight tracking-tight xl:text-3xl" style={{ color: LOGIN_PRIMARY }}>
-            Suas finanças, um só lugar.
-          </h2>
-          <p className="mt-2 max-w-md text-sm leading-snug xl:text-[15px]" style={{ color: LOGIN_ON_SURFACE_VARIANT }}>
-            Mais espaço para revisar saldos, cartões e metas — o mesmo login seguro do celular.
-          </p>
-          <ul className="mt-4 space-y-2 text-xs font-medium leading-snug xl:text-sm" style={{ color: LOGIN_ON_SURFACE_VARIANT }}>
-            <li className="flex items-start gap-2">
-              <span className="material-symbols-outlined shrink-0 text-lg text-emerald-700">check_circle</span>
-              Dados ficam neste navegador até você configurar nuvem.
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="material-symbols-outlined shrink-0 text-lg text-emerald-700">check_circle</span>
-              Ideal para uso diário em tela grande ou notebook.
-            </li>
-          </ul>
+          <div className="mt-8 rounded-xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm xl:mt-10">
+            <div className="flex items-start gap-3">
+              <span className="material-symbols-outlined shrink-0 text-2xl text-cyan-200">shield_lock</span>
+              <div>
+                <p className="font-headline text-sm font-bold text-white">Criptografia e privacidade</p>
+                <p className="mt-1 text-xs leading-snug text-blue-100/80">
+                  Seus dados ficam armazenados localmente neste navegador até você optar por sincronização na nuvem.
+                </p>
+              </div>
+            </div>
+          </div>
         </section>
 
-        {/* Mobile + desktop direita: gradiente só em lg */}
+        {/* Mobile + desktop DIREITA: fundo claro + card */}
         <div
-          className={`flex flex-1 flex-col justify-center px-4 py-5 sm:px-6 lg:bg-gradient-to-br lg:from-[#020919] lg:via-[#041e47] lg:to-[#0b4f9c] lg:px-8 lg:py-6 xl:px-10 ${
+          className={`flex flex-1 flex-col justify-center bg-[#f7f9fb] px-4 py-5 sm:px-6 lg:px-8 lg:py-6 xl:px-10 ${
             exiting ? "login-page-exit-card" : "login-page-enter"
           }`}
         >
@@ -121,16 +118,17 @@ export function LoginPage() {
               </p>
             </div>
 
-            {/* Desktop: título sobre o gradiente */}
-            <div className="mb-4 hidden lg:block">
-              <h1 className="font-headline text-2xl font-bold tracking-tight text-white xl:text-[28px]">PayTrackr</h1>
-              <p className="mt-0.5 text-sm text-blue-100/85">Acesse sua conta com segurança</p>
-            </div>
-
             <div
               className="w-full rounded-xl border bg-white p-4 shadow-[0px_4px_12px_rgba(0,40,85,0.08)] sm:p-5 dark:border-slate-700 dark:bg-slate-900"
               style={{ borderColor: `${LOGIN_OUTLINE_VARIANT}4d` }}
             >
+              <div className="mb-4 hidden lg:block">
+                <h2 className="font-headline text-xl font-bold text-[#191c1e] dark:text-slate-100">Acesse sua conta</h2>
+                <p className="mt-1 text-sm" style={{ color: LOGIN_ON_SURFACE_VARIANT }}>
+                  Insira suas credenciais para gerenciar suas finanças.
+                </p>
+              </div>
+
               <form className="space-y-4" onSubmit={handleSubmit} noValidate>
                 <div className="space-y-1.5">
                   <label
@@ -295,6 +293,18 @@ export function LoginPage() {
                 </span>
               </p>
             </div>
+
+            <p className="mt-4 hidden text-center text-[10px] leading-snug text-slate-500 lg:block dark:text-slate-400">
+              Ao entrar, você concorda com nossos{" "}
+              <Link to="/login" className="font-semibold text-primary underline-offset-2 hover:underline dark:text-slate-300">
+                Termos de Uso
+              </Link>{" "}
+              e{" "}
+              <Link to="/login" className="font-semibold text-primary underline-offset-2 hover:underline dark:text-slate-300">
+                Política de Privacidade
+              </Link>
+              .
+            </p>
           </div>
         </div>
       </main>

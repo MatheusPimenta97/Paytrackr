@@ -945,31 +945,29 @@ export function DashboardPage() {
                 )}
               </section>
 
-              <div className="flex flex-col justify-between rounded-xl border border-blue-100/30 bg-white p-4 shadow-[0px_4px_12px_rgba(0,40,85,0.05)] dark:border-slate-700 dark:bg-slate-900 sm:p-5">
+              <div className="flex flex-col justify-between rounded-xl border border-white/15 bg-gradient-to-br from-[#001430] via-[#002855] to-[#0a4d8c] p-4 text-white shadow-[0px_8px_24px_rgba(0,20,48,0.35)] sm:p-5 dark:border-white/10 dark:shadow-black/40">
                 <div>
                   <div className="mb-2 flex justify-between gap-2">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-on-secondary-fixed-variant dark:text-slate-400">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-white/75">
                       {nextMilestoneGoal?.title ?? "Meta do portfólio"}
                     </p>
-                    <span className="material-symbols-outlined shrink-0 text-lg text-primary/40 dark:text-slate-500">
+                    <span className="material-symbols-outlined shrink-0 text-lg text-white/45">
                       savings
                     </span>
                   </div>
-                  <p className="text-xl font-bold tabular-nums text-primary dark:text-slate-100 sm:text-2xl">
+                  <p className="text-xl font-bold tabular-nums text-white sm:text-2xl">
                     {formatBRL(nextMilestoneGoal?.target ?? targetTotal)}
                   </p>
                 </div>
                 <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
                   <div className="flex flex-col">
-                    <span className="text-[11px] font-medium text-on-secondary-container dark:text-slate-400">
-                      {goalPct}% da meta atingida
-                    </span>
-                    <div className="mt-1.5 h-1 w-28 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700">
-                      <div className="h-full rounded-full bg-primary dark:bg-blue-400" style={{ width: `${goalPct}%` }} />
+                    <span className="text-[11px] font-medium text-white/80">{goalPct}% da meta atingida</span>
+                    <div className="mt-1.5 h-1 w-28 overflow-hidden rounded-full bg-white/20">
+                      <div className="h-full rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.45)]" style={{ width: `${goalPct}%` }} />
                     </div>
                   </div>
                   <Link
-                    className="text-xs font-bold text-primary underline underline-offset-4 dark:text-blue-300"
+                    className="text-xs font-bold text-white underline underline-offset-4 decoration-white/60 transition-colors hover:text-white hover:decoration-white"
                     to="/metas"
                   >
                     Ver detalhes

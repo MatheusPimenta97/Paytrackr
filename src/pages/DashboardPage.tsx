@@ -88,130 +88,173 @@ function DashboardCreditCardTile({
       : 0;
   const dueUrgent = !isBenef && (due === "overdue" || due === "soon");
 
+  const statusBadge = (
+    <span
+      className={`shrink-0 rounded font-black uppercase leading-none ${
+        compact
+          ? "max-w-[5rem] truncate px-1 py-0.5 text-[7px] tracking-wide sm:max-w-[6rem] sm:text-[8px]"
+          : "px-2 py-1 text-[10px]"
+      } ${
+        isBenef
+          ? "bg-tertiary-fixed text-on-tertiary-fixed-variant"
+          : due === "overdue" || due === "soon"
+            ? "bg-error-container text-on-error-container"
+            : "bg-secondary-container text-on-secondary-container"
+      }`}
+      title={isBenef ? "Pré-pago" : cardStatusLabel(due)}
+    >
+      {isBenef ? "Pré-pago" : cardStatusLabel(due)}
+    </span>
+  );
+
+  const actionIcons = (
+    <div className={`flex shrink-0 ${compact ? "gap-0" : "gap-1"}`}>
+      <Link
+        to={`/cartao/${c.id}`}
+        className={`rounded text-on-surface-variant hover:bg-surface-container-high dark:text-slate-400 dark:hover:bg-slate-800 ${compact ? "p-0.5" : "p-1"}`}
+        aria-label="Detalhes do cartão"
+        title="Detalhes"
+      >
+        <span className={`material-symbols-outlined ${compact ? "text-[17px]" : "text-lg"}`}>visibility</span>
+      </Link>
+      <button
+        type="button"
+        onClick={onEdit}
+        className={`rounded text-on-surface-variant hover:bg-surface-container-high dark:text-slate-400 dark:hover:bg-slate-800 ${compact ? "p-0.5" : "p-1"}`}
+        aria-label="Editar cartão"
+      >
+        <span className={`material-symbols-outlined ${compact ? "text-[17px]" : "text-lg"}`}>edit</span>
+      </button>
+      <button
+        type="button"
+        onClick={onTryDelete}
+        className={`rounded text-error hover:bg-error-container/30 ${compact ? "p-0.5" : "p-1"}`}
+        aria-label="Remover cartão"
+      >
+        <span className={`material-symbols-outlined ${compact ? "text-[17px]" : "text-lg"}`}>delete</span>
+      </button>
+    </div>
+  );
+
   return (
     <div
-      className={`rounded-xl border border-outline-variant/10 bg-surface-container-lowest shadow-light dark:border-slate-700 dark:bg-slate-900 ${compact ? "p-4" : "p-6"}`}
+      className={`border border-outline-variant/10 bg-surface-container-lowest shadow-light dark:border-slate-700 dark:bg-slate-900 ${compact ? "rounded-lg p-2.5" : "rounded-xl p-6"}`}
     >
-      <div className={`flex items-start justify-between gap-2 ${compact ? "mb-3" : "mb-6"}`}>
-        <div className={`flex min-w-0 items-center ${compact ? "space-x-2" : "space-x-3"}`}>
+      {compact ? (
+        <div className="mb-2 flex items-center gap-1.5 border-b border-outline-variant/15 pb-2 dark:border-slate-700/80">
           <CardBrandLogo
             brand={c.brand}
-            className={compact ? "!h-8 !w-[3.25rem] shadow-sm" : "!h-10 !w-[4.25rem] shadow-sm"}
-            imgClassName={
-              compact
-                ? "max-h-6 w-full max-w-[2.75rem] object-contain object-center"
-                : "max-h-8 w-full max-w-[3.5rem] object-contain object-center"
-            }
+            className="!h-6 !w-[2.6rem] shrink-0 shadow-sm"
+            imgClassName="max-h-[18px] w-full max-w-[2.2rem] object-contain object-center"
           />
-          <div className="min-w-0">
-            <p className="truncate text-xs font-bold uppercase tracking-wider text-on-surface-variant dark:text-slate-400">
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[10px] font-bold uppercase leading-tight tracking-wide text-on-surface-variant dark:text-slate-400">
               {c.name}
             </p>
-            <p className="font-mono text-[10px] text-outline dark:text-slate-500">•••• {c.last4}</p>
+            <p className="font-mono text-[9px] leading-tight text-outline dark:text-slate-500">•••• {c.last4}</p>
+          </div>
+          {statusBadge}
+          {actionIcons}
+        </div>
+      ) : (
+        <div className="mb-6 flex items-start justify-between gap-2">
+          <div className="flex min-w-0 items-center space-x-3">
+            <CardBrandLogo
+              brand={c.brand}
+              className="!h-10 !w-[4.25rem] shadow-sm"
+              imgClassName="max-h-8 w-full max-w-[3.5rem] object-contain object-center"
+            />
+            <div className="min-w-0">
+              <p className="truncate text-xs font-bold uppercase tracking-wider text-on-surface-variant dark:text-slate-400">
+                {c.name}
+              </p>
+              <p className="font-mono text-[10px] text-outline dark:text-slate-500">•••• {c.last4}</p>
+            </div>
+          </div>
+          <div className="flex shrink-0 flex-col items-end gap-2">
+            {statusBadge}
+            {actionIcons}
           </div>
         </div>
-        <div className={`flex shrink-0 flex-col items-end ${compact ? "gap-1" : "gap-2"}`}>
-          <span
-            className={`rounded px-2 py-1 text-[10px] font-black uppercase ${
-              isBenef
-                ? "bg-tertiary-fixed text-on-tertiary-fixed-variant"
-                : due === "overdue" || due === "soon"
-                  ? "bg-error-container text-on-error-container"
-                  : "bg-secondary-container text-on-secondary-container"
-            }`}
-          >
-            {isBenef ? "Pré-pago" : cardStatusLabel(due)}
-          </span>
-          <div className="flex gap-1">
-            <Link
-              to={`/cartao/${c.id}`}
-              className="rounded p-1 text-on-surface-variant hover:bg-surface-container-high dark:text-slate-400 dark:hover:bg-slate-800"
-              aria-label="Detalhes do cartão"
-              title="Detalhes"
-            >
-              <span className={`material-symbols-outlined ${compact ? "text-base" : "text-lg"}`}>visibility</span>
-            </Link>
-            <button
-              type="button"
-              onClick={onEdit}
-              className="rounded p-1 text-on-surface-variant hover:bg-surface-container-high dark:text-slate-400 dark:hover:bg-slate-800"
-              aria-label="Editar cartão"
-            >
-              <span className={`material-symbols-outlined ${compact ? "text-base" : "text-lg"}`}>edit</span>
-            </button>
-            <button
-              type="button"
-              onClick={onTryDelete}
-              className="rounded p-1 text-error hover:bg-error-container/30"
-              aria-label="Remover cartão"
-            >
-              <span className={`material-symbols-outlined ${compact ? "text-base" : "text-lg"}`}>delete</span>
-            </button>
-          </div>
-        </div>
-      </div>
-      <div className={compact ? "space-y-3" : "space-y-4"}>
+      )}
+      <div className={compact ? "space-y-2" : "space-y-4"}>
         {isBenef ? (
           <>
-            <div className="space-y-2">
+            <div className={compact ? "space-y-1" : "space-y-2"}>
               {(["refeicao", "alimentacao", "mobilidade"] as BenefitBucket[]).map((b) => (
                 <div
                   key={b}
-                  className="flex items-center justify-between rounded-lg bg-surface-container-high/40 px-3 py-2 dark:bg-slate-800/60"
+                  className={`flex items-center justify-between rounded-lg bg-surface-container-high/40 dark:bg-slate-800/60 ${compact ? "px-2 py-1" : "px-3 py-2"}`}
                 >
-                  <span className="text-xs font-medium text-on-surface-variant dark:text-slate-400">
+                  <span
+                    className={`font-medium text-on-surface-variant dark:text-slate-400 ${compact ? "text-[10px]" : "text-xs"}`}
+                  >
                     {BENEFIT_BUCKET_LABEL[b]}
                   </span>
-                  <span className="font-headline text-sm font-black text-primary dark:text-slate-100">
+                  <span
+                    className={`font-headline font-black text-primary dark:text-slate-100 ${compact ? "text-xs tabular-nums" : "text-sm"}`}
+                  >
                     {formatBRL(c.benefitBalances[b])}
                   </span>
                 </div>
               ))}
             </div>
-            <div className="text-right text-[10px] text-on-surface-variant dark:text-slate-500">
+            <div
+              className={`text-right text-on-surface-variant dark:text-slate-500 ${compact ? "text-[9px]" : "text-[10px]"}`}
+            >
               Lançamentos com este cartão atualizam as bolsas.
             </div>
           </>
         ) : (
           <>
-            <div className="flex items-end justify-between gap-2">
-              <div>
-                <p className="mb-0.5 text-xs font-medium text-on-surface-variant dark:text-slate-400">
+            <div className={`flex justify-between ${compact ? "items-start gap-1.5" : "items-end gap-2"}`}>
+              <div className="min-w-0">
+                <p
+                  className={`font-medium text-on-surface-variant dark:text-slate-400 ${compact ? "mb-0 text-[10px] leading-none" : "mb-0.5 text-xs"}`}
+                >
                   Fatura Atual
                 </p>
                 <p
-                  className={`font-headline font-black text-primary dark:text-slate-100 ${compact ? "text-xl" : "text-2xl"}`}
+                  className={`font-headline font-black tabular-nums leading-tight text-primary dark:text-slate-100 ${compact ? "text-lg sm:text-[1.125rem]" : "text-2xl"}`}
                 >
                   {formatBRL(c.currentInvoice)}
                 </p>
               </div>
-              <div className="text-right">
-                <p className="text-[10px] font-medium text-on-surface-variant dark:text-slate-400">
+              <div className={`shrink-0 text-right leading-tight ${compact ? "max-w-[48%]" : ""}`}>
+                <p
+                  className={`font-medium text-on-surface-variant dark:text-slate-400 ${compact ? "text-[9px]" : "text-[10px]"}`}
+                >
                   Fechamento
                 </p>
                 <p
-                  className={`font-semibold text-on-surface-variant dark:text-slate-300 ${compact ? "text-[11px]" : "text-xs"}`}
+                  className={`font-semibold text-on-surface-variant dark:text-slate-300 ${compact ? "text-[10px]" : "text-xs"}`}
                 >
                   {formatCardBillingDayLabel(c.closingDay)}
                 </p>
-                <p className={`font-medium text-on-surface-variant dark:text-slate-400 ${compact ? "mt-1 text-[9px]" : "mt-1.5 text-[10px]"}`}>
+                <p
+                  className={`font-medium text-on-surface-variant dark:text-slate-400 ${compact ? "mt-0.5 text-[9px]" : "mt-1.5 text-[10px]"}`}
+                >
                   Vencimento
                 </p>
                 <p
-                  className={`font-bold ${dueUrgent ? "text-error" : "text-on-surface-variant dark:text-slate-300"} ${compact ? "text-xs" : "text-sm"}`}
+                  className={`font-bold leading-snug ${dueUrgent ? "text-error" : "text-on-surface-variant dark:text-slate-300"} ${compact ? "text-[10px]" : "text-sm"}`}
                 >
                   {formatCardBillingDayLabel(c.dueDay)}
                 </p>
               </div>
             </div>
-            <div className={compact ? "space-y-1" : "space-y-1.5"}>
-              <div className="flex justify-between text-[10px] font-bold">
-                <span className="text-on-surface-variant dark:text-slate-400">Limite utilizado</span>
-                <span className="text-primary dark:text-blue-200">
-                  Limite disponível: {formatBRL(available)}
+            <div className={compact ? "space-y-0.5 pt-0.5" : "space-y-1.5"}>
+              <div
+                className={`flex justify-between gap-2 font-bold ${compact ? "text-[9px] leading-tight" : "text-[10px]"}`}
+              >
+                <span className="shrink-0 text-on-surface-variant dark:text-slate-400">Limite utilizado</span>
+                <span className="min-w-0 truncate text-right text-primary dark:text-blue-200" title={`Limite disponível: ${formatBRL(available)}`}>
+                  {compact ? <>Disp.: {formatBRL(available)}</> : <>Limite disponível: {formatBRL(available)}</>}
                 </span>
               </div>
-              <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-container-high dark:bg-slate-800">
+              <div
+                className={`w-full overflow-hidden rounded-full bg-surface-container-high dark:bg-slate-800 ${compact ? "h-1" : "h-1.5"}`}
+              >
                 <div className={`h-full rounded-full ${BAR_COLOR[c.brand]}`} style={{ width: `${usedPct}%` }} />
               </div>
             </div>
@@ -794,31 +837,32 @@ export function DashboardPage() {
             </section>
 
             <div className="col-span-12 flex flex-col gap-4 lg:col-span-4">
-              <section className="rounded-xl border border-slate-100/80 bg-white p-4 shadow-[0px_4px_12px_rgba(0,40,85,0.05)] dark:border-slate-700 dark:bg-slate-900 sm:p-5">
-                <div className="mb-3 flex flex-col gap-2 border-b border-slate-100 pb-3 dark:border-slate-800 sm:flex-row sm:items-start sm:justify-between">
-                  <h3 className="font-headline text-base font-semibold tracking-tight text-primary dark:text-slate-100">
+              <section className="rounded-xl border border-slate-100/80 bg-white p-3 shadow-[0px_4px_12px_rgba(0,40,85,0.05)] dark:border-slate-700 dark:bg-slate-900">
+                <div className="mb-2 flex flex-col gap-1.5 border-b border-slate-100 pb-2 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
+                  <h3 className="font-headline text-sm font-semibold tracking-tight text-primary dark:text-slate-100">
                     Gestão de Cartões
                   </h3>
-                  <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-1.5">
                     <button
                       type="button"
                       onClick={() => {
                         setCardFormEditing(null);
                         setCardFormOpen(true);
                       }}
-                      className="flex items-center gap-1 rounded-lg border border-secondary/40 bg-secondary-container/30 px-2.5 py-1.5 text-xs font-bold text-secondary transition-colors hover:bg-secondary-container/50 dark:border-emerald-800/40 dark:bg-emerald-950/40 dark:text-emerald-200 dark:hover:bg-emerald-950/60"
+                      className="flex items-center gap-0.5 rounded-md border border-secondary/40 bg-secondary-container/30 px-2 py-1 text-[11px] font-bold leading-none text-secondary transition-colors hover:bg-secondary-container/50 dark:border-emerald-800/40 dark:bg-emerald-950/40 dark:text-emerald-200 dark:hover:bg-emerald-950/60"
                     >
-                      <span className="material-symbols-outlined text-base">add_card</span>
+                      <span className="material-symbols-outlined text-[16px]">add_card</span>
                       Incluir cartão
                     </button>
                     <button
                       type="button"
                       onClick={() => setLimitsOpen(true)}
                       disabled={state.creditCards.length === 0}
-                      className="flex items-center gap-1 text-xs font-semibold text-secondary hover:underline disabled:pointer-events-none disabled:opacity-40 dark:text-emerald-300"
+                      aria-label="Ver todos os limites dos cartões"
+                      className="flex items-center gap-0.5 text-[11px] font-semibold leading-none text-secondary hover:underline disabled:pointer-events-none disabled:opacity-40 dark:text-emerald-300"
                     >
-                      Ver todos os limites
-                      <span className="material-symbols-outlined text-sm">arrow_forward</span>
+                      Ver limites
+                      <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
                     </button>
                   </div>
                 </div>
@@ -840,19 +884,19 @@ export function DashboardPage() {
                   </div>
                 ) : (
                   <div>
-                    <div className="flex items-stretch gap-1.5">
+                    <div className="flex items-stretch gap-1">
                       {carouselCreditCards.length > 1 && (
                         <button
                           type="button"
                           aria-label="Cartão anterior"
                           disabled={desktopCardCarouselIdx === 0}
                           onClick={() => setDesktopCardCarouselIdx((i) => Math.max(0, i - 1))}
-                          className="flex h-7 w-7 shrink-0 items-center justify-center self-center rounded-full border border-slate-200/90 bg-white text-primary shadow-sm transition-colors hover:bg-slate-50 disabled:pointer-events-none disabled:opacity-35 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
+                          className="flex h-6 w-6 shrink-0 items-center justify-center self-center rounded-full border border-slate-200/90 bg-white text-primary shadow-sm transition-colors hover:bg-slate-50 disabled:pointer-events-none disabled:opacity-35 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
                         >
-                          <span className="material-symbols-outlined text-[20px]">chevron_left</span>
+                          <span className="material-symbols-outlined text-[18px]">chevron_left</span>
                         </button>
                       )}
-                      <div className="min-w-0 flex-1 overflow-hidden rounded-xl">
+                      <div className="min-w-0 flex-1 overflow-hidden rounded-lg">
                         <div
                           className="flex transition-transform duration-300 ease-out"
                           style={{
@@ -886,14 +930,14 @@ export function DashboardPage() {
                               Math.min(carouselCreditCards.length - 1, i + 1),
                             )
                           }
-                          className="flex h-7 w-7 shrink-0 items-center justify-center self-center rounded-full border border-slate-200/90 bg-white text-primary shadow-sm transition-colors hover:bg-slate-50 disabled:pointer-events-none disabled:opacity-35 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
+                          className="flex h-6 w-6 shrink-0 items-center justify-center self-center rounded-full border border-slate-200/90 bg-white text-primary shadow-sm transition-colors hover:bg-slate-50 disabled:pointer-events-none disabled:opacity-35 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
                         >
-                          <span className="material-symbols-outlined text-[20px]">chevron_right</span>
+                          <span className="material-symbols-outlined text-[18px]">chevron_right</span>
                         </button>
                       )}
                     </div>
                     {carouselCreditCards.length > 1 && (
-                      <p className="mt-2 text-center text-[10px] font-medium tabular-nums text-outline dark:text-slate-500">
+                      <p className="mt-1 text-center text-[9px] font-medium tabular-nums text-outline dark:text-slate-500">
                         {desktopCardCarouselIdx + 1} / {carouselCreditCards.length}
                       </p>
                     )}

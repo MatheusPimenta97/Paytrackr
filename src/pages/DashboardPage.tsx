@@ -303,14 +303,6 @@ export function DashboardPage() {
     }));
   }, [state.transactions]);
 
-  const creditAgg = useMemo(() => {
-    const cards = state.creditCards.filter((c) => c.kind === "credito");
-    const totalLimit = roundMoney(cards.reduce((s, c) => s + c.creditLimit, 0));
-    const totalInvoice = roundMoney(cards.reduce((s, c) => s + c.currentInvoice, 0));
-    const pct = totalLimit > 0 ? Math.min(100, Math.round((totalInvoice / totalLimit) * 100)) : 0;
-    return { cards, totalLimit, totalInvoice, pct };
-  }, [state.creditCards]);
-
   const financeScore = useMemo(() => {
     let s = 520 + Math.round(portfolioCompletion * 2.8);
     if (monthlyIncome > monthlyExpense) s += 35;
@@ -782,35 +774,68 @@ export function DashboardPage() {
             </section>
 
             <div className="col-span-12 flex flex-col gap-4 lg:col-span-4">
-              <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-[#001430] to-[#002855] p-4 text-white shadow-xl sm:p-5">
-                <div className="relative z-10">
-                  <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.06em] text-white/60">
-                    Uso do cartão de crédito
-                  </p>
-                  <div className="mb-3 flex flex-wrap items-end gap-1.5">
-                    <span className="text-2xl font-bold tabular-nums tracking-tight sm:text-[1.65rem]">
-                      {formatBRL(creditAgg.totalInvoice)}
-                    </span>
-                    <span className="pb-0.5 text-xs font-medium text-white/45">
-                      / {formatBRL(creditAgg.totalLimit)}
-                    </span>
+              <section className="rounded-xl border border-slate-100/80 bg-white p-4 shadow-[0px_4px_12px_rgba(0,40,85,0.05)] dark:border-slate-700 dark:bg-slate-900 sm:p-5">
+                <div className="mb-3 flex flex-col gap-2 border-b border-slate-100 pb-3 dark:border-slate-800 sm:flex-row sm:items-start sm:justify-between">
+                  <h3 className="font-headline text-base font-semibold tracking-tight text-primary dark:text-slate-100">
+                    Gestão de Cartões
+                  </h3>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCardFormEditing(null);
+                        setCardFormOpen(true);
+                      }}
+                      className="flex items-center gap-1 rounded-lg border border-secondary/40 bg-secondary-container/30 px-2.5 py-1.5 text-xs font-bold text-secondary transition-colors hover:bg-secondary-container/50 dark:border-emerald-800/40 dark:bg-emerald-950/40 dark:text-emerald-200 dark:hover:bg-emerald-950/60"
+                    >
+                      <span className="material-symbols-outlined text-base">add_card</span>
+                      Incluir cartão
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setLimitsOpen(true)}
+                      disabled={state.creditCards.length === 0}
+                      className="flex items-center gap-1 text-xs font-semibold text-secondary hover:underline disabled:pointer-events-none disabled:opacity-40 dark:text-emerald-300"
+                    >
+                      Ver todos os limites
+                      <span className="material-symbols-outlined text-sm">arrow_forward</span>
+                    </button>
                   </div>
-                  <div className="h-2 w-full overflow-hidden rounded-full border border-white/5 bg-white/10">
-                    <div
-                      className="h-full rounded-full bg-white shadow-[0_0_12px_rgba(255,255,255,0.4)]"
-                      style={{ width: `${creditAgg.pct}%` }}
-                    />
-                  </div>
-                  {creditAgg.cards.length === 0 && (
-                    <p className="mt-2 text-[11px] leading-snug text-white/70">
-                      Cadastre um cartão de crédito para acompanhar o uso do limite.
-                    </p>
-                  )}
                 </div>
-                <span className="material-symbols-outlined pointer-events-none absolute -bottom-4 -right-4 text-[88px] text-white/5 sm:text-[100px]">
-                  credit_card
-                </span>
-              </div>
+                {state.creditCards.length === 0 ? (
+                  <div className="rounded-lg border border-dashed border-outline-variant/40 bg-surface-container-lowest/80 p-5 text-center dark:bg-slate-800/50">
+                    <p className="mb-3 text-xs text-on-surface-variant dark:text-slate-400">
+                      Nenhum cartão cadastrado. Inclua os seus para acompanhar fatura, vencimento e limite.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCardFormEditing(null);
+                        setCardFormOpen(true);
+                      }}
+                      className="rounded-lg bg-primary px-4 py-2 text-xs font-bold text-white"
+                    >
+                      Incluir primeiro cartão
+                    </button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 gap-3">
+                    {carouselCreditCards.map((c) => (
+                      <DashboardCreditCardTile
+                        key={c.id}
+                        card={c}
+                        onEdit={() => {
+                          setCardFormEditing(c);
+                          setCardFormOpen(true);
+                        }}
+                        onTryDelete={() => {
+                          if (confirm(`Remover o cartão "${c.name}"?`)) deleteCreditCard(c.id);
+                        }}
+                      />
+                    ))}
+                  </div>
+                )}
+              </section>
 
               <div className="flex flex-col justify-between rounded-xl border border-blue-100/30 bg-white p-4 shadow-[0px_4px_12px_rgba(0,40,85,0.05)] dark:border-slate-700 dark:bg-slate-900 sm:p-5">
                 <div>

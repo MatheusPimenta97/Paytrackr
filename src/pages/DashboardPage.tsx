@@ -6,7 +6,6 @@ import { ManageCreditCardModal } from "../components/ManageCreditCardModal";
 import { QuickIncomeModal } from "../components/QuickIncomeModal";
 import { useFinance, formatBRL } from "../context/FinanceContext";
 import { CardBrandLogo } from "../components/CardBrandLogo";
-import { useAuth } from "../context/AuthContext";
 import { categoryPillClass, iconWrapForCategory } from "../domain/categories";
 import { BENEFIT_BUCKET_LABEL, BENEFIT_BUCKETS } from "../domain/cardWallet";
 import type { BenefitBucket, CreditCard, Transaction } from "../domain/types";
@@ -16,9 +15,6 @@ import {
   formatDateTimeShort,
   roundMoney,
 } from "../domain/money";
-
-const DESKTOP_PROMO_IMG =
-  "https://lh3.googleusercontent.com/aida/ADBb0ugDtfl0mnVik0vcJ38GlQ8aS150PZqiaGT19dj42zqxq0fqsJmGauewvhJFNbQFyMrJ8FoWfE32K8yup3Izfkvuo9BkUdwPvpEP14gdEdjd7SqD7Me4__mdRaY9Vxd0bvoWoF5w7hjRneBhk6PQZR_AkReRBokZEOq4kntT2QRWsS1gBvtj4i9WAMmuOPhuMu6EUb9YKfEmCSWGhrCq92oe0_ElFqZJxUMLZqS3vHhky8qKiHU5mmexV9KAExDPRqjUU16f7fyqzg";
 
 const BAR_COLOR: Record<CreditCard["brand"], string> = {
   visa: "bg-secondary",
@@ -32,13 +28,6 @@ function cardStatusLabel(s: ReturnType<typeof creditCardDueStatus>) {
   if (s === "overdue") return "Fatura atrasada";
   if (s === "soon") return "Próximo vencimento";
   return "Fatura em aberto";
-}
-
-function initialsFromDisplayName(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "PT";
-  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
-  return `${parts[0]![0] ?? ""}${parts[parts.length - 1]![0] ?? ""}`.toUpperCase();
 }
 
 function ymFromOffset(monthsAgo: number): string {
@@ -212,7 +201,6 @@ function accountSubtitleMobile(acc: { icon: string }): string {
 
 export function DashboardPage() {
   const navigate = useNavigate();
-  const { logout } = useAuth();
   const {
     state,
     primaryBalance,
@@ -522,59 +510,86 @@ export function DashboardPage() {
       {/* Painel esquerdo — saldo, resumo mensal e ações (compacto para 100% zoom) */}
       <aside className="relative flex min-h-0 w-[min(272px,24vw)] max-w-[300px] shrink-0 flex-col overflow-hidden border-r border-primary-container bg-primary text-white">
         <div className="pointer-events-none absolute -left-16 -top-16 h-48 w-48 rounded-full bg-primary-container opacity-20 blur-3xl" />
-        <div className="custom-scrollbar relative z-10 flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-4 md:gap-6 md:p-5">
-          <section>
-            <div className="mb-2 flex items-center gap-1.5 text-primary-fixed">
-              <span className="material-symbols-outlined text-base">account_balance_wallet</span>
+        {/* Sem scroll: conteúdo compacto para caber na altura útil */}
+        <div className="relative z-10 flex min-h-0 flex-1 flex-col gap-3 overflow-hidden p-4 md:gap-3.5 md:p-4">
+          <section className="shrink-0">
+            <div className="mb-1.5 flex items-center gap-1.5 text-primary-fixed">
+              <span className="material-symbols-outlined text-sm">account_balance_wallet</span>
               <span className="text-[10px] font-semibold uppercase tracking-wider text-primary-fixed">
                 Saldo total disponível
               </span>
             </div>
-            <div className="space-y-1.5">
-              <h1 className="font-headline text-2xl font-black tracking-tight text-white lg:text-[1.65rem]">
+            <div className="space-y-1">
+              <h1 className="font-headline text-xl font-black tracking-tight text-white lg:text-2xl">
                 {formatBRL(primaryBalance)}
               </h1>
-              <div className="flex flex-wrap items-center gap-1.5">
+              <div className="flex flex-wrap items-center gap-1">
                 {balanceTrendVsPrevMonthPct !== null && Number.isFinite(balanceTrendVsPrevMonthPct) && (
                   <span
-                    className={`flex items-center rounded-full px-1.5 py-0.5 text-[11px] font-medium ${
+                    className={`flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
                       balanceTrendVsPrevMonthPct >= 0
                         ? "bg-emerald-400/10 text-emerald-400"
                         : "bg-red-400/15 text-red-200"
                     }`}
                   >
-                    <span className="material-symbols-outlined mr-0.5 text-sm">
+                    <span className="material-symbols-outlined mr-0.5 text-xs">
                       {balanceTrendVsPrevMonthPct >= 0 ? "trending_up" : "trending_down"}
                     </span>
                     {balanceTrendVsPrevMonthPct >= 0 ? "+" : ""}
                     {Math.round(balanceTrendVsPrevMonthPct * 10) / 10}%
                   </span>
                 )}
-                <span className="text-[11px] leading-tight text-on-primary-container">
+                <span className="text-[10px] leading-tight text-on-primary-container">
                   em relação ao mês passado
                 </span>
               </div>
             </div>
           </section>
 
-          <section className="space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="font-headline text-sm font-semibold text-white">Resumo mensal</span>
+          <section className="shrink-0 rounded-lg border border-white/10 bg-primary-container/35 px-2.5 py-2.5">
+            <div className="flex items-center gap-2">
+              <div className="min-w-0 flex-1">
+                <p className="text-[9px] font-bold uppercase tracking-widest text-white/65">Receita mensal</p>
+                <p className="font-headline text-base font-black tracking-tight text-emerald-300 tabular-nums">
+                  {formatBRL(monthlyIncome)}
+                </p>
+              </div>
+              <div className="h-10 w-px shrink-0 bg-white/15" aria-hidden />
+              <div className="min-w-0 flex-1">
+                <p className="text-[9px] font-bold uppercase tracking-widest text-white/65">Despesa mensal</p>
+                <p className="font-headline text-base font-black tracking-tight text-red-300 tabular-nums">
+                  {formatBRL(monthlyExpense)}
+                </p>
+              </div>
               <button
                 type="button"
-                className="material-symbols-outlined text-base text-primary-fixed opacity-80 hover:opacity-100"
+                onClick={() => navigate("/lancamentos")}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-white/25 bg-white/90 text-primary shadow-sm transition-colors hover:bg-white"
+                aria-label="Ver lançamentos e fluxo"
+              >
+                <span className="material-symbols-outlined text-[18px] text-on-surface-variant">show_chart</span>
+              </button>
+            </div>
+          </section>
+
+          <section className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden">
+            <div className="flex shrink-0 items-center justify-between">
+              <span className="font-headline text-xs font-semibold text-white">Resumo mensal</span>
+              <button
+                type="button"
+                className="material-symbols-outlined text-sm text-primary-fixed opacity-80 hover:opacity-100"
                 aria-label="Opções do resumo"
               >
                 more_horiz
               </button>
             </div>
-            <div className="flex h-[7.25rem] items-end justify-between gap-1 rounded-lg border border-white/5 bg-primary-container/50 p-3 md:h-32 md:gap-1.5 md:p-3.5">
+            <div className="flex min-h-[4.5rem] flex-1 items-end justify-between gap-1 rounded-md border border-white/5 bg-primary-container/45 p-2 md:min-h-[5rem]">
               {monthlyBars.map((bar, idx) => (
                 <div
                   key={idx}
                   className={`w-full rounded-t-sm transition-colors ${
                     bar.highlight
-                      ? "bg-primary-fixed shadow-[0_0_12px_rgba(215,226,255,0.28)]"
+                      ? "bg-primary-fixed shadow-[0_0_10px_rgba(215,226,255,0.22)]"
                       : "bg-on-primary-container/20"
                   }`}
                   style={{ height: `${bar.heightPct}%` }}
@@ -582,56 +597,34 @@ export function DashboardPage() {
                 />
               ))}
             </div>
-            <p className="text-[11px] italic leading-snug text-on-primary-container">{desktopInsightLine}</p>
+            <p className="line-clamp-2 shrink-0 text-[10px] italic leading-snug text-on-primary-container">
+              {desktopInsightLine}
+            </p>
           </section>
 
-          <div className="space-y-2">
+          <div className="mt-auto shrink-0 space-y-1.5 border-t border-white/10 pt-3">
             <button
               type="button"
               onClick={() => navigate("/lancamentos?novo=1")}
-              className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-primary-fixed py-2.5 text-xs font-semibold text-primary shadow-lg shadow-black/15 transition-colors hover:bg-white active:scale-[0.99] md:text-[13px]"
+              className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-primary-fixed py-2 text-xs font-semibold text-primary shadow-md shadow-black/15 transition-colors hover:bg-white active:scale-[0.99]"
             >
-              <span className="material-symbols-outlined text-lg">add_circle</span>
+              <span className="material-symbols-outlined text-base">add_circle</span>
               Novo lançamento
             </button>
             <button
               type="button"
               onClick={() => setDepositOpen(true)}
-              className="w-full rounded-lg border border-white/15 py-2 text-xs font-semibold text-primary-fixed transition-colors hover:bg-white/5 md:text-[13px]"
+              className="w-full rounded-lg border border-white/15 py-1.5 text-[11px] font-semibold text-primary-fixed transition-colors hover:bg-white/5"
             >
               Depositar na conta principal
             </button>
             <Link
               to="/settings#saldo-real"
-              className="block text-center text-[11px] font-medium text-on-primary-container underline-offset-2 hover:text-white hover:underline md:text-xs"
+              className="block text-center text-[10px] font-medium text-on-primary-container underline-offset-2 hover:text-white hover:underline"
             >
               Definir saldo real
             </Link>
           </div>
-        </div>
-
-        <div className="relative z-10 flex shrink-0 items-center justify-between border-t border-white/10 px-4 pb-4 pt-3 md:px-5 md:pb-5 md:pt-4">
-          <div className="flex min-w-0 items-center gap-2 md:gap-2.5">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-container font-headline text-[11px] font-bold text-primary-fixed md:h-9 md:w-9 md:text-xs">
-              {initialsFromDisplayName(state.profile.displayName)}
-            </div>
-            <div className="min-w-0">
-              <p className="truncate font-headline text-xs font-semibold leading-tight text-white md:text-[13px]">
-                {state.profile.displayName}
-              </p>
-              <p className="truncate text-[10px] text-on-primary-container md:text-[11px]">
-                PayTrackr · dados no seu dispositivo
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => logout()}
-            className="material-symbols-outlined shrink-0 text-lg text-on-primary-container transition-colors hover:text-white md:text-xl"
-            aria-label="Sair"
-          >
-            logout
-          </button>
         </div>
       </aside>
 
@@ -904,29 +897,6 @@ export function DashboardPage() {
               </div>
             </section>
           </div>
-
-          <section className="group relative h-32 cursor-pointer overflow-hidden rounded-xl md:h-36 lg:h-40">
-            <img
-              alt=""
-              src={DESKTOP_PROMO_IMG}
-              className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
-            />
-            <div className="absolute inset-0 flex items-center bg-gradient-to-r from-primary/90 to-transparent px-6 md:px-10">
-              <div className="max-w-sm space-y-2 md:max-w-md md:space-y-2.5">
-                <h3 className="font-headline text-base font-semibold text-white md:text-lg">Otimize suas metas hoje</h3>
-                <p className="text-[11px] text-on-primary-container md:text-xs">
-                  Acompanhe o progresso das metas e ajuste aportes conforme seu fluxo mensal.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => navigate("/metas")}
-                  className="rounded-md bg-white px-4 py-1.5 text-xs font-semibold text-primary shadow-md transition-colors hover:bg-primary-fixed md:px-5 md:py-2 md:text-[13px]"
-                >
-                  Conhecer agora
-                </button>
-              </div>
-            </div>
-          </section>
         </div>
       </section>
     </div>

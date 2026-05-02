@@ -3,62 +3,130 @@ import { NavLink, Outlet } from "react-router-dom";
 import { DataScopeBanner } from "./DataScopeBanner";
 import { ProfileAvatar } from "./ProfileAvatar";
 import { QuickCalculatorModal } from "./QuickCalculatorModal";
+import { useFinance } from "../context/FinanceContext";
 
-const topNav = [
-  { to: "/", label: "Dashboard", end: true },
-  { to: "/gastos-recorrentes", label: "Gastos Recorrentes" },
-  { to: "/lancamentos", label: "Lançamentos" },
-  { to: "/valores-a-receber", label: "Valores a receber" },
-  { to: "/pontos", label: "Pontos" },
-  { to: "/metas", label: "Metas" },
-];
+const sidebarNav = [
+  { to: "/", label: "Dashboard", icon: "dashboard" },
+  { to: "/gastos-recorrentes", label: "Resumo mensal", icon: "schedule" },
+  { to: "/lancamentos", label: "Transações", icon: "receipt_long" },
+  { to: "/valores-a-receber", label: "Recebíveis", icon: "request_quote" },
+  { to: "/pontos", label: "Pontos", icon: "stars" },
+  { to: "/metas", label: "Metas", icon: "flag" },
+] as const;
 
 export function DashboardLayout() {
   const [calcOpen, setCalcOpen] = useState(false);
+  const { state } = useFinance();
+  const photo = state.profile.photoDataUrl;
+  const displayName = state.profile.displayName.trim() || "Perfil";
 
   return (
     <div className="min-h-screen bg-surface font-body text-on-surface antialiased dark:bg-slate-950 dark:text-slate-100">
       <QuickCalculatorModal open={calcOpen} onClose={() => setCalcOpen(false)} />
-      <nav className="fixed top-0 z-50 h-20 w-full border-b border-slate-200 bg-white shadow-[0px_4px_12px_rgba(0,40,85,0.05)] dark:border-slate-800 dark:bg-slate-950 md:border-transparent md:bg-[#f3faff]/80 md:shadow-light md:backdrop-blur-md md:dark:border-transparent md:dark:bg-[#001d44]/80 md:dark:shadow-none">
-        <div className="mx-auto flex h-full max-w-[1440px] items-center justify-between px-6 md:px-12">
-          <div className="flex items-center gap-6 lg:gap-8">
+
+      {/* Sidebar desktop — 72px, expande no hover */}
+      <aside className="group/dash-sidebar fixed left-0 top-0 z-[60] hidden h-screen w-[72px] shrink-0 flex-col overflow-hidden border-r border-white/10 bg-gradient-to-b from-[#001430] to-[#002855] shadow-2xl transition-[width] duration-300 ease-in-out hover:w-[260px] md:flex">
+        <div className="flex h-20 items-center overflow-hidden px-6">
+          <span className="material-symbols-outlined shrink-0 text-3xl text-white">account_balance_wallet</span>
+          <span className="ml-4 max-w-0 overflow-hidden whitespace-nowrap font-headline text-xl font-semibold tracking-tight text-white opacity-0 transition-[max-width,opacity] duration-300 ease-in-out group-hover/dash-sidebar:max-w-[180px] group-hover/dash-sidebar:opacity-100">
+            PayTrackr
+          </span>
+        </div>
+
+        <nav className="mt-4 flex flex-1 flex-col gap-2 overflow-hidden px-4">
+          {sidebarNav.map((item) => (
             <NavLink
-              to="/"
-              className="font-headline text-2xl font-extrabold tracking-tight text-blue-900 dark:text-blue-100 md:font-black md:tracking-tighter md:text-[#001d44] md:dark:text-[#f3faff]"
+              key={item.to}
+              to={item.to}
+              end={item.to === "/"}
+              className={({ isActive }) =>
+                [
+                  "flex h-12 shrink-0 items-center rounded-xl px-3 transition-all duration-200",
+                  isActive
+                    ? "-ml-1 border-l-4 border-white bg-white/10 font-semibold text-white"
+                    : "font-medium text-white/70 hover:bg-white/10 hover:text-white",
+                ].join(" ")
+              }
             >
-              PayTrackr
+              {({ isActive }) => (
+                <>
+                  <span
+                    className={`material-symbols-outlined shrink-0 text-2xl ${isActive ? "filled" : ""}`}
+                  >
+                    {item.icon}
+                  </span>
+                  <span className="ml-4 max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-[max-width,opacity] duration-300 ease-in-out group-hover/dash-sidebar:max-w-[200px] group-hover/dash-sidebar:opacity-100">
+                    {item.label}
+                  </span>
+                </>
+              )}
             </NavLink>
-            <div className="hidden items-center space-x-8 font-manrope text-sm font-bold tracking-tight md:flex">
-              {topNav.map((item) => (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  end={item.end}
-                  className={({ isActive }) =>
-                    [
-                      "transition-colors",
-                      isActive
-                        ? "border-b-2 border-[#1b6d24] pb-1 font-extrabold text-[#1b6d24] dark:text-[#1b6d24]"
-                        : "font-medium text-[#43474f] hover:text-[#001d44] dark:text-slate-400",
-                    ].join(" ")
-                  }
-                >
-                  {item.label}
-                </NavLink>
-              ))}
+          ))}
+        </nav>
+
+        <div className="overflow-hidden border-t border-white/10 p-4">
+          <NavLink
+            to="/settings"
+            className={({ isActive }) =>
+              [
+                "flex h-12 items-center rounded-xl px-3 transition-all duration-200",
+                isActive
+                  ? "-ml-1 border-l-4 border-white bg-white/10 font-semibold text-white"
+                  : "font-medium text-white/70 hover:bg-white/10 hover:text-white",
+              ].join(" ")
+            }
+          >
+            {({ isActive }) => (
+              <>
+                <span className={`material-symbols-outlined shrink-0 text-2xl ${isActive ? "filled" : ""}`}>
+                  settings
+                </span>
+                <span className="ml-4 max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-[max-width,opacity] duration-300 ease-in-out group-hover/dash-sidebar:max-w-[200px] group-hover/dash-sidebar:opacity-100">
+                  Configurações
+                </span>
+              </>
+            )}
+          </NavLink>
+
+          <NavLink
+            to="/perfil"
+            className="mt-4 flex items-center px-2 transition-opacity hover:opacity-95"
+          >
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white/20 ring-2 ring-white/30">
+              {photo ? (
+                <img src={photo} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <span className="material-symbols-outlined text-xl text-white">person</span>
+              )}
             </div>
-          </div>
-          <div className="flex items-center gap-3 md:space-x-6 md:gap-0">
+            <div className="ml-3 max-w-0 overflow-hidden opacity-0 transition-[max-width,opacity] duration-300 ease-in-out group-hover/dash-sidebar:max-w-[200px] group-hover/dash-sidebar:opacity-100">
+              <p className="text-xs font-bold text-white">{displayName}</p>
+              <p className="text-[10px] font-medium text-white/60">Ver perfil</p>
+            </div>
+          </NavLink>
+        </div>
+      </aside>
+
+      {/* Top bar — só mobile */}
+      <nav className="fixed top-0 z-50 h-20 w-full border-b border-slate-200 bg-white shadow-[0px_4px_12px_rgba(0,40,85,0.05)] dark:border-slate-800 dark:bg-slate-950 md:hidden">
+        <div className="mx-auto flex h-full max-w-[1440px] items-center justify-between px-6">
+          <NavLink
+            to="/"
+            className="font-headline text-2xl font-extrabold tracking-tight text-blue-900 dark:text-blue-100"
+          >
+            PayTrackr
+          </NavLink>
+          <div className="flex items-center gap-3">
             <button
               type="button"
-              className="rounded-full p-2 text-slate-500 transition-colors hover:bg-slate-50 dark:text-slate-400 dark:hover:bg-slate-800 md:scale-95 md:text-[#43474f] md:hover:bg-transparent md:hover:text-[#001d44]"
+              className="rounded-full p-2 text-slate-500 transition-colors hover:bg-slate-50 dark:text-slate-400 dark:hover:bg-slate-800"
               aria-label="Notificações"
             >
               <span className="material-symbols-outlined">notifications</span>
             </button>
             <NavLink
               to="/settings"
-              className="rounded-full p-2 text-slate-500 transition-colors hover:bg-slate-50 dark:text-slate-400 dark:hover:bg-slate-800 md:scale-95 md:text-[#43474f] md:hover:bg-transparent md:hover:text-[#001d44]"
+              className="rounded-full p-2 text-slate-500 transition-colors hover:bg-slate-50 dark:text-slate-400 dark:hover:bg-slate-800"
               aria-label="Configurações"
             >
               <span className="material-symbols-outlined">settings</span>
@@ -68,7 +136,7 @@ export function DashboardLayout() {
         </div>
       </nav>
 
-      <main className="pb-24 pt-28 md:pb-0 dark:[&_.text-on-background]:text-slate-100 dark:[&_.text-on-surface-variant]:text-slate-400 dark:[&_.text-primary]:text-slate-100">
+      <main className="pb-24 pt-28 md:ml-[72px] md:pb-12 md:pt-8 dark:[&_.text-on-background]:text-slate-100 dark:[&_.text-on-surface-variant]:text-slate-400 dark:[&_.text-primary]:text-slate-100">
         <DataScopeBanner />
         <Outlet />
       </main>
@@ -129,7 +197,7 @@ export function DashboardLayout() {
         </NavLink>
       </nav>
 
-      <div className="fixed bottom-24 right-5 z-40 md:bottom-5 md:right-5">
+      <div className="fixed bottom-24 right-5 z-40 md:bottom-8 md:right-8">
         <button
           type="button"
           onClick={() => setCalcOpen(true)}

@@ -1,17 +1,18 @@
 import { Fragment, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, NavLink, useNavigate } from "react-router-dom";
 import { CreditCardLimitsModal } from "../components/CreditCardLimitsModal";
 import { EditAccountModal } from "../components/EditAccountModal";
 import { ManageCreditCardModal } from "../components/ManageCreditCardModal";
 import { QuickIncomeModal } from "../components/QuickIncomeModal";
 import { useFinance, formatBRL } from "../context/FinanceContext";
 import { CardBrandLogo } from "../components/CardBrandLogo";
-import { categoryPillClass, iconWrapForCategory } from "../domain/categories";
-import { BENEFIT_BUCKET_LABEL, BENEFIT_BUCKETS } from "../domain/cardWallet";
+import { iconWrapForCategory } from "../domain/categories";
+import { BENEFIT_BUCKET_LABEL } from "../domain/cardWallet";
 import type { BenefitBucket, CreditCard, Transaction } from "../domain/types";
 import {
   creditCardDueStatus,
   formatCardBillingDayLabel,
+  formatDateShort,
   formatDateTimeShort,
   roundMoney,
 } from "../domain/money";
@@ -47,8 +48,23 @@ function monthNet(transactions: Transaction[], ym: string): number {
   return roundMoney(inc - exp);
 }
 
-function benefitBucketsTotal(card: CreditCard): number {
-  return roundMoney(BENEFIT_BUCKETS.reduce((s, b) => s + card.benefitBalances[b], 0));
+function txnStatusBadge(t: Transaction): { label: string; className: string } {
+  if (t.status === "pendente") {
+    return {
+      label: "Pendente",
+      className: "bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-200",
+    };
+  }
+  if (t.amount > 0 && t.status === "recebido") {
+    return {
+      label: "Liquidado",
+      className: "bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300",
+    };
+  }
+  return {
+    label: "Concluído",
+    className: "bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300",
+  };
 }
 
 function DashboardCreditCardTile({
@@ -204,13 +220,17 @@ export function DashboardPage() {
   const {
     state,
     primaryBalance,
+    totalWealth,
     monthlyIncome,
     monthlyExpense,
     deleteCreditCard,
     portfolioCompletion,
-    exportBackup,
+    nextMilestoneGoal,
+    vestedTotal,
+    targetTotal,
   } = useFinance();
   const [depositOpen, setDepositOpen] = useState(false);
+  const [balancePeriod, setBalancePeriod] = useState<"month" | "year">("month");
   const [cardFormOpen, setCardFormOpen] = useState(false);
   const [cardFormEditing, setCardFormEditing] = useState<CreditCard | null>(null);
   const [limitsOpen, setLimitsOpen] = useState(false);
@@ -267,6 +287,74 @@ export function DashboardPage() {
       highlight: idx === raw.length - 1,
     }));
   }, [state.transactions]);
+
+  const yearlyBars = useMemo(() => {
+    const y = new Date().getFullYear();
+    const raw: number[] = [];
+    for (let m = 0; m < 12; m++) {
+      raw.push(monthNet(state.transactions, `${y}-${String(m + 1).padStart(2, "0")}`));
+    }
+    const maxAbs = Math.max(...raw.map((n) => Math.abs(n)), 1);
+    const curMonth = new Date().getMonth();
+    return raw.map((n, idx) => ({
+      net: n,
+      heightPct: Math.max(12, Math.round((Math.abs(n) / maxAbs) * 100)),
+      highlight: idx === curMonth,
+    }));
+  }, [state.transactions]);
+
+  const creditAgg = useMemo(() => {
+    const cards = state.creditCards.filter((c) => c.kind === "credito");
+    const totalLimit = roundMoney(cards.reduce((s, c) => s + c.creditLimit, 0));
+    const totalInvoice = roundMoney(cards.reduce((s, c) => s + c.currentInvoice, 0));
+    const pct = totalLimit > 0 ? Math.min(100, Math.round((totalInvoice / totalLimit) * 100)) : 0;
+    return { cards, totalLimit, totalInvoice, pct };
+  }, [state.creditCards]);
+
+  const financeScore = useMemo(() => {
+    let s = 520 + Math.round(portfolioCompletion * 2.8);
+    if (monthlyIncome > monthlyExpense) s += 35;
+    else s -= 15;
+    return Math.min(850, Math.max(300, s));
+  }, [portfolioCompletion, monthlyIncome, monthlyExpense]);
+
+  const currentCalendarYear = new Date().getFullYear();
+  const yearNetCur = useMemo(() => {
+    let sum = 0;
+    for (let m = 1; m <= 12; m++) {
+      sum += monthNet(state.transactions, `${currentCalendarYear}-${String(m).padStart(2, "0")}`);
+    }
+    return roundMoney(sum);
+  }, [state.transactions, currentCalendarYear]);
+
+  const yearNetPrev = useMemo(() => {
+    const y = currentCalendarYear - 1;
+    let sum = 0;
+    for (let m = 1; m <= 12; m++) {
+      sum += monthNet(state.transactions, `${y}-${String(m).padStart(2, "0")}`);
+    }
+    return roundMoney(sum);
+  }, [state.transactions, currentCalendarYear]);
+
+  const yearTrendPct = useMemo(() => {
+    if (yearNetPrev === 0) {
+      if (yearNetCur === 0) return null;
+      return yearNetCur > 0 ? 100 : -100;
+    }
+    return roundMoney(((yearNetCur - yearNetPrev) / Math.abs(yearNetPrev)) * 100);
+  }, [yearNetCur, yearNetPrev]);
+
+  const chartBars = balancePeriod === "month" ? monthlyBars : yearlyBars;
+  const balanceHeadline =
+    balancePeriod === "month" ? "Saldo total consolidado" : "Patrimônio total";
+  const balanceAmount = balancePeriod === "month" ? primaryBalance : totalWealth;
+
+  const goalTargetAmt = nextMilestoneGoal?.target ?? targetTotal;
+  const goalCurrentAmt = nextMilestoneGoal?.current ?? vestedTotal;
+  const goalPct =
+    goalTargetAmt > 0
+      ? Math.min(100, Math.round((goalCurrentAmt / goalTargetAmt) * 100))
+      : Math.min(100, Math.round(portfolioCompletion));
 
   const desktopInsightLine = useMemo(() => {
     const mes = new Intl.DateTimeFormat("pt-BR", { month: "long" }).format(new Date());
@@ -506,400 +594,435 @@ export function DashboardPage() {
         </section>
       </div>
 
-    <div className="relative hidden md:ml-[calc(50%-50vw)] md:flex md:h-[calc(100vh-7rem)] md:min-h-0 md:w-screen md:max-w-[100vw] md:overflow-hidden md:text-[13px] md:leading-snug dark:bg-slate-950">
-      {/* Painel esquerdo — saldo, resumo mensal e ações (compacto para 100% zoom) */}
-      <aside className="relative flex min-h-0 w-[min(272px,24vw)] max-w-[300px] shrink-0 flex-col overflow-hidden border-r border-primary-container bg-primary text-white">
-        <div className="pointer-events-none absolute -left-16 -top-16 h-48 w-48 rounded-full bg-primary-container opacity-20 blur-3xl" />
-        {/* Sem scroll: conteúdo compacto para caber na altura útil */}
-        <div className="relative z-10 flex min-h-0 flex-1 flex-col gap-3 overflow-hidden p-4 md:gap-3.5 md:p-4">
-          <section className="shrink-0">
-            <div className="mb-1.5 flex items-center gap-1.5 text-primary-fixed">
-              <span className="material-symbols-outlined text-sm">account_balance_wallet</span>
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-primary-fixed">
-                Saldo total disponível
-              </span>
+      <div className="relative hidden pb-12 md:block md:-mt-8">
+        <header className="sticky top-0 z-50 border-b border-slate-200 bg-white font-manrope tracking-tight shadow-[0px_4px_12px_rgba(0,40,85,0.05)] antialiased dark:border-slate-800 dark:bg-slate-950">
+          <div className="mx-auto flex h-20 max-w-[1440px] items-center justify-between px-8">
+            <div className="flex items-center gap-8">
+              <h1 className="text-2xl font-extrabold text-blue-900 dark:text-blue-100">Dashboard</h1>
+              <nav className="hidden items-center gap-6 lg:flex">
+                <NavLink
+                  to="/"
+                  end
+                  className={({ isActive }) =>
+                    [
+                      "pb-2 font-bold transition-colors",
+                      isActive
+                        ? "border-b-2 border-blue-900 text-blue-900 dark:border-blue-400 dark:text-blue-100"
+                        : "font-medium text-slate-500 hover:text-blue-800 dark:text-slate-400 dark:hover:text-blue-300",
+                    ].join(" ")
+                  }
+                >
+                  Resumo
+                </NavLink>
+                <NavLink
+                  to="/lancamentos"
+                  className={({ isActive }) =>
+                    [
+                      "pb-2 transition-colors",
+                      isActive
+                        ? "border-b-2 border-blue-900 pb-2 font-bold text-blue-900 dark:border-blue-400 dark:text-blue-100"
+                        : "font-medium text-slate-500 hover:text-blue-800 dark:text-slate-400 dark:hover:text-blue-300",
+                    ].join(" ")
+                  }
+                >
+                  Transações
+                </NavLink>
+                <NavLink
+                  to="/valores-a-receber"
+                  className={({ isActive }) =>
+                    [
+                      "pb-2 transition-colors",
+                      isActive
+                        ? "border-b-2 border-blue-900 pb-2 font-bold text-blue-900 dark:border-blue-400 dark:text-blue-100"
+                        : "font-medium text-slate-500 hover:text-blue-800 dark:text-slate-400 dark:hover:text-blue-300",
+                    ].join(" ")
+                  }
+                >
+                  Recebíveis
+                </NavLink>
+              </nav>
             </div>
-            <div className="space-y-1">
-              <h1 className="font-headline text-xl font-black tracking-tight text-white lg:text-2xl">
-                {formatBRL(primaryBalance)}
-              </h1>
-              <div className="flex flex-wrap items-center gap-1">
-                {balanceTrendVsPrevMonthPct !== null && Number.isFinite(balanceTrendVsPrevMonthPct) && (
-                  <span
-                    className={`flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
-                      balanceTrendVsPrevMonthPct >= 0
-                        ? "bg-emerald-400/10 text-emerald-400"
-                        : "bg-red-400/15 text-red-200"
-                    }`}
-                  >
-                    <span className="material-symbols-outlined mr-0.5 text-xs">
-                      {balanceTrendVsPrevMonthPct >= 0 ? "trending_up" : "trending_down"}
-                    </span>
-                    {balanceTrendVsPrevMonthPct >= 0 ? "+" : ""}
-                    {Math.round(balanceTrendVsPrevMonthPct * 10) / 10}%
-                  </span>
-                )}
-                <span className="text-[10px] leading-tight text-on-primary-container">
-                  em relação ao mês passado
+            <div className="flex items-center gap-4">
+              <div className="relative hidden sm:block">
+                <input
+                  className="focus:ring-primary-fixed w-64 rounded-full border-none bg-surface-container-low py-2 pl-10 pr-4 text-sm transition-all focus:ring-2 dark:bg-slate-800 dark:text-slate-100"
+                  placeholder="Buscar dados..."
+                  type="search"
+                  aria-label="Buscar"
+                />
+                <span className="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-outline dark:text-slate-400">
+                  search
                 </span>
               </div>
-            </div>
-          </section>
-
-          <section className="shrink-0 rounded-lg border border-white/10 bg-primary-container/35 px-2.5 py-2.5">
-            <div className="flex items-center gap-2">
-              <div className="min-w-0 flex-1">
-                <p className="text-[9px] font-bold uppercase tracking-widest text-white/65">Receita mensal</p>
-                <p className="font-headline text-base font-black tracking-tight text-emerald-300 tabular-nums">
-                  {formatBRL(monthlyIncome)}
-                </p>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  className="rounded-full p-2 text-slate-600 transition-colors hover:bg-slate-50 dark:text-slate-400 dark:hover:bg-slate-900"
+                  aria-label="Notificações"
+                >
+                  <span className="material-symbols-outlined">notifications</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => navigate("/lancamentos?novo=1")}
+                  className="flex items-center gap-2.5 rounded-xl border border-white/10 bg-primary px-5 py-2.5 text-[15px] font-semibold leading-none text-white shadow-[0_4px_14px_0_rgba(0,20,48,0.2)] transition-all duration-200 active:scale-[0.98]"
+                >
+                  <span className="material-symbols-outlined text-xl">add_circle</span>
+                  Novo lançamento
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDepositOpen(true)}
+                  className="flex items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-[15px] font-semibold leading-none text-primary shadow-sm transition-all duration-200 hover:bg-slate-50 active:scale-[0.98] dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
+                >
+                  <span className="material-symbols-outlined text-xl">account_balance</span>
+                  Depositar
+                </button>
               </div>
-              <div className="h-10 w-px shrink-0 bg-white/15" aria-hidden />
-              <div className="min-w-0 flex-1">
-                <p className="text-[9px] font-bold uppercase tracking-widest text-white/65">Despesa mensal</p>
-                <p className="font-headline text-base font-black tracking-tight text-red-300 tabular-nums">
-                  {formatBRL(monthlyExpense)}
-                </p>
+            </div>
+          </div>
+        </header>
+
+        <div className="mx-auto max-w-[1440px] px-8 pt-10">
+          <div className="grid grid-cols-12 gap-6">
+            <section className="col-span-12 overflow-hidden rounded-2xl border border-slate-100/50 bg-white shadow-[0px_4px_24px_rgba(0,40,85,0.08)] dark:border-slate-800 dark:bg-slate-900 lg:col-span-8">
+              <div className="flex flex-col justify-between gap-6 p-8 sm:flex-row sm:items-start">
+                <div>
+                  <p className="mb-3 text-[12px] font-semibold uppercase tracking-[0.05em] tracking-wider text-on-secondary-container opacity-70 dark:text-slate-400">
+                    {balanceHeadline}
+                  </p>
+                  <h2 className="font-headline text-4xl font-extrabold tracking-tight text-primary dark:text-slate-100 sm:text-5xl">
+                    {formatBRL(balanceAmount)}
+                  </h2>
+                  {(balancePeriod === "month"
+                    ? balanceTrendVsPrevMonthPct !== null && Number.isFinite(balanceTrendVsPrevMonthPct)
+                    : yearTrendPct !== null && Number.isFinite(yearTrendPct)) && (
+                    <p className="mt-3 flex items-center gap-1.5 text-sm font-bold text-green-600 dark:text-green-400">
+                      <span className="material-symbols-outlined text-sm font-bold">
+                        {(balancePeriod === "month"
+                          ? balanceTrendVsPrevMonthPct!
+                          : yearTrendPct!) >= 0
+                          ? "trending_up"
+                          : "trending_down"}
+                      </span>
+                      {(balancePeriod === "month"
+                        ? balanceTrendVsPrevMonthPct!
+                        : yearTrendPct!) >= 0
+                        ? "+"
+                        : ""}
+                      {Math.round(
+                        (balancePeriod === "month" ? balanceTrendVsPrevMonthPct! : yearTrendPct!) * 10
+                      ) / 10}
+                      %{" "}
+                      {balancePeriod === "month"
+                        ? "em relação ao mês anterior"
+                        : "fluxo líquido vs. ano anterior"}
+                    </p>
+                  )}
+                </div>
+                <div className="flex shrink-0 rounded-xl border border-slate-200/50 bg-surface-container-low p-1.5 dark:border-slate-600 dark:bg-slate-800">
+                  <button
+                    type="button"
+                    onClick={() => setBalancePeriod("month")}
+                    className={`rounded-lg px-5 py-2 text-sm font-semibold transition-colors ${
+                      balancePeriod === "month"
+                        ? "bg-white font-bold text-primary shadow-sm dark:bg-slate-900 dark:text-slate-100"
+                        : "text-on-secondary-container hover:text-primary dark:text-slate-400 dark:hover:text-slate-200"
+                    }`}
+                  >
+                    Mês
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBalancePeriod("year")}
+                    className={`rounded-lg px-5 py-2 text-sm font-semibold transition-colors ${
+                      balancePeriod === "year"
+                        ? "bg-white font-bold text-primary shadow-sm dark:bg-slate-900 dark:text-slate-100"
+                        : "text-on-secondary-container hover:text-primary dark:text-slate-400 dark:hover:text-slate-200"
+                    }`}
+                  >
+                    Ano
+                  </button>
+                </div>
               </div>
-              <button
-                type="button"
-                onClick={() => navigate("/lancamentos")}
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-white/25 bg-white/90 text-primary shadow-sm transition-colors hover:bg-white"
-                aria-label="Ver lançamentos e fluxo"
-              >
-                <span className="material-symbols-outlined text-[18px] text-on-surface-variant">show_chart</span>
-              </button>
-            </div>
-          </section>
+              <div className="px-8 pb-8">
+                <div className="group relative h-[320px] overflow-hidden rounded-2xl border border-slate-100 bg-gradient-to-br from-primary-container/10 via-surface-container-low to-primary-fixed/25 dark:border-slate-700 dark:from-primary-container/30 dark:to-slate-900">
+                  <div className="absolute inset-0 z-10 flex flex-col justify-end p-6">
+                    <div className="mb-4 w-fit rounded-xl border border-white/60 bg-white/40 p-4 shadow-sm backdrop-blur-md dark:border-slate-600 dark:bg-slate-950/50">
+                      <p className="text-xs font-bold uppercase tracking-tighter text-primary/60 dark:text-slate-400">
+                        {balancePeriod === "month" ? "Resumo mensal" : "Últimos 12 meses"}
+                      </p>
+                      <p className="line-clamp-2 text-lg font-bold text-primary dark:text-slate-100">
+                        {desktopInsightLine}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="absolute inset-x-10 bottom-12 top-24 flex items-end justify-between gap-1 opacity-90">
+                    {chartBars.map((bar, idx) => (
+                      <div
+                        key={idx}
+                        className="flex h-full max-h-[180px] min-h-[48px] w-full flex-col justify-end"
+                        title={`Fluxo líquido: ${formatBRL(bar.net)}`}
+                      >
+                        <div
+                          className={`w-full rounded-t-sm transition-colors ${
+                            bar.highlight
+                              ? "bg-primary shadow-[0_0_12px_rgba(0,61,107,0.25)] dark:bg-primary-fixed dark:shadow-none"
+                              : "bg-primary-container/35 dark:bg-slate-700"
+                          }`}
+                          style={{ height: `${bar.heightPct}%` }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-white/40 via-transparent to-transparent dark:from-slate-950/40" />
+                </div>
+              </div>
+            </section>
 
-          <section className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden">
-            <div className="flex shrink-0 items-center justify-between">
-              <span className="font-headline text-xs font-semibold text-white">Resumo mensal</span>
-              <button
-                type="button"
-                className="material-symbols-outlined text-sm text-primary-fixed opacity-80 hover:opacity-100"
-                aria-label="Opções do resumo"
-              >
-                more_horiz
-              </button>
-            </div>
-            <div className="flex min-h-[4.5rem] flex-1 items-end justify-between gap-1 rounded-md border border-white/5 bg-primary-container/45 p-2 md:min-h-[5rem]">
-              {monthlyBars.map((bar, idx) => (
-                <div
-                  key={idx}
-                  className={`w-full rounded-t-sm transition-colors ${
-                    bar.highlight
-                      ? "bg-primary-fixed shadow-[0_0_10px_rgba(215,226,255,0.22)]"
-                      : "bg-on-primary-container/20"
-                  }`}
-                  style={{ height: `${bar.heightPct}%` }}
-                  title={`Fluxo líquido: ${formatBRL(bar.net)}`}
-                />
-              ))}
-            </div>
-            <p className="line-clamp-2 shrink-0 text-[10px] italic leading-snug text-on-primary-container">
-              {desktopInsightLine}
-            </p>
-          </section>
+            <div className="col-span-12 flex flex-col gap-6 lg:col-span-4">
+              <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#001430] to-[#002855] p-8 text-white shadow-2xl">
+                <div className="relative z-10">
+                  <p className="mb-4 text-[12px] font-semibold uppercase tracking-[0.05em] tracking-widest text-white/60">
+                    Uso do cartão de crédito
+                  </p>
+                  <div className="mb-6 flex flex-wrap items-end gap-2">
+                    <span className="text-4xl font-bold tracking-tight">{formatBRL(creditAgg.totalInvoice)}</span>
+                    <span className="pb-1.5 text-sm font-medium text-white/40">
+                      / {formatBRL(creditAgg.totalLimit)}
+                    </span>
+                  </div>
+                  <div className="h-3 w-full overflow-hidden rounded-full border border-white/5 bg-white/10">
+                    <div
+                      className="h-full rounded-full bg-white shadow-[0_0_12px_rgba(255,255,255,0.4)]"
+                      style={{ width: `${creditAgg.pct}%` }}
+                    />
+                  </div>
+                  {creditAgg.cards.length === 0 && (
+                    <p className="mt-3 text-xs text-white/70">
+                      Cadastre um cartão de crédito para acompanhar o uso do limite.
+                    </p>
+                  )}
+                </div>
+                <span className="material-symbols-outlined pointer-events-none absolute -bottom-6 -right-6 text-[140px] text-white/5">
+                  credit_card
+                </span>
+              </div>
 
-          <div className="mt-auto shrink-0 space-y-1.5 border-t border-white/10 pt-3">
-            <button
-              type="button"
-              onClick={() => navigate("/lancamentos?novo=1")}
-              className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-primary-fixed py-2 text-xs font-semibold text-primary shadow-md shadow-black/15 transition-colors hover:bg-white active:scale-[0.99]"
-            >
-              <span className="material-symbols-outlined text-base">add_circle</span>
-              Novo lançamento
-            </button>
-            <button
-              type="button"
-              onClick={() => setDepositOpen(true)}
-              className="w-full rounded-lg border border-white/15 py-1.5 text-[11px] font-semibold text-primary-fixed transition-colors hover:bg-white/5"
-            >
-              Depositar na conta principal
-            </button>
-            <Link
-              to="/settings#saldo-real"
-              className="block text-center text-[10px] font-medium text-on-primary-container underline-offset-2 hover:text-white hover:underline"
-            >
-              Definir saldo real
+              <div className="flex flex-col justify-between rounded-2xl border border-blue-100/30 bg-white p-8 shadow-[0px_4px_12px_rgba(0,40,85,0.05)] dark:border-slate-700 dark:bg-slate-900">
+                <div>
+                  <div className="mb-4 flex justify-between">
+                    <p className="text-[12px] font-semibold uppercase tracking-[0.05em] tracking-wider text-on-secondary-fixed-variant dark:text-slate-400">
+                      {nextMilestoneGoal?.title ?? "Meta do portfólio"}
+                    </p>
+                    <span className="material-symbols-outlined text-primary/40 dark:text-slate-500">savings</span>
+                  </div>
+                  <p className="text-3xl font-extrabold text-primary dark:text-slate-100">
+                    {formatBRL(nextMilestoneGoal?.target ?? targetTotal)}
+                  </p>
+                </div>
+                <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex flex-col">
+                    <span className="text-xs font-medium text-on-secondary-container dark:text-slate-400">
+                      {goalPct}% da meta atingida
+                    </span>
+                    <div className="mt-2 h-1.5 w-32 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700">
+                      <div className="h-full rounded-full bg-primary dark:bg-blue-400" style={{ width: `${goalPct}%` }} />
+                    </div>
+                  </div>
+                  <Link
+                    className="text-xs font-bold text-primary underline underline-offset-4 dark:text-blue-300"
+                    to="/metas"
+                  >
+                    Ver detalhes
+                  </Link>
+                </div>
+              </div>
+            </div>
+
+            <section className="col-span-12 overflow-hidden rounded-xl border border-slate-100 bg-white shadow-[0px_4px_12px_rgba(0,40,85,0.05)] dark:border-slate-800 dark:bg-slate-900 lg:col-span-7">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 p-6 dark:border-slate-800">
+                <h3 className="font-headline text-xl font-semibold text-primary dark:text-slate-100">
+                  Transações recentes
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => navigate("/lancamentos")}
+                  className="text-sm font-semibold text-primary hover:underline dark:text-blue-300"
+                >
+                  Ver todas
+                </button>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-slate-50 text-left text-[12px] font-semibold uppercase tracking-[0.05em] text-outline dark:border-slate-800 dark:text-slate-400">
+                      <th className="px-6 py-4">Entidade / Categoria</th>
+                      <th className="px-6 py-4">Status</th>
+                      <th className="px-6 py-4">Data</th>
+                      <th className="px-6 py-4 text-right">Valor</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
+                    {recentDesktop.length === 0 ? (
+                      <tr>
+                        <td colSpan={4} className="px-6 py-10 text-center text-sm text-on-surface-variant dark:text-slate-400">
+                          Sem lançamentos recentes.
+                        </td>
+                      </tr>
+                    ) : (
+                      recentDesktop.slice(0, 8).map((t) => {
+                        const wrap = iconWrapForCategory(t.category, t.amount);
+                        const st = txnStatusBadge(t);
+                        return (
+                          <tr key={t.id} className="group transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/80">
+                            <td className="px-6 py-5">
+                              <div className="flex items-center gap-3">
+                                <div
+                                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 transition-colors group-hover:bg-primary group-hover:text-white dark:bg-slate-800 dark:group-hover:bg-blue-600 ${wrap}`}
+                                >
+                                  <span className="material-symbols-outlined text-lg">{t.icon}</span>
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="truncate text-sm font-bold text-primary dark:text-slate-100">
+                                    {t.description}
+                                  </p>
+                                  <p className="text-xs text-outline dark:text-slate-400">{t.category}</p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-6 py-5">
+                              <span
+                                className={`rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wider ${st.className}`}
+                              >
+                                {st.label}
+                              </span>
+                            </td>
+                            <td className="whitespace-nowrap px-6 py-5 text-sm text-outline dark:text-slate-400">
+                              {formatDateShort(t.date)}
+                            </td>
+                            <td
+                              className={`whitespace-nowrap px-6 py-5 text-right text-sm font-bold ${
+                                t.amount >= 0 ? "text-green-600 dark:text-green-400" : "text-error dark:text-red-400"
+                              }`}
+                            >
+                              {formatBRL(t.amount, { showSign: true })}
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
+            <section className="col-span-12 flex flex-col rounded-xl border border-slate-100 bg-white shadow-[0px_4px_12px_rgba(0,40,85,0.05)] dark:border-slate-800 dark:bg-slate-900 lg:col-span-5">
+              <div className="border-b border-slate-100 p-6 dark:border-slate-800">
+                <h3 className="font-headline text-xl font-semibold text-primary dark:text-slate-100">Saúde financeira</h3>
+              </div>
+              <div className="flex flex-1 flex-col justify-between p-6">
+                <div className="mb-8 flex flex-wrap items-center gap-6">
+                  <div className="relative flex h-24 w-24 shrink-0 items-center justify-center rounded-full border-8 border-primary border-t-primary-fixed dark:border-blue-700 dark:border-t-blue-300">
+                    <span className="text-xl font-bold text-primary dark:text-slate-100">{financeScore}</span>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-bold text-primary dark:text-slate-100">
+                      {portfolioCompletion >= 70 ? "Metas em bom ritmo" : "Há espaço para ajustes"}
+                    </p>
+                    <p className="text-sm text-outline dark:text-slate-400">
+                      Metas do portfólio em {portfolioCompletion}%
+                      {monthlyIncome > monthlyExpense ? " · fluxo mensal positivo." : " · revise despesas fixas."}
+                    </p>
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <Link
+                    to="/gastos-recorrentes"
+                    className="flex items-start gap-4 rounded-xl border border-blue-50 bg-surface-container-low p-4 transition-colors hover:bg-surface-container-high dark:border-slate-700 dark:bg-slate-800/80 dark:hover:bg-slate-800"
+                  >
+                    <span className="material-symbols-outlined mt-1 text-primary dark:text-blue-300">auto_awesome</span>
+                    <div>
+                      <p className="text-sm font-bold text-primary dark:text-slate-100">Gastos recorrentes</p>
+                      <p className="mt-1 text-xs text-on-secondary-container dark:text-slate-400">
+                        Revise assinaturas e compromissos fixos para liberar margem no mês.
+                      </p>
+                    </div>
+                  </Link>
+                  <div className="relative aspect-[16/7] overflow-hidden rounded-xl bg-gradient-to-br from-primary-container via-primary to-slate-900">
+                    <div className="absolute inset-0 flex items-center bg-gradient-to-r from-primary/85 to-transparent p-6">
+                      <div className="max-w-[60%]">
+                        <p className="text-sm font-bold text-white">Planeje o próximo ciclo</p>
+                        <p className="mt-1 text-[11px] text-white/85">
+                          Centralize metas e lançamentos para ver projeções mais claras.
+                        </p>
+                        <Link
+                          to="/metas"
+                          className="mt-3 inline-block rounded-lg bg-white px-3 py-1.5 text-[11px] font-bold uppercase text-primary"
+                        >
+                          Ver metas
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section className="col-span-12 grid grid-cols-1 gap-6 md:grid-cols-3">
+              <div className="flex items-center justify-between rounded-xl border border-slate-100 bg-white p-6 shadow-[0px_4px_12px_rgba(0,40,85,0.05)] dark:border-slate-800 dark:bg-slate-900">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-orange-100 text-orange-600 dark:bg-orange-950 dark:text-orange-300">
+                    <span className="material-symbols-outlined">currency_bitcoin</span>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-outline dark:text-slate-400">Bitcoin (BTC)</p>
+                    <p className="font-bold text-primary dark:text-slate-100">—</p>
+                  </div>
+                </div>
+                <span className="text-xs font-bold text-outline dark:text-slate-500">Ilustrativo</span>
+              </div>
+              <div className="flex items-center justify-between rounded-xl border border-slate-100 bg-white p-6 shadow-[0px_4px_12px_rgba(0,40,85,0.05)] dark:border-slate-800 dark:bg-slate-900">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 text-blue-600 dark:bg-blue-950 dark:text-blue-300">
+                    <span className="material-symbols-outlined">query_stats</span>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-outline dark:text-slate-400">Índice amplo (ref.)</p>
+                    <p className="font-bold text-primary dark:text-slate-100">—</p>
+                  </div>
+                </div>
+                <span className="text-xs font-bold text-outline dark:text-slate-500">Ilustrativo</span>
+              </div>
+              <div className="flex items-center justify-between rounded-xl border border-slate-100 bg-white p-6 shadow-[0px_4px_12px_rgba(0,40,85,0.05)] dark:border-slate-800 dark:bg-slate-900">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-300">
+                    <span className="material-symbols-outlined">paid</span>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-outline dark:text-slate-400">USD/BRL (ref.)</p>
+                    <p className="font-bold text-primary dark:text-slate-100">—</p>
+                  </div>
+                </div>
+                <span className="text-xs font-bold text-outline dark:text-slate-500">Ilustrativo</span>
+              </div>
+            </section>
+          </div>
+        </div>
+
+        <footer className="mx-auto mt-12 flex max-w-[1440px] flex-wrap items-center justify-between gap-4 px-8 text-[12px] text-outline dark:text-slate-400">
+          <p>© {new Date().getFullYear()} PayTrackr. Uso local dos seus dados.</p>
+          <div className="flex flex-wrap gap-6">
+            <Link className="transition-colors hover:text-primary dark:hover:text-blue-300" to="/settings">
+              Privacidade e dados
+            </Link>
+            <Link className="transition-colors hover:text-primary dark:hover:text-blue-300" to="/settings">
+              Configurações
             </Link>
           </div>
-        </div>
-      </aside>
+        </footer>
+      </div>
 
-      {/* Painel direito — scroll */}
-      <section className="custom-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto bg-surface-container-low dark:bg-slate-900/50">
-        <div className="mx-auto w-full max-w-[min(100%,920px)] space-y-6 px-4 py-5 pb-10 lg:space-y-7 lg:px-6 lg:py-6 xl:max-w-[960px]">
-          <section id="gestao-cartoes-desktop">
-            <div className="mb-3 flex flex-col gap-2 sm:mb-4 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-              <h2 className="font-headline text-lg font-semibold tracking-tight text-primary dark:text-slate-100 lg:text-xl">
-                Gestão de Cartões
-              </h2>
-              <div className="flex flex-wrap items-center gap-2 md:gap-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCardFormEditing(null);
-                    setCardFormOpen(true);
-                  }}
-                  className="flex items-center gap-1 rounded-md border border-secondary/40 bg-secondary-container/30 px-2 py-1.5 text-xs font-bold text-secondary transition-colors hover:bg-secondary-container/50 dark:border-emerald-800/40 dark:bg-emerald-950/40 dark:text-emerald-200 md:text-[13px]"
-                >
-                  <span className="material-symbols-outlined text-base">add_card</span>
-                  Incluir cartão
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setLimitsOpen(true)}
-                  disabled={state.creditCards.length === 0}
-                  className="flex items-center gap-1 text-xs font-semibold text-secondary hover:underline disabled:pointer-events-none disabled:opacity-40 dark:text-emerald-300 md:text-[13px]"
-                >
-                  Ver todos os limites
-                  <span className="material-symbols-outlined text-sm">arrow_forward</span>
-                </button>
-              </div>
-            </div>
-            {state.creditCards.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-outline-variant/40 bg-white p-6 text-center shadow-[0px_4px_12px_rgba(0,40,85,0.05)] dark:border-slate-600 dark:bg-slate-800/80 md:p-8">
-                <p className="mb-4 text-on-surface-variant dark:text-slate-400">
-                  Nenhum cartão cadastrado. Inclua os seus para acompanhar fatura, vencimento e limite.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCardFormEditing(null);
-                    setCardFormOpen(true);
-                  }}
-                  className="rounded-lg bg-primary px-5 py-2.5 text-sm font-bold text-white"
-                >
-                  Incluir primeiro cartão
-                </button>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5">
-                {carouselCreditCards.map((c) => (
-                  <DashboardCreditCardTile
-                    key={c.id}
-                    card={c}
-                    onEdit={() => {
-                      setCardFormEditing(c);
-                      setCardFormOpen(true);
-                    }}
-                    onTryDelete={() => {
-                      if (confirm(`Remover o cartão "${c.name}"?`)) deleteCreditCard(c.id);
-                    }}
-                  />
-                ))}
-              </div>
-            )}
-          </section>
-
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:gap-8 xl:gap-10">
-            <section className="space-y-3 lg:col-span-1">
-              <h2 className="font-headline text-lg font-semibold tracking-tight text-primary dark:text-slate-100 lg:text-xl">
-                Contas
-              </h2>
-              <div className="divide-y divide-slate-100 overflow-hidden rounded-xl bg-white shadow-[0px_4px_12px_rgba(0,40,85,0.05)] dark:divide-slate-700 dark:bg-slate-800/60">
-                {state.accounts.map((acc) => (
-                  <button
-                    key={acc.id}
-                    type="button"
-                    onClick={() => setEditAccountId(acc.id)}
-                    className="group flex w-full cursor-pointer items-center justify-between px-3 py-2.5 text-left transition-colors hover:bg-slate-50 dark:hover:bg-slate-700/50 md:px-3.5 md:py-3"
-                  >
-                    <div className="flex min-w-0 items-center gap-2 md:gap-2.5">
-                      <div
-                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full md:h-9 md:w-9 ${
-                          acc.icon === "account_balance"
-                            ? "bg-blue-50 text-blue-900 dark:bg-blue-950 dark:text-blue-200"
-                            : acc.icon === "savings"
-                              ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
-                              : "bg-violet-50 text-violet-800 dark:bg-violet-950 dark:text-violet-200"
-                        }`}
-                      >
-                        <span className="material-symbols-outlined text-lg md:text-xl">{acc.icon}</span>
-                      </div>
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold text-primary dark:text-slate-100">{acc.name}</p>
-                        <p className="text-xs text-outline dark:text-slate-400">{accountSubtitleMobile(acc)}</p>
-                      </div>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-1 pl-2 text-right">
-                      <p className="text-sm font-semibold tabular-nums text-primary dark:text-slate-100">
-                        {formatBRL(acc.balance)}
-                      </p>
-                      <span className="material-symbols-outlined text-outline transition-transform group-hover:translate-x-0.5 dark:text-slate-500">
-                        chevron_right
-                      </span>
-                    </div>
-                  </button>
-                ))}
-                {state.creditCards
-                  .filter((c) => c.kind === "beneficios")
-                  .map((card) => (
-                    <Link
-                      key={card.id}
-                      to={`/cartao/${card.id}`}
-                      className="group flex items-center justify-between px-3 py-2.5 transition-colors hover:bg-slate-50 dark:hover:bg-slate-700/50 md:px-3.5 md:py-3"
-                    >
-                      <div className="flex min-w-0 items-center gap-2 md:gap-2.5">
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-teal-50 text-teal-800 dark:bg-teal-950 dark:text-teal-200 md:h-9 md:w-9">
-                          <span className="material-symbols-outlined text-lg md:text-xl">restaurant</span>
-                        </div>
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold text-primary dark:text-slate-100">{card.name}</p>
-                          <p className="text-xs text-outline dark:text-slate-400">Cartão de benefícios</p>
-                        </div>
-                      </div>
-                      <div className="flex shrink-0 items-center gap-1 pl-2 text-right">
-                        <p className="text-sm font-semibold tabular-nums text-primary dark:text-slate-100">
-                          {formatBRL(benefitBucketsTotal(card))}
-                        </p>
-                        <span className="material-symbols-outlined text-outline transition-transform group-hover:translate-x-0.5 dark:text-slate-500">
-                          chevron_right
-                        </span>
-                      </div>
-                    </Link>
-                  ))}
-              </div>
-              <button
-                type="button"
-                onClick={() => navigate("/settings")}
-                className="flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-slate-200 py-2 text-xs font-semibold text-outline transition-all hover:border-primary-container hover:text-primary dark:border-slate-600 dark:text-slate-400 dark:hover:border-blue-400 dark:hover:text-blue-200 md:py-2.5 md:text-[13px]"
-              >
-                <span className="material-symbols-outlined text-lg md:text-xl">link</span>
-                Conectar nova conta
-              </button>
-            </section>
-
-            <section className="space-y-3 lg:col-span-2">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <h2 className="font-headline text-lg font-semibold tracking-tight text-primary dark:text-slate-100 lg:text-xl">
-                  Extrato recente
-                </h2>
-                <div className="flex gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => navigate("/lancamentos")}
-                    className="rounded-md border border-outline-variant p-1.5 transition-colors hover:bg-white dark:border-slate-600 dark:hover:bg-slate-800 md:p-2"
-                    aria-label="Filtrar lançamentos"
-                  >
-                    <span className="material-symbols-outlined text-lg text-on-surface-variant dark:text-slate-300 md:text-xl">
-                      filter_list
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => exportBackup()}
-                    className="rounded-md border border-outline-variant p-1.5 transition-colors hover:bg-white dark:border-slate-600 dark:hover:bg-slate-800 md:p-2"
-                    aria-label="Exportar backup"
-                  >
-                    <span className="material-symbols-outlined text-lg text-on-surface-variant dark:text-slate-300 md:text-xl">
-                      download
-                    </span>
-                  </button>
-                </div>
-              </div>
-
-              <div className="overflow-hidden rounded-xl bg-white shadow-[0px_4px_12px_rgba(0,40,85,0.05)] dark:bg-slate-800/60">
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[520px] border-collapse text-left text-[13px]">
-                    <thead className="border-b border-slate-100 bg-surface-container-low dark:border-slate-700 dark:bg-slate-900/80">
-                      <tr>
-                        <th className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-outline dark:text-slate-400 md:px-4 md:py-2.5">
-                          Transação
-                        </th>
-                        <th className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-outline dark:text-slate-400 md:px-4 md:py-2.5">
-                          Categoria
-                        </th>
-                        <th className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-outline dark:text-slate-400 md:px-4 md:py-2.5">
-                          Data
-                        </th>
-                        <th className="px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-outline dark:text-slate-400 md:px-4 md:py-2.5">
-                          Valor
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-50 dark:divide-slate-700/80">
-                      {recentDesktop.length === 0 ? (
-                        <tr>
-                          <td colSpan={4} className="px-4 py-8 text-center text-xs text-on-surface-variant md:text-sm">
-                            Sem lançamentos. Inclua movimentações em Lançamentos.
-                          </td>
-                        </tr>
-                      ) : (
-                        recentDesktop.map((t) => {
-                          const wrap = iconWrapForCategory(t.category, t.amount);
-                          return (
-                            <tr key={t.id} className="transition-colors hover:bg-slate-50 dark:hover:bg-slate-700/40">
-                              <td className="px-3 py-2 md:px-4 md:py-2.5">
-                                <div className="flex min-w-0 items-center gap-2 md:gap-2.5">
-                                  <div
-                                    className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md md:h-8 md:w-8 ${wrap}`}
-                                  >
-                                    <span className="material-symbols-outlined text-base md:text-lg">{t.icon}</span>
-                                  </div>
-                                  <div className="min-w-0">
-                                    <p className="truncate text-[13px] font-medium text-primary dark:text-slate-100">
-                                      {t.description}
-                                    </p>
-                                    {t.paymentAttachmentDataUrl && (
-                                      <a
-                                        href={t.paymentAttachmentDataUrl}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="mt-0.5 inline-flex items-center gap-0.5 text-[11px] font-semibold text-secondary hover:underline"
-                                      >
-                                        <span className="material-symbols-outlined text-xs">attach_file</span>
-                                        Comprovante
-                                      </a>
-                                    )}
-                                  </div>
-                                </div>
-                              </td>
-                              <td className="px-3 py-2 md:px-4 md:py-2.5">
-                                <span
-                                  className={`inline-flex max-w-[132px] truncate px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider md:max-w-[150px] md:px-2.5 md:text-[10px] ${
-                                    t.amount >= 0
-                                      ? "rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200"
-                                      : categoryPillClass(t.category)
-                                  }`}
-                                >
-                                  {t.amount >= 0 ? "Receita" : t.category}
-                                </span>
-                              </td>
-                              <td className="whitespace-nowrap px-3 py-2 text-[12px] text-outline dark:text-slate-400 md:px-4 md:py-2.5 md:text-[13px]">
-                                {formatDateTimeShort(t.date + "T12:00:00")}
-                              </td>
-                              <td
-                                className={`whitespace-nowrap px-3 py-2 text-right text-[13px] font-bold md:px-4 md:py-2.5 ${
-                                  t.amount >= 0 ? "text-secondary dark:text-emerald-400" : "text-error dark:text-red-400"
-                                }`}
-                              >
-                                {formatBRL(t.amount, { showSign: true })}
-                              </td>
-                            </tr>
-                          );
-                        })
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-                <div className="border-t border-slate-50 p-2.5 text-center dark:border-slate-700 md:p-3">
-                  <button
-                    type="button"
-                    onClick={() => navigate("/lancamentos")}
-                    className="font-headline text-xs font-semibold text-blue-950 hover:underline dark:text-blue-300 md:text-[13px]"
-                  >
-                    Carregar mais transações
-                  </button>
-                </div>
-              </div>
-            </section>
-          </div>
-        </div>
-      </section>
-    </div>
     </Fragment>
   );
 }

@@ -741,7 +741,7 @@ export function DashboardPage() {
 
         <div className="mx-auto max-w-[1440px] px-5 pt-5">
           <div className="grid grid-cols-12 gap-4">
-            <section className="col-span-12 overflow-hidden rounded-xl border border-slate-100/50 bg-white shadow-[0px_4px_24px_rgba(0,40,85,0.08)] dark:border-slate-800 dark:bg-slate-900 lg:col-span-8">
+            <section className="col-span-12 overflow-hidden rounded-xl border border-slate-100/50 bg-white shadow-[0px_4px_24px_rgba(0,40,85,0.08)] dark:border-slate-800 dark:bg-slate-900 lg:col-span-7">
               <div className="flex flex-col justify-between gap-4 p-4 sm:flex-row sm:items-start sm:p-5">
                 <div className="min-w-0">
                   <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.06em] text-on-secondary-container opacity-75 dark:text-slate-400">
@@ -836,7 +836,7 @@ export function DashboardPage() {
               </div>
             </section>
 
-            <div className="col-span-12 flex flex-col gap-4 lg:col-span-4">
+            <div className="col-span-12 flex flex-col gap-4 lg:col-span-5">
               <section className="rounded-xl border border-slate-100/80 bg-white p-3 shadow-[0px_4px_12px_rgba(0,40,85,0.05)] dark:border-slate-700 dark:bg-slate-900">
                 <div className="mb-2 flex flex-col gap-1.5 border-b border-slate-100 pb-2 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
                   <h3 className="font-headline text-sm font-semibold tracking-tight text-primary dark:text-slate-100">

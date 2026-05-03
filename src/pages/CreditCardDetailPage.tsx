@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
+import { AttachmentPreviewModal } from "../components/AttachmentPreviewModal";
 import { CardBrandLogo } from "../components/CardBrandLogo";
 import { CreditCardStatementModal } from "../components/CreditCardStatementModal";
 import { CreditCardThirdPartyModal } from "../components/CreditCardThirdPartyModal";
@@ -13,6 +14,8 @@ import {
   formatCardBillingDayLabel,
   formatDateShort,
   formatNextClosingShort,
+  formatStatementInvoiceCyclePt,
+  statementInvoiceCycleIsoRange,
 } from "../domain/money";
 import type { CreditCardStatement, Transaction } from "../domain/types";
 
@@ -64,6 +67,7 @@ export function CreditCardDetailPage() {
     amount: number;
   } | null>(null);
   const [invoiceCutDate, setInvoiceCutDate] = useState(() => firstDayOfMonthIso());
+  const [attachmentPreview, setAttachmentPreview] = useState<{ dataUrl: string; name: string } | null>(null);
 
   const cardTxns = useMemo(() => {
     if (!cardId) return [];
@@ -191,12 +195,19 @@ export function CreditCardDetailPage() {
           if (thirdPartyTxn) patchTransaction(thirdPartyTxn.id, { thirdPartyName: name });
         }}
       />
+      <AttachmentPreviewModal
+        open={attachmentPreview !== null}
+        onClose={() => setAttachmentPreview(null)}
+        dataUrl={attachmentPreview?.dataUrl ?? null}
+        fileName={attachmentPreview?.name ?? null}
+      />
       <CreditCardStatementModal
         open={statementOpen}
         creditCardId={card.id}
         enableStatementAi={isCredito}
         editing={statementEditing}
         prefill={statementEditing ? null : statementPrefill}
+        invoiceClosingDay={card.closingDay}
         onClose={() => {
           setStatementOpen(false);
           setStatementEditing(null);
@@ -454,7 +465,12 @@ export function CreditCardDetailPage() {
           {isCredito ? (
             <>
               <div className="flex flex-col rounded-xl border border-surface-container bg-white p-4 shadow-[0px_4px_12px_rgba(0,40,85,0.05)] dark:border-slate-700 dark:bg-slate-900">
-                <h3 className="mb-2 shrink-0 font-headline text-base font-semibold text-primary">Histórico de faturas</h3>
+                <h3 className="mb-0.5 shrink-0 font-headline text-base font-semibold text-primary">Histórico de faturas</h3>
+                <p className="mb-2 text-[9px] leading-tight text-slate-500 dark:text-slate-400">
+                  O período de cada fatura segue o dia de fechamento do cartão (compras do dia seguinte ao fechamento do
+                  mês anterior até o dia do fechamento no mês de referência). Confira as datas em cada fatura
+                  arquivada.
+                </p>
                 <div className="flex h-[112px] shrink-0 items-end justify-between gap-1.5 px-1">
                   {invoiceBars.map((bar) => {
                     const barH = Math.max(Math.round((bar.heightPct / 100) * 96), 8);
@@ -562,7 +578,9 @@ export function CreditCardDetailPage() {
             </p>
           ) : (
           <div className="custom-scrollbar flex gap-2 overflow-x-auto pb-1">
-            {statements.map((s) => (
+            {statements.map((s) => {
+              const cycle = statementInvoiceCycleIsoRange(s.referenceMonth, card.closingDay);
+              return (
               <div
                 key={s.id}
                 className="w-[min(100%,240px)] shrink-0 rounded-lg border border-outline-variant/15 bg-surface-container-lowest p-3 dark:border-slate-700 dark:bg-slate-800/80"
@@ -573,6 +591,11 @@ export function CreditCardDetailPage() {
                       {monthLabel(s.referenceMonth)}
                     </p>
                     <p className="mt-0.5 font-headline text-sm font-bold tabular-nums text-primary dark:text-slate-100">{formatBRL(s.amount)}</p>
+                    {cycle ? (
+                      <p className="mt-1 text-[9px] leading-tight text-slate-500 dark:text-slate-400">
+                        Período: {formatStatementInvoiceCyclePt(cycle)}
+                      </p>
+                    ) : null}
                   </div>
                   <span
                     className={`shrink-0 rounded-full px-2 py-1 font-label text-[10px] font-semibold uppercase ${
@@ -587,14 +610,29 @@ export function CreditCardDetailPage() {
                 {s.note ? <p className="mb-1 text-[10px] text-slate-600 dark:text-slate-400">{s.note}</p> : null}
                 <div className="flex flex-wrap gap-1.5 border-t border-outline-variant/10 pt-2 dark:border-slate-600">
                   {s.attachmentDataUrl ? (
-                    <a
-                      href={s.attachmentDataUrl}
-                      download={s.attachmentName ?? "fatura"}
-                      className="flex items-center text-[11px] font-semibold text-primary hover:underline"
-                    >
-                      <span className="material-symbols-outlined mr-1 text-base">attach_file</span>
-                      Anexo
-                    </a>
+                    <>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setAttachmentPreview({
+                            dataUrl: s.attachmentDataUrl!,
+                            name: s.attachmentName ?? "fatura",
+                          })
+                        }
+                        className="flex items-center text-[11px] font-semibold text-primary hover:underline dark:text-blue-300"
+                      >
+                        <span className="material-symbols-outlined mr-0.5 text-sm">visibility</span>
+                        Ver anexo
+                      </button>
+                      <a
+                        href={s.attachmentDataUrl}
+                        download={s.attachmentName ?? "fatura"}
+                        className="flex items-center text-[11px] font-semibold text-primary hover:underline"
+                      >
+                        <span className="material-symbols-outlined mr-0.5 text-sm">download</span>
+                        Baixar
+                      </a>
+                    </>
                   ) : null}
                   <button
                     type="button"
@@ -618,7 +656,8 @@ export function CreditCardDetailPage() {
                   </button>
                 </div>
               </div>
-            ))}
+            );
+            })}
           </div>
           )}
         </section>

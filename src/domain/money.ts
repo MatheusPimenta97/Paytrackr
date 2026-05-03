@@ -118,6 +118,57 @@ export function calendarDateForBillingDayInMonth(
   return new Date(year, monthIndex, d, 12, 0, 0, 0);
 }
 
+function toIsoDateLocal(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/**
+ * Ciclo de fatura do `referenceMonth` (YYYY-MM): do dia **(fechamento + 1)** do mês anterior
+ * até o **dia de fechamento** deste mês (inclusive). Ex.: fechamento 7 → 8 do mês anterior a 7 do mês de referência.
+ */
+export function statementInvoiceCycleIsoRange(
+  referenceMonth: string,
+  closingDay: number
+): { startIso: string; endIso: string } | null {
+  const m = /^(\d{4})-(\d{2})$/.exec(referenceMonth.trim());
+  if (!m) return null;
+  const y = Number(m[1]);
+  const mo = Number(m[2]);
+  if (!y || mo < 1 || mo > 12) return null;
+  const monthIndex = mo - 1;
+  const end = calendarDateForBillingDayInMonth(y, monthIndex, closingDay);
+  let py = y;
+  let pmIdx = monthIndex - 1;
+  if (pmIdx < 0) {
+    py -= 1;
+    pmIdx = 11;
+  }
+  const prevClose = calendarDateForBillingDayInMonth(py, pmIdx, closingDay);
+  const start = new Date(prevClose);
+  start.setDate(start.getDate() + 1);
+  start.setHours(12, 0, 0, 0);
+  return { startIso: toIsoDateLocal(start), endIso: toIsoDateLocal(end) };
+}
+
+/** Rótulo curto do período da fatura em pt-BR. */
+export function formatStatementInvoiceCyclePt(range: { startIso: string; endIso: string }): string {
+  const a = new Date(range.startIso + "T12:00:00");
+  const b = new Date(range.endIso + "T12:00:00");
+  return `${a.toLocaleDateString("pt-BR")} – ${b.toLocaleDateString("pt-BR")}`;
+}
+
+/** `txnDate` em YYYY-MM-DD pertence ao ciclo da fatura de `referenceMonth`? */
+export function transactionInStatementInvoiceCycle(
+  txnDateIso: string,
+  referenceMonth: string,
+  closingDay: number
+): boolean {
+  const r = statementInvoiceCycleIsoRange(referenceMonth, closingDay);
+  if (!r) return false;
+  const d = txnDateIso.slice(0, 10);
+  return d >= r.startIso && d <= r.endIso;
+}
+
 export function creditCardDueDateThisMonth(dueDay: number, now = new Date()): Date {
   return calendarDateForBillingDayInMonth(now.getFullYear(), now.getMonth(), dueDay);
 }

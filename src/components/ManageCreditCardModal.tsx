@@ -314,7 +314,12 @@ export function ManageCreditCardModal({ open, onClose, editing }: Props) {
                   placeholder="Ex.: 3"
                   className="w-full rounded-lg border border-outline-variant/30 bg-white px-3 py-2 text-sm"
                 />
-                <p className="mt-1 text-[10px] text-on-surface-variant">Dia do mês em que fecha a fatura.</p>
+                <p className="mt-1 text-[10px] leading-snug text-on-surface-variant">
+                  Último dia em que entram compras nessa fatura. O ciclo é do dia{" "}
+                  <strong className="text-on-surface">(fechamento + 1)</strong> do mês anterior até o{" "}
+                  <strong className="text-on-surface">dia do fechamento</strong> deste mês (ex.: fechamento 7 → de 8
+                  do mês anterior a 7 do mês de referência).
+                </p>
               </div>
               <div>
                 <label className="mb-1 block text-xs font-bold text-on-surface-variant">

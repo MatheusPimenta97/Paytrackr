@@ -100,7 +100,7 @@ export function defaultCreditCards(): CreditCard[] {
       name: "Infinite Black",
       last4: "8821",
       currentInvoice: 8240.5,
-      closingDay: 1,
+      closingDay: 7,
       dueDay: 8,
       creditLimit: 25000,
       benefitBalances: { refeicao: 0, alimentacao: 0, mobilidade: 0 },

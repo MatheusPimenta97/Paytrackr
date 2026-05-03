@@ -1,6 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { parseMoneyInput } from "../domain/money";
+import {
+  formatStatementInvoiceCyclePt,
+  parseMoneyInput,
+  statementInvoiceCycleIsoRange,
+} from "../domain/money";
 import type { CreditCardStatement, CreditCardStatementStatus } from "../domain/types";
+import { AttachmentPreviewModal } from "./AttachmentPreviewModal";
 import { StatementAiPreviewModal } from "./StatementAiPreviewModal";
 import {
   analyzeCreditCardStatementDocument,
@@ -28,6 +33,8 @@ type Props = {
   editing: CreditCardStatement | null;
   /** Preenche mês e valor ao abrir (ex.: fatura atual do cartão) */
   prefill?: { referenceMonth: string; amount: number } | null;
+  /** Último dia do ciclo (ex.: 7 → compras do dia 8 do mês anterior até o 7 deste mês). */
+  invoiceClosingDay?: number;
   onClose: () => void;
   onSave: (data: CreditCardStatementFormData) => void;
 };
@@ -38,6 +45,7 @@ export function CreditCardStatementModal({
   enableStatementAi = false,
   editing,
   prefill,
+  invoiceClosingDay = 7,
   onClose,
   onSave,
 }: Props) {
@@ -57,6 +65,7 @@ export function CreditCardStatementModal({
   const [aiMarkdown, setAiMarkdown] = useState("");
   const [aiGuess, setAiGuess] = useState<number | null>(null);
   const [aiSuggestions, setAiSuggestions] = useState<StatementAiSuggestedTxn[]>([]);
+  const [attachmentPreviewOpen, setAttachmentPreviewOpen] = useState(false);
 
   const statementAiAvailable =
     enableStatementAi &&
@@ -97,9 +106,12 @@ export function CreditCardStatementModal({
     setAiMarkdown("");
     setAiGuess(null);
     setAiSuggestions([]);
+    setAttachmentPreviewOpen(false);
   }, [open, editing, prefill]);
 
   if (!open) return null;
+
+  const cycleForMonth = statementInvoiceCycleIsoRange(month, invoiceClosingDay);
 
   function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     setError(null);
@@ -185,6 +197,12 @@ export function CreditCardStatementModal({
 
   return (
     <div className="fixed inset-0 z-[130] flex items-end justify-center bg-primary/40 p-4 sm:items-center">
+      <AttachmentPreviewModal
+        open={attachmentPreviewOpen}
+        onClose={() => setAttachmentPreviewOpen(false)}
+        dataUrl={attachmentDataUrl}
+        fileName={attachmentName}
+      />
       <StatementAiPreviewModal
         open={aiPreviewOpen}
         creditCardId={creditCardId}
@@ -213,6 +231,16 @@ export function CreditCardStatementModal({
               onChange={(e) => setMonth(e.target.value)}
               className="w-full rounded-lg bg-surface-container-high px-3 py-2 text-sm"
             />
+            {cycleForMonth ? (
+              <p className="mt-1.5 rounded-lg border border-outline-variant/20 bg-surface-container/60 px-2 py-1.5 text-[10px] leading-snug text-on-surface-variant dark:border-slate-700 dark:bg-slate-800/60">
+                <span className="font-bold text-primary dark:text-slate-200">Período da fatura:</span>{" "}
+                {formatStatementInvoiceCyclePt(cycleForMonth)}
+                <span className="mt-0.5 block text-on-surface-variant/85">
+                  Compras do dia seguinte ao fechamento do mês anterior até o dia {invoiceClosingDay} deste mês
+                  (fechamento do cartão).
+                </span>
+              </p>
+            ) : null}
           </div>
           <div>
             <label className="mb-1 block text-xs font-bold text-on-surface-variant">Valor total (R$)</label>
@@ -257,11 +285,20 @@ export function CreditCardStatementModal({
             <label className="mb-1 block text-xs font-bold text-on-surface-variant">Comprovante (opcional)</label>
             <input ref={fileRef} type="file" accept="application/pdf,image/*" className="text-xs" onChange={onFile} />
             {attachmentName && (
-              <p className="mt-1 text-[11px] text-on-surface-variant">
-                Anexo: {attachmentName}{" "}
+              <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-on-surface-variant">
+                <span className="truncate">Anexo: {attachmentName}</span>
+                {attachmentDataUrl ? (
+                  <button
+                    type="button"
+                    className="shrink-0 font-bold text-primary hover:underline dark:text-blue-300"
+                    onClick={() => setAttachmentPreviewOpen(true)}
+                  >
+                    Ver
+                  </button>
+                ) : null}
                 <button
                   type="button"
-                  className="font-bold text-error"
+                  className="shrink-0 font-bold text-error"
                   onClick={() => {
                     setAttachmentDataUrl(null);
                     setAttachmentName(null);

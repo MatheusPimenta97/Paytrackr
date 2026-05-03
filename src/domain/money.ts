@@ -188,6 +188,19 @@ export function referenceMonthForCardTransaction(txnDateIso: string, closingDay:
   return null;
 }
 
+/**
+ * Mês de referência para gráfico / agrupamento por fatura: se o lançamento veio da importação
+ * por IA com `statementReferenceMonth` (YYYY-MM), usa esse mês; senão, deduz pela data + fechamento.
+ */
+export function chartReferenceMonthForCardTransaction(
+  t: { date: string; statementReferenceMonth?: string | null },
+  closingDay: number,
+): string | null {
+  const m = t.statementReferenceMonth;
+  if (typeof m === "string" && /^\d{4}-\d{2}$/.test(m.trim())) return m.trim();
+  return referenceMonthForCardTransaction(t.date, closingDay);
+}
+
 export function creditCardDueDateThisMonth(dueDay: number, now = new Date()): Date {
   return calendarDateForBillingDayInMonth(now.getFullYear(), now.getMonth(), dueDay);
 }

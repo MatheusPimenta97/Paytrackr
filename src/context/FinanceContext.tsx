@@ -212,18 +212,28 @@ function normalizeTransactions(raw: unknown[]): Transaction[] {
       t.benefitBucket != null && isBenefitBucket(t.benefitBucket) ? t.benefitBucket : null;
     const amount = typeof t.amount === "number" && Number.isFinite(t.amount) ? t.amount : 0;
     const pay = sanitizeTxnPaymentFields(t, { creditCardId, amount });
-    const { boletoAttachmentDataUrl: _b, boletoAttachmentName: _bn, ...rest } = t;
+    const {
+      boletoAttachmentDataUrl: _b,
+      boletoAttachmentName: _bn,
+      statementReferenceMonth: _srmRaw,
+      ...rest
+    } = t;
     const thirdPartyName =
       typeof t.thirdPartyName === "string" && t.thirdPartyName.trim()
         ? t.thirdPartyName.trim().slice(0, 120)
         : null;
     const skipCardInvoiceDelta = t.skipCardInvoiceDelta === true ? true : undefined;
+    const statementReferenceMonth =
+      typeof t.statementReferenceMonth === "string" && /^\d{4}-\d{2}$/.test(t.statementReferenceMonth.trim())
+        ? t.statementReferenceMonth.trim()
+        : undefined;
     return {
       ...(rest as Transaction),
       creditCardId,
       benefitBucket,
       thirdPartyName,
       skipCardInvoiceDelta,
+      ...(statementReferenceMonth ? { statementReferenceMonth } : {}),
       ...pay,
     };
   });

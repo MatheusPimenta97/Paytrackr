@@ -15,7 +15,7 @@ import {
   formatDateShort,
   formatNextClosingShort,
   formatStatementInvoiceCyclePt,
-  referenceMonthForCardTransaction,
+  chartReferenceMonthForCardTransaction,
   statementInvoiceCycleIsoRange,
 } from "../domain/money";
 import type { CreditCardStatement, Transaction } from "../domain/types";
@@ -114,7 +114,7 @@ export function CreditCardDetailPage() {
     if (!card || card.kind !== "credito") return map;
     const closing = card.closingDay;
     for (const t of cardTxns) {
-      const ref = referenceMonthForCardTransaction(t.date, closing);
+      const ref = chartReferenceMonthForCardTransaction(t, closing);
       if (!ref) continue;
       map.set(ref, (map.get(ref) ?? 0) + t.amount);
     }
@@ -181,13 +181,8 @@ export function CreditCardDetailPage() {
 
   const invoiceDetailCycleTxns = useMemo(() => {
     if (!invoiceDetailYm || !card || card.kind !== "credito") return [];
-    const r = statementInvoiceCycleIsoRange(invoiceDetailYm, card.closingDay);
-    if (!r) return [];
     return cardTxns
-      .filter((t) => {
-        const day = t.date.slice(0, 10);
-        return day >= r.startIso && day <= r.endIso;
-      })
+      .filter((t) => chartReferenceMonthForCardTransaction(t, card.closingDay) === invoiceDetailYm)
       .sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
   }, [invoiceDetailYm, card, cardTxns]);
 

@@ -121,6 +121,9 @@ export function StatementAiPreviewModal({
         paymentAttachmentDataUrl: null,
         paymentAttachmentName: null,
         thirdPartyName: null,
+        statementReferenceMonth: /^\d{4}-\d{2}$/.test(statementReferenceMonth)
+          ? statementReferenceMonth
+          : null,
         /**
          * Fora do período do mês escolhido, ou fatura já fechada (fim do ciclo antes de hoje) → só histórico.
          * Dentro do período do mês atual em aberto → entra na fatura aberta e no gráfico.
@@ -157,8 +160,8 @@ export function StatementAiPreviewModal({
             Confira cada linha. Datas <strong className="text-on-surface dark:text-slate-200">dentro</strong> desse
             período e fatura ainda em aberto entram na <strong className="text-on-surface dark:text-slate-200">fatura
             atual</strong>. Fora do período, ou se o ciclo já terminou, ficam como{" "}
-            <strong className="text-on-surface dark:text-slate-200">só histórico</strong> (continuam no gráfico por
-            mês).
+            <strong className="text-on-surface dark:text-slate-200">só histórico</strong> (no gráfico da fatura,
+            tudo fica no mês que você escolheu para esta importação).
           </p>
         </div>
 

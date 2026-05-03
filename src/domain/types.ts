@@ -37,6 +37,12 @@ export type Transaction = {
    * `currentInvoice` (ex.: linhas de fatura passada importadas pela IA).
    */
   skipCardInvoiceDelta?: boolean;
+  /**
+   * Mês YYYY-MM da fatura informado ao importar por IA — usado no gráfico "Histórico de faturas"
+   * e no detalhe do mês, para não espalhar linhas do ciclo em vários meses quando o usuário
+   * escolheu explicitamente o mês de referência daquela fatura.
+   */
+  statementReferenceMonth?: string | null;
 };
 
 export type GoalKind = "on_track" | "long_term" | "attention";

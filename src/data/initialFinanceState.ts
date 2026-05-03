@@ -2,7 +2,35 @@ import { newId } from "../domain/id";
 import type { CreditCard, FinanceState, RecurringExpense, Transaction, UserProfile } from "../domain/types";
 
 export function defaultProfile(): UserProfile {
-  return { displayName: "Marcus", monthlySalary: 0, photoDataUrl: null };
+  return { displayName: "", monthlySalary: 0, photoDataUrl: null };
+}
+
+/** Estado inicial para conta Firebase nova — sem lançamentos/cartões de exemplo. */
+export function createEmptyFinanceState(): FinanceState {
+  const defaultAccountId = newId();
+  return {
+    version: 2,
+    profile: defaultProfile(),
+    defaultAccountId,
+    transactions: [],
+    goals: [],
+    accounts: [
+      {
+        id: defaultAccountId,
+        name: "Conta principal",
+        balance: 0,
+        icon: "account_balance",
+      },
+    ],
+    recurringExpenses: [],
+    creditCards: [],
+    creditCardStatements: [],
+    receivables: [],
+    loyaltyPrograms: [],
+    pointsExpiring30d: 0,
+    pointsValuePerPoint: 0.02,
+    pointsExpirationBuckets: [],
+  };
 }
 
 function t(p: Omit<Transaction, "id"> & { id?: string }): Transaction {
@@ -185,7 +213,7 @@ export function createInitialFinanceState(): FinanceState {
     version: 2,
     recurringExpenses: defaultRecurringExpenses(),
     creditCards: defaultCreditCards(),
-    profile: defaultProfile(),
+    profile: { displayName: "Marcus", monthlySalary: 0, photoDataUrl: null },
     defaultAccountId,
     receivables: [],
     creditCardStatements: [],

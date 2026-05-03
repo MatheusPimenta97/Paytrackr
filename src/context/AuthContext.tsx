@@ -27,12 +27,21 @@ export const DEMO_PASSWORD = "paytrackr";
 
 export type AuthMode = "demo" | "firebase";
 
+/** Dados públicos do usuário Firebase (para perfil / armazenamento por conta). */
+export type FirebasePublicProfile = {
+  uid: string;
+  displayName: string | null;
+  email: string | null;
+  photoURL: string | null;
+};
+
 type AuthContextValue = {
   mode: AuthMode;
   isAuthenticated: boolean;
   ready: boolean;
   /** E-mail da sessão Firebase; demo não preenche. */
   userEmail: string | null;
+  firebaseProfile: FirebasePublicProfile | null;
   login: (email: string, password: string, remember: boolean) => Promise<boolean>;
   loginWithGoogle: (remember: boolean) => Promise<boolean>;
   logout: () => Promise<void>;
@@ -55,12 +64,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [mode, setMode] = useState<AuthMode>("demo");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [firebaseProfile, setFirebaseProfile] = useState<FirebasePublicProfile | null>(null);
 
   useEffect(() => {
     const auth = getFirebaseAuth();
     if (!auth) {
       setMode("demo");
       setUserEmail(null);
+      setFirebaseProfile(null);
       setIsAuthenticated(readStoredDemoSession());
       setReady(true);
       return;
@@ -69,6 +80,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setMode("firebase");
     const unsub = onAuthStateChanged(auth, (user) => {
       setUserEmail(user?.email ?? null);
+      setFirebaseProfile(
+        user
+          ? {
+              uid: user.uid,
+              displayName: user.displayName,
+              email: user.email,
+              photoURL: user.photoURL,
+            }
+          : null,
+      );
       setIsAuthenticated(!!user);
       setReady(true);
     });
@@ -134,11 +155,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     setIsAuthenticated(false);
     setUserEmail(null);
+    setFirebaseProfile(null);
   }, []);
 
   const value = useMemo(
-    () => ({ mode, isAuthenticated, ready, userEmail, login, loginWithGoogle, logout }),
-    [mode, isAuthenticated, ready, userEmail, login, loginWithGoogle, logout],
+    () => ({
+      mode,
+      isAuthenticated,
+      ready,
+      userEmail,
+      firebaseProfile,
+      login,
+      loginWithGoogle,
+      logout,
+    }),
+    [mode, isAuthenticated, ready, userEmail, firebaseProfile, login, loginWithGoogle, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -1,8 +1,10 @@
-import { useState } from "react";
-import { NavLink, Outlet } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 import { DataScopeBanner } from "./DataScopeBanner";
 import { ProfileAvatar } from "./ProfileAvatar";
 import { QuickCalculatorModal } from "./QuickCalculatorModal";
+import { WelcomeOnboardingModal } from "./WelcomeOnboardingModal";
 import { useFinance } from "../context/FinanceContext";
 
 const sidebarNav = [
@@ -17,12 +19,70 @@ const sidebarNav = [
 
 export function DashboardLayout() {
   const [calcOpen, setCalcOpen] = useState(false);
-  const { state } = useFinance();
+  const navigate = useNavigate();
+  const { mode, firebaseProfile, logout } = useAuth();
+  const { state, updateProfile } = useFinance();
   const photo = state.profile.photoDataUrl;
   const displayName = state.profile.displayName.trim() || "Perfil";
 
+  const [welcomeOpen, setWelcomeOpen] = useState(false);
+
+  useEffect(() => {
+    if (mode !== "firebase" || !firebaseProfile?.uid) {
+      setWelcomeOpen(false);
+      return;
+    }
+    const flagKey = `paytrackr-welcome-v1-${firebaseProfile.uid}`;
+    try {
+      if (localStorage.getItem(flagKey)) {
+        setWelcomeOpen(false);
+        return;
+      }
+    } catch {
+      /* ignore */
+    }
+    const dn = state.profile.displayName.trim();
+    if (dn.length >= 2) {
+      try {
+        localStorage.setItem(flagKey, "1");
+      } catch {
+        /* ignore */
+      }
+      setWelcomeOpen(false);
+      return;
+    }
+    setWelcomeOpen(true);
+  }, [mode, firebaseProfile?.uid, state.profile.displayName]);
+
+  function completeWelcome(name: string) {
+    if (!firebaseProfile?.uid) return;
+    updateProfile({ displayName: name.slice(0, 120) });
+    try {
+      localStorage.setItem(`paytrackr-welcome-v1-${firebaseProfile.uid}`, "1");
+    } catch {
+      /* ignore */
+    }
+    setWelcomeOpen(false);
+  }
+
+  async function handleLogout() {
+    await logout();
+    navigate("/login", { replace: true });
+  }
+
+  const welcomeSuggested =
+    firebaseProfile?.displayName?.trim() ||
+    (firebaseProfile?.email?.includes("@")
+      ? firebaseProfile.email.split("@")[0]?.trim() ?? ""
+      : "");
+
   return (
     <div className="min-h-screen bg-surface font-body text-on-surface antialiased dark:bg-slate-950 dark:text-slate-100">
+      <WelcomeOnboardingModal
+        open={welcomeOpen}
+        suggestedName={welcomeSuggested}
+        onComplete={completeWelcome}
+      />
       <QuickCalculatorModal open={calcOpen} onClose={() => setCalcOpen(false)} />
 
       {/* Sidebar desktop — 72px, expande no hover */}
@@ -105,6 +165,17 @@ export function DashboardLayout() {
               <p className="text-[10px] font-medium text-white/60">Ver perfil</p>
             </div>
           </NavLink>
+
+          <button
+            type="button"
+            onClick={() => void handleLogout()}
+            className="mt-2 flex h-9 w-full items-center rounded-lg px-2.5 font-medium text-white/75 transition-all duration-200 hover:bg-white/10 hover:text-white"
+          >
+            <span className="material-symbols-outlined shrink-0 text-xl">logout</span>
+            <span className="ml-4 max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-[max-width,opacity] duration-300 ease-in-out group-hover/dash-sidebar:max-w-[200px] group-hover/dash-sidebar:opacity-100">
+              Sair
+            </span>
+          </button>
         </div>
       </aside>
 

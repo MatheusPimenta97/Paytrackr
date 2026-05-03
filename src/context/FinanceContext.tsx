@@ -9,11 +9,11 @@ import {
   type ReactNode,
 } from "react";
 import {
+  createEmptyFinanceState,
   createInitialFinanceState,
-  defaultCreditCards,
   defaultProfile,
-  defaultRecurringExpenses,
 } from "../data/initialFinanceState";
+import { useAuth } from "./AuthContext";
 import {
   normalizeExpirationBuckets,
   normalizeLoyaltyPrograms,
@@ -268,15 +268,38 @@ function migrateProfile(parsed: Record<string, unknown>, base: UserProfile): Use
   return { displayName, monthlySalary, photoDataUrl };
 }
 
-const STORAGE_KEY = "paytrackr-finance-v1";
-const UPDATED_AT_KEY = "paytrackr-finance-updatedAt-v1";
+export const FINANCE_STORAGE_SCOPE_DEMO = "local-demo";
 
-function getLocalUpdatedAt(): number {
+function financeStorageKeys(scope: string) {
+  return {
+    state: `paytrackr-finance-v1-${scope}`,
+    updatedAt: `paytrackr-finance-updatedAt-v1-${scope}`,
+  };
+}
+
+function getLocalUpdatedAtForScope(scope: string): number {
   try {
-    const v = localStorage.getItem(UPDATED_AT_KEY);
+    const v = localStorage.getItem(financeStorageKeys(scope).updatedAt);
     return v ? parseInt(v, 10) || 0 : 0;
   } catch {
     return 0;
+  }
+}
+
+function loadStateForScope(scope: string): FinanceState {
+  const isDemoScope = scope === FINANCE_STORAGE_SCOPE_DEMO;
+  const sk = financeStorageKeys(scope).state;
+  try {
+    const raw = localStorage.getItem(sk);
+    if (!raw) {
+      return isDemoScope ? createInitialFinanceState() : createEmptyFinanceState();
+    }
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    const base = isDemoScope ? createInitialFinanceState() : createEmptyFinanceState();
+    if (!Array.isArray(parsed.transactions)) return base;
+    return migrateFinanceState(parsed, base);
+  } catch {
+    return isDemoScope ? createInitialFinanceState() : createEmptyFinanceState();
   }
 }
 
@@ -319,8 +342,7 @@ type Action =
         pointsValuePerPoint: number;
         pointsExpirationBuckets: PointsExpirationBucket[];
       }>;
-    }
-  | { type: "RESET" };
+    };
 
 function financeReducer(state: FinanceState, action: Action): FinanceState {
   switch (action.type) {
@@ -365,8 +387,6 @@ function financeReducer(state: FinanceState, action: Action): FinanceState {
         ),
       };
     }
-    case "RESET":
-      return createInitialFinanceState();
     case "ADD_TRANSACTION": {
       const id = action.payload.id ?? newId();
       const raw = action.payload;
@@ -908,25 +928,25 @@ function financeReducer(state: FinanceState, action: Action): FinanceState {
   }
 }
 
-export function migrateFinanceState(parsed: Record<string, unknown>): FinanceState {
-  const base = createInitialFinanceState();
-  if (!Array.isArray(parsed.transactions)) return base;
+export function migrateFinanceState(parsed: Record<string, unknown>, base?: FinanceState): FinanceState {
+  const b = base ?? createInitialFinanceState();
+  if (!Array.isArray(parsed.transactions)) return b;
   return {
     version: 2,
-    profile: migrateProfile(parsed, base.profile),
+    profile: migrateProfile(parsed, b.profile),
     defaultAccountId:
-      typeof parsed.defaultAccountId === "string" ? parsed.defaultAccountId : base.defaultAccountId,
+      typeof parsed.defaultAccountId === "string" ? parsed.defaultAccountId : b.defaultAccountId,
     transactions: Array.isArray(parsed.transactions)
       ? normalizeTransactions(parsed.transactions)
-      : base.transactions,
-    goals: Array.isArray(parsed.goals) ? (parsed.goals as Goal[]) : base.goals,
-    accounts: Array.isArray(parsed.accounts) ? (parsed.accounts as Account[]) : base.accounts,
+      : b.transactions,
+    goals: Array.isArray(parsed.goals) ? (parsed.goals as Goal[]) : b.goals,
+    accounts: Array.isArray(parsed.accounts) ? (parsed.accounts as Account[]) : b.accounts,
     recurringExpenses: Array.isArray(parsed.recurringExpenses)
       ? normalizeRecurringExpenses(parsed.recurringExpenses)
-      : defaultRecurringExpenses(),
+      : b.recurringExpenses,
     creditCards: Array.isArray(parsed.creditCards)
       ? normalizeCreditCards(parsed.creditCards)
-      : defaultCreditCards(),
+      : b.creditCards,
     receivables: normalizeReceivables(
       Array.isArray(parsed.receivables) ? parsed.receivables : []
     ),
@@ -936,13 +956,13 @@ export function migrateFinanceState(parsed: Record<string, unknown>): FinanceSta
     pointsExpiring30d:
       typeof parsed.pointsExpiring30d === "number" && Number.isFinite(parsed.pointsExpiring30d)
         ? roundMoney(Math.max(0, parsed.pointsExpiring30d))
-        : base.pointsExpiring30d,
+        : b.pointsExpiring30d,
     pointsValuePerPoint:
       typeof parsed.pointsValuePerPoint === "number" &&
       Number.isFinite(parsed.pointsValuePerPoint) &&
       parsed.pointsValuePerPoint >= 0
         ? parsed.pointsValuePerPoint
-        : base.pointsValuePerPoint,
+        : b.pointsValuePerPoint,
     pointsExpirationBuckets: normalizeExpirationBuckets(
       Array.isArray(parsed.pointsExpirationBuckets) ? parsed.pointsExpirationBuckets : []
     ),
@@ -950,17 +970,6 @@ export function migrateFinanceState(parsed: Record<string, unknown>): FinanceSta
       Array.isArray(parsed.creditCardStatements) ? parsed.creditCardStatements : []
     ),
   };
-}
-
-function loadState(): FinanceState {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return createInitialFinanceState();
-    const parsed = JSON.parse(raw) as Record<string, unknown>;
-    return migrateFinanceState(parsed);
-  } catch {
-    return createInitialFinanceState();
-  }
 }
 
 type FinanceContextValue = {
@@ -1031,36 +1040,51 @@ type FinanceContextValue = {
 const FinanceContext = createContext<FinanceContextValue | null>(null);
 
 export function FinanceProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(financeReducer, loadState());
+  const { mode, firebaseProfile } = useAuth();
+  const storageScope =
+    mode === "firebase" && firebaseProfile?.uid ? firebaseProfile.uid : FINANCE_STORAGE_SCOPE_DEMO;
+
+  const storageScopeRef = useRef(storageScope);
+  storageScopeRef.current = storageScope;
+
+  const [state, dispatch] = useReducer(financeReducer, storageScope, (scope) => loadStateForScope(scope));
   const stateRef = useRef(state);
   stateRef.current = state;
 
   useEffect(() => {
+    dispatch({ type: "HYDRATE", payload: loadStateForScope(storageScope) });
+  }, [storageScope]);
+
+  useEffect(() => {
+    const keys = financeStorageKeys(storageScope);
     try {
       const t = Date.now();
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-      localStorage.setItem(UPDATED_AT_KEY, String(t));
+      localStorage.setItem(keys.state, JSON.stringify(state));
+      localStorage.setItem(keys.updatedAt, String(t));
     } catch {
       /* quota exceeded or private mode */
     }
-  }, [state]);
+  }, [state, storageScope]);
 
-  /** Em dev: puxa estado do PC que roda o Vite (arquivo .paytrackr-lan-sync.json) para ver o mesmo nos notebooks na LAN. */
+  /** Em dev: LAN sync só no modo demo local (não mistura com conta Firebase). */
   useEffect(() => {
     if (!import.meta.env.DEV) return;
+    if (storageScope !== FINANCE_STORAGE_SCOPE_DEMO) return;
+    const demoKeys = financeStorageKeys(FINANCE_STORAGE_SCOPE_DEMO);
+    const demoBase = createInitialFinanceState();
     let cancelled = false;
     (async () => {
-      const localT = getLocalUpdatedAt();
+      const localT = getLocalUpdatedAtForScope(FINANCE_STORAGE_SCOPE_DEMO);
       const server = await pullLanDevSync();
       if (cancelled) return;
       let toPush: FinanceState = stateRef.current;
       if (server && server.updatedAt > localT) {
-        const next = migrateFinanceState(server.state as Record<string, unknown>);
+        const next = migrateFinanceState(server.state as Record<string, unknown>, demoBase);
         dispatch({ type: "HYDRATE", payload: next });
         toPush = next;
         try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-          localStorage.setItem(UPDATED_AT_KEY, String(server.updatedAt));
+          localStorage.setItem(demoKeys.state, JSON.stringify(next));
+          localStorage.setItem(demoKeys.updatedAt, String(server.updatedAt));
         } catch {
           /* ignore */
         }
@@ -1070,31 +1094,35 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [storageScope]);
 
   useEffect(() => {
     if (!import.meta.env.DEV) return;
+    if (storageScope !== FINANCE_STORAGE_SCOPE_DEMO) return;
+    const demoKeys = financeStorageKeys(FINANCE_STORAGE_SCOPE_DEMO);
+    const demoBase = createInitialFinanceState();
     const id = window.setInterval(async () => {
       if (document.visibilityState !== "visible") return;
-      const localT = getLocalUpdatedAt();
+      const localT = getLocalUpdatedAtForScope(FINANCE_STORAGE_SCOPE_DEMO);
       const server = await pullLanDevSync();
       if (server && server.updatedAt > localT) {
-        const next = migrateFinanceState(server.state as Record<string, unknown>);
+        const next = migrateFinanceState(server.state as Record<string, unknown>, demoBase);
         dispatch({ type: "HYDRATE", payload: next });
         try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-          localStorage.setItem(UPDATED_AT_KEY, String(server.updatedAt));
+          localStorage.setItem(demoKeys.state, JSON.stringify(next));
+          localStorage.setItem(demoKeys.updatedAt, String(server.updatedAt));
         } catch {
           /* ignore */
         }
       }
     }, 4000);
     return () => clearInterval(id);
-  }, []);
+  }, [storageScope]);
 
   const pushDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (!import.meta.env.DEV) return;
+    if (storageScope !== FINANCE_STORAGE_SCOPE_DEMO) return;
     if (pushDebounceRef.current) clearTimeout(pushDebounceRef.current);
     pushDebounceRef.current = setTimeout(() => {
       pushDebounceRef.current = null;
@@ -1103,15 +1131,16 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     return () => {
       if (pushDebounceRef.current) clearTimeout(pushDebounceRef.current);
     };
-  }, [state]);
+  }, [state, storageScope]);
 
   /** Grava de novo ao trocar de aba/fechar (celular costuma “congelar” antes do efeito rodar). */
   useEffect(() => {
     function flush() {
       try {
         const t = Date.now();
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(stateRef.current));
-        localStorage.setItem(UPDATED_AT_KEY, String(t));
+        const keys = financeStorageKeys(storageScopeRef.current);
+        localStorage.setItem(keys.state, JSON.stringify(stateRef.current));
+        localStorage.setItem(keys.updatedAt, String(t));
       } catch {
         /* ignore */
       }
@@ -1209,7 +1238,10 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const resetData = useCallback(() => {
-    dispatch({ type: "RESET" });
+    const scope = storageScopeRef.current;
+    const payload =
+      scope === FINANCE_STORAGE_SCOPE_DEMO ? createInitialFinanceState() : createEmptyFinanceState();
+    dispatch({ type: "HYDRATE", payload });
   }, []);
 
   const addReceivable = useCallback(
@@ -1274,11 +1306,16 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       if (!Array.isArray(parsed.transactions)) {
         return "Arquivo inválido: não parece um backup do PayTrackr.";
       }
-      const next = migrateFinanceState(parsed);
+      const base =
+        storageScopeRef.current === FINANCE_STORAGE_SCOPE_DEMO
+          ? createInitialFinanceState()
+          : createEmptyFinanceState();
+      const next = migrateFinanceState(parsed, base);
       dispatch({ type: "HYDRATE", payload: next });
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-        localStorage.setItem(UPDATED_AT_KEY, String(Date.now()));
+        const keys = financeStorageKeys(storageScopeRef.current);
+        localStorage.setItem(keys.state, JSON.stringify(next));
+        localStorage.setItem(keys.updatedAt, String(Date.now()));
       } catch {
         /* ignore */
       }

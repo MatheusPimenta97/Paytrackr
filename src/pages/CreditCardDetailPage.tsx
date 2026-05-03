@@ -15,6 +15,7 @@ import {
   formatDateShort,
   formatNextClosingShort,
   formatStatementInvoiceCyclePt,
+  referenceMonthForCardTransaction,
   statementInvoiceCycleIsoRange,
 } from "../domain/money";
 import type { CreditCardStatement, Transaction } from "../domain/types";
@@ -83,13 +84,29 @@ export function CreditCardDetailPage() {
       .sort((a, b) => b.referenceMonth.localeCompare(a.referenceMonth));
   }, [state.creditCardStatements, cardId]);
 
+  /** Soma de despesas por mês de referência do ciclo (lançamentos no cartão), quando não há fatura salva. */
+  const spendByReferenceMonth = useMemo(() => {
+    const map = new Map<string, number>();
+    if (!card || card.kind !== "credito") return map;
+    const closing = card.closingDay;
+    for (const t of cardTxns) {
+      if (t.amount >= 0) continue;
+      const ref = referenceMonthForCardTransaction(t.date, closing);
+      if (!ref) continue;
+      map.set(ref, (map.get(ref) ?? 0) + Math.abs(t.amount));
+    }
+    return map;
+  }, [card, cardTxns]);
+
   const invoiceBars = useMemo(() => {
     const now = new Date();
-    const rows: { ym: string; label: string; amount: number; isCurrent: boolean }[] = [];
+    const rows: { ym: string; label: string; amount: number; isCurrent: boolean; fromStatements: boolean }[] = [];
     for (let i = 3; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const ym = ymKey(d);
       const st = statements.find((s) => s.referenceMonth === ym);
+      const fromTxns = spendByReferenceMonth.get(ym) ?? 0;
+      const amount = st != null ? st.amount : fromTxns;
       const label = d
         .toLocaleDateString("pt-BR", { month: "short" })
         .replace(/\./g, "")
@@ -98,13 +115,17 @@ export function CreditCardDetailPage() {
       rows.push({
         ym,
         label,
-        amount: st?.amount ?? 0,
+        amount,
         isCurrent: i === 3,
+        fromStatements: st != null,
       });
     }
     const max = Math.max(...rows.map((r) => r.amount), 1);
-    return rows.map((r) => ({ ...r, heightPct: Math.round((r.amount / max) * 100) }));
-  }, [statements]);
+    return rows.map((r) => ({
+      ...r,
+      heightPct: Math.round((r.amount / max) * 100),
+    }));
+  }, [statements, spendByReferenceMonth]);
 
   const categoryRows = useMemo(() => {
     const map = new Map<string, number>();
@@ -495,6 +516,17 @@ export function CreditCardDetailPage() {
                     );
                   })}
                 </div>
+                <p className="mt-1 text-[9px] leading-tight text-slate-500 dark:text-slate-400">
+                  Valor da barra: <strong className="font-semibold text-slate-600 dark:text-slate-300">fatura salva</strong>{" "}
+                  em &quot;Registrar fatura&quot;; se não existir, usa a{" "}
+                  <strong className="font-semibold text-slate-600 dark:text-slate-300">soma das despesas</strong> no ciclo
+                  (conforme dia de fechamento).
+                </p>
+                {invoiceBars.some((b) => !b.fromStatements && b.amount > 0) ? (
+                  <p className="mt-0.5 text-[9px] font-medium text-amber-800 dark:text-amber-300/90">
+                    * Pelo menos um mês está só com lançamentos — registrar a fatura substitui pela totalização oficial.
+                  </p>
+                ) : null}
                 <div className="mt-2 flex flex-wrap justify-end gap-1.5 border-t border-surface-container/80 pt-2 dark:border-slate-700/80">
                   <button
                     type="button"

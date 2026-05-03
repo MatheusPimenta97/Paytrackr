@@ -169,6 +169,25 @@ export function transactionInStatementInvoiceCycle(
   return d >= r.startIso && d <= r.endIso;
 }
 
+/**
+ * Mês de referência (YYYY-MM) da fatura cujo ciclo contém a data do lançamento,
+ * usando o dia de fechamento do cartão (mesma regra de `statementInvoiceCycleIsoRange`).
+ */
+export function referenceMonthForCardTransaction(txnDateIso: string, closingDay: number): string | null {
+  const d = txnDateIso.slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return null;
+  const y0 = Number(d.slice(0, 4));
+  if (!Number.isFinite(y0)) return null;
+  for (let yy = y0 - 1; yy <= y0 + 1; yy++) {
+    for (let m = 1; m <= 12; m++) {
+      const ref = `${yy}-${String(m).padStart(2, "0")}`;
+      const range = statementInvoiceCycleIsoRange(ref, closingDay);
+      if (range && d >= range.startIso && d <= range.endIso) return ref;
+    }
+  }
+  return null;
+}
+
 export function creditCardDueDateThisMonth(dueDay: number, now = new Date()): Date {
   return calendarDateForBillingDayInMonth(now.getFullYear(), now.getMonth(), dueDay);
 }

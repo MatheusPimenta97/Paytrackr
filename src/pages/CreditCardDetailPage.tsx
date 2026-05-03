@@ -29,10 +29,6 @@ function monthLabel(ym: string): string {
   return new Date(y, m - 1, 1).toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
 }
 
-function firstDayOfMonthIso(d = new Date()): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
-}
-
 function categoryMaterialIcon(category: string): string {
   const c = category.toLowerCase();
   if (c.includes("aliment")) return "restaurant";
@@ -56,8 +52,6 @@ export function CreditCardDetailPage() {
     addCreditCardStatement,
     updateCreditCardStatement,
     deleteCreditCardStatement,
-    syncCreditCardOpenInvoice,
-    resetCreditCardActivity,
   } = useFinance();
 
   const card = cardId ? state.creditCards.find((c) => c.id === cardId) : undefined;
@@ -68,7 +62,6 @@ export function CreditCardDetailPage() {
     referenceMonth: string;
     amount: number;
   } | null>(null);
-  const [invoiceCutDate, setInvoiceCutDate] = useState(() => firstDayOfMonthIso());
   const [attachmentPreview, setAttachmentPreview] = useState<{ dataUrl: string; name: string } | null>(null);
   /** Mês YYYY-MM da barra clicada — detalhe da fatura / ciclo */
   const [invoiceDetailYm, setInvoiceDetailYm] = useState<string | null>(null);
@@ -89,7 +82,7 @@ export function CreditCardDetailPage() {
 
   /**
    * Soma dos `amount` no cartão por mês de referência do ciclo (negativo = compra, positivo = estorno).
-   * Ignora `skipCardInvoiceDelta` (import só histórico / não entra na fatura aberta).
+   * Inclui lançamentos com `skipCardInvoiceDelta` (usado no gráfico por ciclo).
    */
   const rawAmountSumByReferenceMonth = useMemo(() => {
     const map = new Map<string, number>();
@@ -297,12 +290,27 @@ export function CreditCardDetailPage() {
                 <span className="material-symbols-outlined text-[22px]">close</span>
               </button>
             </div>
-            <div className="flex shrink-0 flex-wrap gap-3 border-b border-outline-variant/15 px-4 py-2 dark:border-slate-700">
+            <div className="flex shrink-0 flex-col gap-2 border-b border-outline-variant/15 px-4 py-3 dark:border-slate-700 sm:flex-row sm:flex-wrap sm:items-center">
               {cycleModalStatement ? (
                 <>
+                  {cycleModalStatement.attachmentDataUrl ? (
+                    <button
+                      type="button"
+                      className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-primary/40 bg-primary-container/30 px-3 py-2 text-xs font-semibold text-primary shadow-sm transition-colors hover:bg-primary-container/50 dark:border-blue-600/50 dark:bg-blue-950/50 dark:text-blue-100 dark:hover:bg-blue-900/50"
+                      onClick={() =>
+                        setAttachmentPreview({
+                          dataUrl: cycleModalStatement.attachmentDataUrl!,
+                          name: cycleModalStatement.attachmentName ?? "fatura",
+                        })
+                      }
+                    >
+                      <span className="material-symbols-outlined text-[18px]">description</span>
+                      Ver fatura
+                    </button>
+                  ) : null}
                   <button
                     type="button"
-                    className="text-xs font-bold text-primary hover:underline dark:text-blue-300"
+                    className="inline-flex items-center justify-center rounded-lg border border-outline-variant/50 px-3 py-2 text-xs font-semibold text-primary transition-colors hover:bg-slate-50 dark:border-slate-600 dark:hover:bg-slate-800"
                     onClick={() => {
                       setInvoiceDetailYm(null);
                       setStatementPrefill(null);
@@ -312,25 +320,11 @@ export function CreditCardDetailPage() {
                   >
                     Editar fatura
                   </button>
-                  {cycleModalStatement.attachmentDataUrl ? (
-                    <button
-                      type="button"
-                      className="text-xs font-bold text-primary hover:underline dark:text-blue-300"
-                      onClick={() =>
-                        setAttachmentPreview({
-                          dataUrl: cycleModalStatement.attachmentDataUrl!,
-                          name: cycleModalStatement.attachmentName ?? "anexo",
-                        })
-                      }
-                    >
-                      Ver anexo
-                    </button>
-                  ) : null}
                 </>
               ) : (
                 <button
                   type="button"
-                  className="text-xs font-bold text-primary hover:underline dark:text-blue-300"
+                  className="inline-flex items-center justify-center rounded-lg border border-primary/40 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary transition-colors hover:bg-primary/15 dark:bg-blue-950/30 dark:hover:bg-blue-900/40"
                   onClick={() => {
                     setInvoiceDetailYm(null);
                     setStatementEditing(null);
@@ -345,44 +339,45 @@ export function CreditCardDetailPage() {
                 </button>
               )}
             </div>
-            <div className="min-h-0 flex-1 overflow-y-auto px-2 py-2 custom-scrollbar">
-              <p className="mb-2 px-2 text-[10px] leading-snug text-slate-500 dark:text-slate-400">
-                Lançamentos no período. Itens marcados como só histórico aparecem na lista, mas não entram no total da
-                barra.
-              </p>
+            <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3 custom-scrollbar">
               {invoiceDetailCycleTxns.length === 0 ? (
-                <p className="px-2 py-6 text-center text-sm text-slate-500 dark:text-slate-400">
+                <p className="py-8 text-center text-sm text-slate-500 dark:text-slate-400">
                   Nenhum lançamento neste período.
                 </p>
               ) : (
-                <table className="w-full text-left text-xs">
-                  <thead>
-                    <tr className="border-b border-slate-200 text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-700">
-                      <th className="px-2 py-1.5">Data</th>
-                      <th className="px-2 py-1.5">Descrição</th>
-                      <th className="px-2 py-1.5 text-right">Valor</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                    {invoiceDetailCycleTxns.map((t) => (
-                      <tr key={t.id} className={t.skipCardInvoiceDelta ? "opacity-55" : ""}>
-                        <td className="whitespace-nowrap px-2 py-1.5 text-slate-600 dark:text-slate-400">
-                          {formatDateShort(t.date)}
-                        </td>
-                        <td className="px-2 py-1.5">
-                          <div className="font-medium text-primary dark:text-slate-100">{t.description}</div>
-                          <div className="text-[10px] text-slate-500 dark:text-slate-400">
-                            {t.category}
-                            {t.skipCardInvoiceDelta ? " · só histórico" : ""}
-                          </div>
-                        </td>
-                        <td className="px-2 py-1.5 text-right font-semibold tabular-nums text-primary dark:text-slate-100">
-                          {formatBRL(t.amount)}
-                        </td>
+                <div className="overflow-hidden rounded-xl border border-slate-200/90 dark:border-slate-700">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-50 dark:bg-slate-800/80">
+                      <tr className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                        <th className="px-3 py-2">Data</th>
+                        <th className="px-3 py-2">Descrição</th>
+                        <th className="px-3 py-2 text-right">Valor</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 bg-white dark:divide-slate-800 dark:bg-slate-900">
+                      {invoiceDetailCycleTxns.map((t) => (
+                        <tr
+                          key={t.id}
+                          className={`transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-800/50 ${t.skipCardInvoiceDelta ? "opacity-[0.72]" : ""}`}
+                        >
+                          <td className="whitespace-nowrap px-3 py-2 text-slate-600 dark:text-slate-400">
+                            {formatDateShort(t.date)}
+                          </td>
+                          <td className="px-3 py-2">
+                            <div className="font-medium text-primary dark:text-slate-100">{t.description}</div>
+                            <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                              {t.category}
+                              {t.skipCardInvoiceDelta ? " · só histórico" : ""}
+                            </div>
+                          </td>
+                          <td className="px-3 py-2 text-right font-semibold tabular-nums text-primary dark:text-slate-100">
+                            {formatBRL(t.amount)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </div>
           </div>
@@ -571,88 +566,6 @@ export function CreditCardDetailPage() {
         </section>
       )}
 
-      {isCredito ? (
-        <details className="rounded-lg border border-outline-variant/25 bg-white/90 py-2 pl-3 pr-2 text-xs shadow-[0px_2px_8px_rgba(0,40,85,0.04)] dark:border-slate-700 dark:bg-slate-900/80">
-          <summary className="cursor-pointer list-none font-semibold text-primary marker:content-none dark:text-slate-100 [&::-webkit-details-marker]:hidden">
-            Corrigir fatura atual (dados já gravados errados)
-          </summary>
-          <p className="mt-1.5 text-[11px] leading-snug text-slate-600 dark:text-slate-400">
-            Se importou fatura antiga pela IA e o valor da fatura aberta ficou alto, escolha uma{" "}
-            <strong className="text-on-surface dark:text-slate-200">data de corte</strong>: todas as{" "}
-            <strong className="text-on-surface dark:text-slate-200">despesas</strong> com data{" "}
-            <strong className="text-on-surface dark:text-slate-200">antes</strong> dela passam a contar só como
-            histórico (não entram na fatura aberta) e o total é recalculado. Ajuste a data ao seu caso (ex.: primeiro
-            dia do mês do ciclo atual).
-          </p>
-          <div className="mt-2 flex flex-wrap items-center gap-1.5">
-            <label className="flex flex-wrap items-center gap-1.5 text-[10px] font-semibold text-slate-600 dark:text-slate-400">
-              Data de corte
-              <input
-                type="date"
-                value={invoiceCutDate}
-                onChange={(e) => setInvoiceCutDate(e.target.value)}
-                className="rounded border border-outline-variant/40 bg-white px-1.5 py-1 text-[11px] dark:border-slate-600 dark:bg-slate-800"
-              />
-            </label>
-            <button
-              type="button"
-              onClick={() => {
-                if (
-                  !/^\d{4}-\d{2}-\d{2}$/.test(invoiceCutDate) ||
-                  !confirm(
-                    `Marcar despesas com data antes de ${invoiceCutDate} como só histórico e recalcular a fatura aberta?`,
-                  )
-                ) {
-                  return;
-                }
-                syncCreditCardOpenInvoice(card.id, { markExpenseHistoryBefore: invoiceCutDate });
-              }}
-              className="rounded bg-secondary px-2 py-1 text-[10px] font-bold text-white dark:bg-emerald-700"
-            >
-              Marcar antes da data + recalcular
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                if (!confirm("Recalcular só a fatura aberta a partir dos lançamentos (sem alterar datas)?")) return;
-                syncCreditCardOpenInvoice(card.id);
-              }}
-              className="rounded border border-outline-variant px-2 py-1 text-[10px] font-bold dark:border-slate-600"
-            >
-              Só recalcular
-            </button>
-          </div>
-        </details>
-      ) : null}
-
-      <details className="rounded-lg border border-red-200/80 bg-white/90 py-2 pl-3 pr-2 text-xs shadow-[0px_2px_8px_rgba(0,40,85,0.04)] dark:border-red-900/50 dark:bg-slate-900/80">
-        <summary className="cursor-pointer list-none font-semibold text-error marker:content-none [&::-webkit-details-marker]:hidden">
-          Apagar tudo deste cartão e recomeçar
-        </summary>
-        <p className="mt-1.5 text-[11px] leading-snug text-slate-600 dark:text-slate-400">
-          Remove <strong className="text-on-surface dark:text-slate-200">todos</strong> os lançamentos deste cartão e as
-          faturas arquivadas. Zera a fatura em aberto (crédito) ou as bolsas (benefícios). Não altera outras contas nem
-          outros cartões.
-        </p>
-        <button
-          type="button"
-          className="mt-2 rounded border border-error/50 bg-error/10 px-2 py-1.5 text-[10px] font-bold text-error hover:bg-error/15 dark:border-red-800 dark:bg-red-950/40"
-          onClick={() => {
-            if (
-              !confirm(
-                "Apagar todos os lançamentos e faturas arquivadas deste cartão? A fatura / bolsas voltam a zero. Não dá para desfazer.",
-              )
-            ) {
-              return;
-            }
-            resetCreditCardActivity(card.id);
-            setInvoiceDetailYm(null);
-          }}
-        >
-          Zerar agora
-        </button>
-      </details>
-
       {/* Bento: IA + gráficos */}
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-12 lg:items-stretch">
         <div className="lg:col-span-4">
@@ -681,29 +594,27 @@ export function CreditCardDetailPage() {
             <>
               <div className="flex flex-col rounded-xl border border-surface-container bg-white p-4 shadow-[0px_4px_12px_rgba(0,40,85,0.05)] dark:border-slate-700 dark:bg-slate-900">
                 <h3 className="mb-0.5 shrink-0 font-headline text-base font-semibold text-primary">Histórico de faturas</h3>
-                <p className="mb-2 text-[9px] leading-snug text-slate-500 dark:text-slate-400">
-                  Ciclo pelo dia de fechamento do cartão. Se o total não bater com o PDF, ajuste esse dia em Gestão de
-                  cartões. Toque no mês para ver lançamentos.
+                <p className="mb-3 text-[10px] leading-snug text-slate-500 dark:text-slate-400">
+                  Ciclo pelo fechamento do cartão. Toque no mês para ver lançamentos e a fatura anexada.
                 </p>
-                <div className="flex h-[112px] shrink-0 items-end justify-between gap-1.5 px-1">
+                <div className="flex h-[124px] shrink-0 items-stretch justify-between gap-2 px-0.5">
                   {invoiceBars.map((bar) => {
-                    const barH = Math.max(Math.round((bar.heightPct / 100) * 96), 8);
+                    const fillPct = Math.max(bar.amount === 0 ? 0 : 10, bar.heightPct);
+                    const isOpen = invoiceDetailYm === bar.ym;
                     return (
                       <button
                         key={bar.ym}
                         type="button"
                         onClick={() => setInvoiceDetailYm(bar.ym)}
-                        className="flex min-w-0 flex-1 flex-col items-center justify-end gap-0.5 rounded-md border border-transparent p-0.5 transition-colors hover:border-primary/25 hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 dark:hover:bg-slate-800/50"
+                        className={`group flex min-w-0 flex-1 flex-col items-stretch gap-1 rounded-xl border p-1.5 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 ${
+                          isOpen
+                            ? "border-primary/50 bg-primary/5 shadow-sm dark:border-blue-600/60 dark:bg-blue-950/30"
+                            : "border-transparent hover:border-slate-200 hover:bg-slate-50/80 dark:hover:border-slate-600 dark:hover:bg-slate-800/40"
+                        }`}
                         aria-label={`Detalhes da fatura ${bar.label}`}
                       >
-                        <div
-                          className={`w-full rounded-t-md transition-all group-hover:opacity-95 ${
-                            bar.isCurrent ? "bg-primary-container dark:bg-blue-900" : "bg-surface-container dark:bg-slate-800"
-                          }`}
-                          style={{ height: barH }}
-                        />
                         <span
-                          className={`shrink-0 font-label text-[10px] font-semibold tabular-nums leading-none ${
+                          className={`min-h-[14px] text-center font-label text-[10px] font-bold tabular-nums leading-tight ${
                             bar.isCurrent
                               ? "text-primary dark:text-blue-200"
                               : "text-slate-700 dark:text-slate-300"
@@ -711,10 +622,20 @@ export function CreditCardDetailPage() {
                         >
                           {formatBRL(bar.amount)}
                         </span>
+                        <div className="relative mx-auto mt-0.5 w-full max-w-[52px] flex-1 min-h-[68px] rounded-xl bg-slate-100/90 p-1 dark:bg-slate-800/80">
+                          <div
+                            className={`absolute bottom-1 left-1 right-1 rounded-lg transition-all ${
+                              bar.isCurrent
+                                ? "bg-primary shadow-[0_-2px_0_rgba(0,40,85,0.12)_inset] dark:bg-blue-600"
+                                : "bg-primary/45 dark:bg-blue-800/80"
+                            }`}
+                            style={{ height: `${fillPct}%` }}
+                          />
+                        </div>
                         <span
-                          className={`shrink-0 font-label text-[9px] font-semibold uppercase tracking-wide ${
+                          className={`text-center font-label text-[9px] font-bold uppercase tracking-wide ${
                             bar.isCurrent
-                              ? "font-bold text-primary dark:text-blue-200"
+                              ? "text-primary dark:text-blue-200"
                               : "text-slate-600 dark:text-slate-400"
                           }`}
                         >
@@ -724,11 +645,7 @@ export function CreditCardDetailPage() {
                     );
                   })}
                 </div>
-                <p className="mt-1 text-[9px] leading-snug text-slate-500 dark:text-slate-400">
-                  Barra = fatura salva ou total <strong className="font-semibold text-slate-600 dark:text-slate-300">líquido</strong>{" "}
-                  no ciclo (estornos abatem). Importações “só histórico” entram no gráfico, mas não na fatura em aberto.
-                </p>
-                <div className="mt-2 flex flex-wrap justify-end gap-1.5 border-t border-surface-container/80 pt-2 dark:border-slate-700/80">
+                <div className="mt-3 flex flex-wrap justify-end gap-1.5 border-t border-surface-container/80 pt-2 dark:border-slate-700/80">
                   <button
                     type="button"
                     onClick={() => {
@@ -807,7 +724,7 @@ export function CreditCardDetailPage() {
           </div>
           {statements.length === 0 ? (
             <p className="text-xs text-slate-600 dark:text-slate-400">
-              Nenhuma fatura arquivada ainda. Registre fechamentos para alimentar o gráfico acima.
+              Nenhuma fatura arquivada. Use &quot;+ Registrar&quot; para guardar um fechamento com anexo.
             </p>
           ) : (
           <div className="custom-scrollbar flex gap-2 overflow-x-auto pb-1">
@@ -854,8 +771,8 @@ export function CreditCardDetailPage() {
                         }
                         className="flex items-center text-[11px] font-semibold text-primary hover:underline dark:text-blue-300"
                       >
-                        <span className="material-symbols-outlined mr-0.5 text-sm">visibility</span>
-                        Ver anexo
+                        <span className="material-symbols-outlined mr-0.5 text-sm">description</span>
+                        Ver fatura
                       </button>
                       <a
                         href={s.attachmentDataUrl}

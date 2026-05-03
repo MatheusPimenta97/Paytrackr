@@ -34,7 +34,7 @@ Nenhuma URL de agente está configurada. Para ler **comprovantes de pagamento** 
 \`\`\`
 OPENAI_API_KEY=sk-...
 OPENAI_MODEL=gpt-4o-mini
-VITE_AI_ASSISTANT_URL=/api/paytrackr/assistant/image
+VITE_AI_ASSISTANT_URL=/api/receipt
 \`\`\`
 
 (O servidor de desenvolvimento expõe esse endpoint e encaminha para a OpenAI. Em produção estático você precisa de um backend próprio.)
@@ -42,7 +42,7 @@ VITE_AI_ASSISTANT_URL=/api/paytrackr/assistant/image
 Para hospedar em URL externa:
 
 \`\`\`
-VITE_AI_ASSISTANT_URL=https://seu-servidor.com/api/paytrackr/assistant/image
+VITE_AI_ASSISTANT_URL=https://seu-servidor.com/api/receipt
 \`\`\`
 
 O app envia **POST** com corpo:
@@ -119,7 +119,7 @@ function stripDataUrlPrefix(dataUrl: string): { base64: string; mimeType: string
 function resolveAssistantEndpoint(): string {
   const fromEnv = import.meta.env.VITE_AI_ASSISTANT_URL?.trim();
   if (fromEnv) return fromEnv;
-  if (import.meta.env.DEV) return "/api/paytrackr/assistant/image";
+  if (import.meta.env.DEV) return "/api/receipt";
   return "";
 }
 

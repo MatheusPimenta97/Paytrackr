@@ -100,7 +100,7 @@ export function AiAssistantPage() {
       >
         <p className="font-semibold text-primary dark:text-slate-100">
           {usesDevProxy
-            ? "Desenvolvimento — proxy local (/api/paytrackr/assistant/image)"
+            ? "Desenvolvimento — proxy local (/api/receipt)"
             : !configured
               ? "Modo demo — sem chamada externa"
               : "Endpoint configurado (VITE_AI_ASSISTANT_URL)"}

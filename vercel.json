@@ -7,6 +7,10 @@
   },
   "rewrites": [
     {
+      "source": "/api/paytrackr/assistant/image",
+      "destination": "/api/receipt"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

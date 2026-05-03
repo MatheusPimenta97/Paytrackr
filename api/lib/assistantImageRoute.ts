@@ -1,7 +1,7 @@
 import { analyzeReceiptWithOpenAI } from "./openaiReceiptAnalyze";
 
 /** Mesmo caminho que o frontend usa em dev (proxy Vite) e em prod (serverless). */
-export const ASSISTANT_IMAGE_HTTP_PATH = "/api/paytrackr/assistant/image";
+export const ASSISTANT_IMAGE_HTTP_PATH = "/api/receipt";
 
 /** Limite seguro abaixo do teto da Vercel (~4,5 MB no corpo da requisição serverless). */
 export const ASSISTANT_IMAGE_BODY_MAX_BYTES = 4 * 1024 * 1024;

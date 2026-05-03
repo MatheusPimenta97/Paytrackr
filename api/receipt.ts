@@ -1,7 +1,7 @@
 /**
- * Handler autocontido (sem imports ../../lib): na Vercel, `"type":"module"` na raiz
- * + imports relativos profundos costumam causar FUNCTION_INVOCATION_FAILED.
- * O middleware do Vite continua a usar `api/lib/assistantImageRoute.ts`.
+ * POST /api/receipt — comprovante (IA). Rota **plana**: a Vercel falha com
+ * FUNCTION_INVOCATION_FAILED em `api/paytrackr/assistant/image` (módulo aninhado).
+ * O Vite em dev usa o mesmo caminho via `ASSISTANT_IMAGE_HTTP_PATH` em `api/lib`.
  */
 import type { IncomingMessage, ServerResponse } from "node:http";
 

@@ -25,11 +25,15 @@ function stripDataUrlPrefix(dataUrl: string): { base64: string; mimeType: string
   return { base64: b64, mimeType: mime };
 }
 
-/** Mesma convenção do endpoint de imagem: substitui `/image` por `/statement`. */
+/** Deriva o URL de fatura a partir do endpoint de comprovante. */
 export function resolveStatementAssistantEndpoint(): string {
   const base = import.meta.env.VITE_AI_ASSISTANT_URL?.trim();
   if (base) {
     if (base.endsWith("/image")) return `${base.slice(0, -"/image".length)}/statement`;
+    if (/\/receipt\/?$/.test(base)) {
+      const root = base.replace(/\/receipt\/?$/, "");
+      return `${root}/paytrackr/assistant/statement`;
+    }
     return `${base.replace(/\/$/, "")}/statement`;
   }
   if (import.meta.env.DEV) return "/api/paytrackr/assistant/statement";
@@ -50,7 +54,7 @@ export async function analyzeCreditCardStatementDocument(
     return {
       ok: true,
       markdown:
-        "## IA indisponível\n\nConfigure `VITE_AI_ASSISTANT_URL` no build (ex.: `/api/paytrackr/assistant/image`) para habilitar também `/statement` na mesma base.",
+        "## IA indisponível\n\nConfigure `VITE_AI_ASSISTANT_URL` no build (ex.: `/api/receipt`) para habilitar também a rota de fatura na mesma base.",
       suggestedTransactions: [],
       statementTotalGuess: null,
       demoMode: true,

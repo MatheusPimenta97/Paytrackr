@@ -182,7 +182,7 @@ export function CreditCardDetailPage() {
   const recentTxns = cardTxns.slice(0, 5);
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6 px-4 pb-28 md:space-y-8 md:px-8 md:pb-12">
+    <div className="mx-auto max-w-7xl space-y-3 px-3 pb-24 md:space-y-4 md:px-6 md:pb-8">
       <CreditCardThirdPartyModal
         open={thirdPartyTxn !== null}
         transaction={thirdPartyTxn}
@@ -215,72 +215,72 @@ export function CreditCardDetailPage() {
       />
 
       {/* Toolbar estilo mock (voltar + contexto) */}
-      <div className="flex items-center gap-3 md:gap-4">
+      <div className="-mb-1 flex items-center gap-2">
         <button
           type="button"
           onClick={() => navigate(-1)}
-          className="rounded-full p-2 text-slate-500 transition-colors hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
+          className="rounded-full p-1.5 text-slate-500 transition-colors hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
           aria-label="Voltar"
         >
-          <span className="material-symbols-outlined">arrow_back</span>
+          <span className="material-symbols-outlined text-[20px]">arrow_back</span>
         </button>
         <Link
           to="/"
-          className="text-sm font-semibold text-[#002855] underline-offset-2 hover:underline dark:text-blue-200"
+          className="text-xs font-semibold text-[#002855] underline-offset-2 hover:underline dark:text-blue-200"
         >
           Painel
         </Link>
       </div>
 
       {/* Card header */}
-      <section className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
-        <div className="flex items-start gap-4">
-          <div className="flex h-10 w-16 shrink-0 items-center justify-center rounded-lg bg-primary-container text-on-primary">
+      <section className="flex flex-col justify-between gap-3 md:flex-row md:items-center md:gap-4">
+        <div className="flex items-start gap-3">
+          <div className="flex h-9 w-14 shrink-0 items-center justify-center rounded-md bg-primary-container text-on-primary">
             {isCredito ? (
-              <span className="material-symbols-outlined filled text-[22px]">credit_card</span>
+              <span className="material-symbols-outlined filled text-lg">credit_card</span>
             ) : (
-              <CardBrandLogo brand={card.brand} className="!h-8 !w-14" imgClassName="max-h-6 object-contain" />
+              <CardBrandLogo brand={card.brand} className="!h-7 !w-12" imgClassName="max-h-5 object-contain" />
             )}
           </div>
           <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="font-headline text-3xl font-bold tracking-tight text-primary md:text-[32px] md:leading-tight">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <h1 className="font-headline text-xl font-bold tracking-tight text-primary md:text-2xl md:leading-snug">
                 {card.name}
               </h1>
-              <span className="rounded-full bg-secondary-container px-2 py-0.5 font-label text-[11px] font-semibold uppercase tracking-wider text-on-secondary-container">
+              <span className="rounded-full bg-secondary-container px-1.5 py-0.5 font-label text-[10px] font-semibold uppercase tracking-wide text-on-secondary-container">
                 {isCredito ? "Ativo" : "Benefícios"}
               </span>
             </div>
-            <p className="mt-1 font-body text-sm text-slate-600 dark:text-slate-400">
+            <p className="mt-0.5 font-body text-xs text-slate-600 dark:text-slate-400">
               Final •••• {card.last4}
             </p>
           </div>
         </div>
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap gap-2">
           {isCredito && (
             <button
               type="button"
               onClick={() => navigate(`/lancamentos?novo=1&cartao=${card.id}`)}
-              className="flex items-center gap-2 rounded-xl bg-surface-container-highest px-6 py-2 font-label text-[15px] font-semibold text-primary transition-colors hover:bg-surface-container-high dark:bg-slate-800 dark:hover:bg-slate-700"
+              className="flex items-center gap-1.5 rounded-lg bg-surface-container-highest px-3 py-1.5 font-label text-xs font-semibold text-primary transition-colors hover:bg-surface-container-high dark:bg-slate-800 dark:hover:bg-slate-700"
             >
-              <span className="material-symbols-outlined text-[20px]">payments</span>
+              <span className="material-symbols-outlined text-[18px]">payments</span>
               Registrar pagamento
             </button>
           )}
           <button
             type="button"
             onClick={() => navigate(`/lancamentos?novo=1&cartao=${card.id}`)}
-            className="flex items-center gap-2 rounded-xl bg-primary-container px-6 py-2 font-label text-[15px] font-semibold text-on-primary transition-opacity hover:opacity-90"
+            className="flex items-center gap-1.5 rounded-lg bg-primary-container px-3 py-1.5 font-label text-xs font-semibold text-on-primary transition-opacity hover:opacity-90"
           >
-            <span className="material-symbols-outlined text-[20px]">add_card</span>
+            <span className="material-symbols-outlined text-[18px]">add_card</span>
             Novo lançamento
           </button>
           <button
             type="button"
             onClick={() => alert("Exporte o backup em Configurações para guardar todos os dados.")}
-            className="flex items-center gap-2 rounded-xl border border-outline-variant/40 px-4 py-2 font-label text-[13px] font-semibold text-primary dark:border-slate-600"
+            className="flex items-center gap-1.5 rounded-lg border border-outline-variant/40 px-2.5 py-1.5 font-label text-[11px] font-semibold text-primary dark:border-slate-600"
           >
-            <span className="material-symbols-outlined text-[18px]">download</span>
+            <span className="material-symbols-outlined text-base">download</span>
             Backup
           </button>
         </div>
@@ -288,67 +288,67 @@ export function CreditCardDetailPage() {
 
       {/* Métricas */}
       {isCredito ? (
-        <section className="grid grid-cols-1 gap-6 md:grid-cols-3">
-          <div className="rounded-xl border border-surface-container bg-white p-6 shadow-[0px_4px_12px_rgba(0,40,85,0.05)] dark:border-slate-700 dark:bg-slate-900">
-            <p className="mb-2 font-label text-[11px] font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+        <section className="grid grid-cols-1 gap-3 md:grid-cols-3">
+          <div className="rounded-lg border border-surface-container bg-white p-4 shadow-[0px_4px_12px_rgba(0,40,85,0.05)] dark:border-slate-700 dark:bg-slate-900">
+            <p className="mb-1 font-label text-[10px] font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
               Fatura atual
             </p>
             <div className="flex items-baseline gap-2">
-              <span className="font-headline text-2xl font-semibold text-primary md:text-[24px]">
+              <span className="font-headline text-xl font-semibold tabular-nums text-primary md:text-[22px]">
                 {formatBRL(card.currentInvoice)}
               </span>
             </div>
-            <div className="mt-4 flex items-center gap-2">
-              <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-container dark:bg-slate-800">
+            <div className="mt-2 flex items-center gap-2">
+              <div className="h-1 flex-1 overflow-hidden rounded-full bg-surface-container dark:bg-slate-800">
                 <div className="h-full rounded-full bg-primary" style={{ width: `${usedPct}%` }} />
               </div>
-              <span className="text-sm text-slate-600 dark:text-slate-400">{usedPct}%</span>
+              <span className="text-xs text-slate-600 dark:text-slate-400">{usedPct}%</span>
             </div>
             <p
-              className={`mt-2 flex items-center gap-1 text-sm ${
+              className={`mt-1.5 flex items-center gap-1 text-xs ${
                 due === "overdue" ? "text-error" : "text-slate-600 dark:text-slate-400"
               }`}
             >
-              <span className="material-symbols-outlined text-base">schedule</span>
+              <span className="material-symbols-outlined text-sm">schedule</span>
               {dueHint}
             </p>
           </div>
-          <div className="rounded-xl border border-surface-container bg-white p-6 shadow-[0px_4px_12px_rgba(0,40,85,0.05)] dark:border-slate-700 dark:bg-slate-900">
-            <p className="mb-2 font-label text-[11px] font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+          <div className="rounded-lg border border-surface-container bg-white p-4 shadow-[0px_4px_12px_rgba(0,40,85,0.05)] dark:border-slate-700 dark:bg-slate-900">
+            <p className="mb-1 font-label text-[10px] font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
               Limite disponível
             </p>
             <div className="flex items-baseline gap-2">
-              <span className="font-headline text-2xl font-semibold text-primary md:text-[24px]">
+              <span className="font-headline text-xl font-semibold tabular-nums text-primary md:text-[22px]">
                 {formatBRL(available)}
               </span>
             </div>
-            <p className="mt-4 text-sm text-slate-600 dark:text-slate-400">
+            <p className="mt-2 text-xs text-slate-600 dark:text-slate-400">
               Total: {formatBRL(card.creditLimit)}
             </p>
           </div>
-          <div className="flex flex-col justify-between rounded-xl border border-surface-container bg-white p-6 shadow-[0px_4px_12px_rgba(0,40,85,0.05)] dark:border-slate-700 dark:bg-slate-900">
+          <div className="flex flex-col justify-between rounded-lg border border-surface-container bg-white p-4 shadow-[0px_4px_12px_rgba(0,40,85,0.05)] dark:border-slate-700 dark:bg-slate-900">
             <div>
-              <p className="mb-2 font-label text-[11px] font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+              <p className="mb-1 font-label text-[10px] font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
                 Próximo fechamento
               </p>
-              <div className="flex items-center gap-2">
-                <span className="font-headline text-2xl font-semibold capitalize text-primary md:text-[24px]">
+              <div className="flex items-center gap-1.5">
+                <span className="font-headline text-xl font-semibold capitalize tabular-nums text-primary md:text-[22px]">
                   {formatNextClosingShort(card.closingDay)}
                 </span>
-                <span className="material-symbols-outlined text-outline-variant dark:text-slate-500">
+                <span className="material-symbols-outlined text-base text-outline-variant dark:text-slate-500">
                   calendar_today
                 </span>
               </div>
-              <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+              <p className="mt-0.5 text-xs text-slate-600 dark:text-slate-400">
                 {formatCardBillingDayLabel(card.closingDay)}
               </p>
             </div>
             <p
-              className={`mt-2 flex items-center gap-1 text-sm ${
+              className={`mt-1.5 flex items-center gap-1 text-xs ${
                 dClose <= 7 ? "text-error" : "text-slate-600 dark:text-slate-400"
               }`}
             >
-              <span className="material-symbols-outlined text-base">schedule</span>
+              <span className="material-symbols-outlined text-sm">schedule</span>
               {dClose < 0
                 ? "Fechamento já ocorreu neste ciclo"
                 : dClose === 0
@@ -358,27 +358,27 @@ export function CreditCardDetailPage() {
           </div>
         </section>
       ) : (
-        <section className="grid grid-cols-1 gap-6 sm:grid-cols-3">
+        <section className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           {(["refeicao", "alimentacao", "mobilidade"] as BenefitBucket[]).map((b) => (
             <div
               key={b}
-              className="rounded-xl border border-surface-container bg-white p-6 shadow-[0px_4px_12px_rgba(0,40,85,0.05)] dark:border-slate-700 dark:bg-slate-900"
+              className="rounded-lg border border-surface-container bg-white p-4 shadow-[0px_4px_12px_rgba(0,40,85,0.05)] dark:border-slate-700 dark:bg-slate-900"
             >
-              <p className="mb-2 font-label text-[11px] font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+              <p className="mb-1 font-label text-[10px] font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
                 {BENEFIT_BUCKET_LABEL[b]}
               </p>
-              <span className="font-headline text-2xl font-semibold text-primary">{formatBRL(card.benefitBalances[b])}</span>
+              <span className="font-headline text-xl font-semibold tabular-nums text-primary">{formatBRL(card.benefitBalances[b])}</span>
             </div>
           ))}
         </section>
       )}
 
       {isCredito ? (
-        <details className="rounded-xl border border-outline-variant/25 bg-white/90 p-4 text-sm shadow-[0px_4px_12px_rgba(0,40,85,0.05)] dark:border-slate-700 dark:bg-slate-900/80">
-          <summary className="cursor-pointer font-semibold text-primary dark:text-slate-100">
+        <details className="rounded-lg border border-outline-variant/25 bg-white/90 py-2 pl-3 pr-2 text-xs shadow-[0px_2px_8px_rgba(0,40,85,0.04)] dark:border-slate-700 dark:bg-slate-900/80">
+          <summary className="cursor-pointer list-none font-semibold text-primary marker:content-none dark:text-slate-100 [&::-webkit-details-marker]:hidden">
             Corrigir fatura atual (dados já gravados errados)
           </summary>
-          <p className="mt-2 text-xs leading-relaxed text-slate-600 dark:text-slate-400">
+          <p className="mt-1.5 text-[11px] leading-snug text-slate-600 dark:text-slate-400">
             Se importou fatura antiga pela IA e o valor da fatura aberta ficou alto, escolha uma{" "}
             <strong className="text-on-surface dark:text-slate-200">data de corte</strong>: todas as{" "}
             <strong className="text-on-surface dark:text-slate-200">despesas</strong> com data{" "}
@@ -386,14 +386,14 @@ export function CreditCardDetailPage() {
             histórico (não entram na fatura aberta) e o total é recalculado. Ajuste a data ao seu caso (ex.: primeiro
             dia do mês do ciclo atual).
           </p>
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <label className="flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-400">
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            <label className="flex flex-wrap items-center gap-1.5 text-[10px] font-semibold text-slate-600 dark:text-slate-400">
               Data de corte
               <input
                 type="date"
                 value={invoiceCutDate}
                 onChange={(e) => setInvoiceCutDate(e.target.value)}
-                className="rounded-lg border border-outline-variant/40 bg-white px-2 py-1.5 text-sm dark:border-slate-600 dark:bg-slate-800"
+                className="rounded border border-outline-variant/40 bg-white px-1.5 py-1 text-[11px] dark:border-slate-600 dark:bg-slate-800"
               />
             </label>
             <button
@@ -409,7 +409,7 @@ export function CreditCardDetailPage() {
                 }
                 syncCreditCardOpenInvoice(card.id, { markExpenseHistoryBefore: invoiceCutDate });
               }}
-              className="rounded-lg bg-secondary px-3 py-2 text-xs font-bold text-white dark:bg-emerald-700"
+              className="rounded bg-secondary px-2 py-1 text-[10px] font-bold text-white dark:bg-emerald-700"
             >
               Marcar antes da data + recalcular
             </button>
@@ -419,7 +419,7 @@ export function CreditCardDetailPage() {
                 if (!confirm("Recalcular só a fatura aberta a partir dos lançamentos (sem alterar datas)?")) return;
                 syncCreditCardOpenInvoice(card.id);
               }}
-              className="rounded-lg border border-outline-variant px-3 py-2 text-xs font-bold dark:border-slate-600"
+              className="rounded border border-outline-variant px-2 py-1 text-[10px] font-bold dark:border-slate-600"
             >
               Só recalcular
             </button>
@@ -428,46 +428,46 @@ export function CreditCardDetailPage() {
       ) : null}
 
       {/* Bento: IA + gráficos */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-        <div className="space-y-6 lg:col-span-4">
-          <div className="relative flex min-h-[280px] flex-col justify-between overflow-hidden rounded-2xl bg-primary-container p-6 text-on-primary lg:min-h-[300px]">
-            <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-3xl" />
-            <div className="relative z-10">
-              <div className="mb-4 flex items-center gap-2">
-                <span className="material-symbols-outlined text-primary-fixed">auto_awesome</span>
-                <span className="font-headline text-xl font-semibold text-on-primary">Análise IA</span>
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-12 lg:items-stretch">
+        <div className="lg:col-span-4">
+          <div className="relative flex h-full min-h-0 flex-col justify-between gap-3 overflow-hidden rounded-xl bg-primary-container p-4 text-on-primary lg:min-h-[11rem]">
+            <div className="pointer-events-none absolute -right-8 -top-8 h-28 w-28 rounded-full bg-white/10 blur-2xl" />
+            <div className="relative z-10 min-h-0">
+              <div className="mb-2 flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-lg text-primary-fixed">auto_awesome</span>
+                <span className="font-headline text-base font-semibold text-on-primary">Análise IA</span>
               </div>
-              <p className="mb-6 font-body text-base leading-relaxed text-white/85">{aiInsight}</p>
+              <p className="line-clamp-4 font-body text-xs leading-snug text-white/85">{aiInsight}</p>
             </div>
             <button
               type="button"
               onClick={() => navigate("/assistente")}
-              className="relative z-10 flex w-full items-center justify-center gap-2 rounded-xl bg-white py-4 font-label text-[15px] font-semibold text-primary shadow-lg transition-all hover:bg-primary-fixed dark:text-primary"
+              className="relative z-10 mt-1 flex w-full shrink-0 items-center justify-center gap-1.5 rounded-lg bg-white py-2 font-label text-xs font-semibold text-primary shadow-md transition-all hover:bg-primary-fixed dark:text-primary"
             >
-              <span className="material-symbols-outlined text-[20px]">psychology</span>
+              <span className="material-symbols-outlined text-[18px]">psychology</span>
               Analisar com IA
             </button>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:col-span-8">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:col-span-8">
           {isCredito ? (
             <>
-              <div className="rounded-2xl border border-surface-container bg-white p-6 shadow-[0px_4px_12px_rgba(0,40,85,0.05)] dark:border-slate-700 dark:bg-slate-900">
-                <h3 className="mb-6 font-headline text-xl font-semibold text-primary">Histórico de faturas</h3>
-                <div className="flex h-[200px] items-end justify-between gap-2 px-2 pt-2">
+              <div className="flex flex-col rounded-xl border border-surface-container bg-white p-4 shadow-[0px_4px_12px_rgba(0,40,85,0.05)] dark:border-slate-700 dark:bg-slate-900">
+                <h3 className="mb-2 shrink-0 font-headline text-base font-semibold text-primary">Histórico de faturas</h3>
+                <div className="flex h-[112px] shrink-0 items-end justify-between gap-1.5 px-1">
                   {invoiceBars.map((bar) => {
-                    const barH = Math.max(Math.round((bar.heightPct / 100) * 168), 12);
+                    const barH = Math.max(Math.round((bar.heightPct / 100) * 96), 8);
                     return (
-                      <div key={bar.ym} className="flex min-w-0 flex-1 flex-col items-center justify-end gap-2">
+                      <div key={bar.ym} className="flex min-w-0 flex-1 flex-col items-center justify-end gap-1">
                         <div
-                          className={`w-full rounded-t-lg transition-all hover:opacity-90 ${
+                          className={`w-full rounded-t-md transition-all hover:opacity-90 ${
                             bar.isCurrent ? "bg-primary-container dark:bg-blue-900" : "bg-surface-container dark:bg-slate-800"
                           }`}
                           style={{ height: barH }}
                         />
                         <span
-                          className={`shrink-0 font-label text-[11px] font-semibold uppercase tracking-wider ${
+                          className={`shrink-0 font-label text-[9px] font-semibold uppercase tracking-wide ${
                             bar.isCurrent
                               ? "font-bold text-primary dark:text-blue-200"
                               : "text-slate-600 dark:text-slate-400"
@@ -479,7 +479,7 @@ export function CreditCardDetailPage() {
                     );
                   })}
                 </div>
-                <div className="mt-4 flex flex-wrap justify-end gap-2">
+                <div className="mt-2 flex flex-wrap justify-end gap-1.5 border-t border-surface-container/80 pt-2 dark:border-slate-700/80">
                   <button
                     type="button"
                     onClick={() => {
@@ -487,7 +487,7 @@ export function CreditCardDetailPage() {
                       setStatementPrefill(null);
                       setStatementOpen(true);
                     }}
-                    className="text-xs font-semibold text-primary hover:underline dark:text-blue-300"
+                    className="text-[10px] font-semibold text-primary hover:underline dark:text-blue-300"
                   >
                     + Registrar fatura
                   </button>
@@ -501,20 +501,20 @@ export function CreditCardDetailPage() {
                       });
                       setStatementOpen(true);
                     }}
-                    className="rounded-lg border border-outline-variant/30 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-surface-container-low dark:border-slate-600"
+                    className="rounded border border-outline-variant/30 px-2 py-1 text-[10px] font-semibold text-primary hover:bg-surface-container-low dark:border-slate-600"
                   >
                     Usar fatura atual ({formatBRL(card.currentInvoice)})
                   </button>
                 </div>
               </div>
-              <div className="rounded-2xl border border-surface-container bg-white p-6 shadow-[0px_4px_12px_rgba(0,40,85,0.05)] dark:border-slate-700 dark:bg-slate-900">
-                <h3 className="mb-6 font-headline text-xl font-semibold text-primary">Gastos por categoria</h3>
-                <div className="space-y-4">
+              <div className="rounded-xl border border-surface-container bg-white p-4 shadow-[0px_4px_12px_rgba(0,40,85,0.05)] dark:border-slate-700 dark:bg-slate-900">
+                <h3 className="mb-2 font-headline text-base font-semibold text-primary">Gastos por categoria</h3>
+                <div className="space-y-1.5">
                   {categoryRows.map((row) => (
-                    <div key={row.name} className="flex items-center gap-3">
-                      <div className={`h-2 w-2 shrink-0 rounded-full ${row.dot}`} />
-                      <div className="flex-1 text-sm text-on-surface dark:text-slate-200">{row.name}</div>
-                      <div className="font-semibold text-primary dark:text-slate-100">{row.pct}%</div>
+                    <div key={row.name} className="flex items-center gap-2">
+                      <div className={`h-1.5 w-1.5 shrink-0 rounded-full ${row.dot}`} />
+                      <div className="min-w-0 flex-1 truncate text-xs text-on-surface dark:text-slate-200">{row.name}</div>
+                      <div className="shrink-0 text-xs font-semibold text-primary dark:text-slate-100">{row.pct}%</div>
                     </div>
                   ))}
                 </div>
@@ -522,14 +522,14 @@ export function CreditCardDetailPage() {
             </>
           ) : (
             <>
-              <div className="rounded-2xl border border-surface-container bg-white p-6 shadow-[0px_4px_12px_rgba(0,40,85,0.05)] dark:border-slate-700 dark:bg-slate-900 md:col-span-2">
-                <h3 className="mb-4 font-headline text-xl font-semibold text-primary">Gastos por categoria</h3>
-                <div className="space-y-4">
+              <div className="rounded-xl border border-surface-container bg-white p-4 shadow-[0px_4px_12px_rgba(0,40,85,0.05)] dark:border-slate-700 dark:bg-slate-900 md:col-span-2">
+                <h3 className="mb-2 font-headline text-base font-semibold text-primary">Gastos por categoria</h3>
+                <div className="space-y-1.5">
                   {categoryRows.map((row) => (
-                    <div key={row.name} className="flex items-center gap-3">
-                      <div className={`h-2 w-2 shrink-0 rounded-full ${row.dot}`} />
-                      <div className="flex-1 text-sm">{row.name}</div>
-                      <div className="font-semibold">{row.pct}%</div>
+                    <div key={row.name} className="flex items-center gap-2">
+                      <div className={`h-1.5 w-1.5 shrink-0 rounded-full ${row.dot}`} />
+                      <div className="min-w-0 flex-1 truncate text-xs">{row.name}</div>
+                      <div className="shrink-0 text-xs font-semibold">{row.pct}%</div>
                     </div>
                   ))}
                 </div>
@@ -541,9 +541,9 @@ export function CreditCardDetailPage() {
 
       {/* Faturas arquivadas (crédito) */}
       {isCredito ? (
-        <section className="rounded-2xl border border-surface-container bg-white p-6 shadow-[0px_4px_12px_rgba(0,40,85,0.05)] dark:border-slate-700 dark:bg-slate-900">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-            <h3 className="font-headline text-xl font-semibold text-primary">Faturas arquivadas</h3>
+        <section className="rounded-xl border border-surface-container bg-white p-4 shadow-[0px_4px_12px_rgba(0,40,85,0.05)] dark:border-slate-700 dark:bg-slate-900">
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+            <h3 className="font-headline text-base font-semibold text-primary">Faturas arquivadas</h3>
             <button
               type="button"
               onClick={() => {
@@ -557,22 +557,22 @@ export function CreditCardDetailPage() {
             </button>
           </div>
           {statements.length === 0 ? (
-            <p className="text-sm text-slate-600 dark:text-slate-400">
+            <p className="text-xs text-slate-600 dark:text-slate-400">
               Nenhuma fatura arquivada ainda. Registre fechamentos para alimentar o gráfico acima.
             </p>
           ) : (
-          <div className="custom-scrollbar flex gap-4 overflow-x-auto pb-2">
+          <div className="custom-scrollbar flex gap-2 overflow-x-auto pb-1">
             {statements.map((s) => (
               <div
                 key={s.id}
-                className="w-[min(100%,280px)] shrink-0 rounded-xl border border-outline-variant/15 bg-surface-container-lowest p-5 dark:border-slate-700 dark:bg-slate-800/80"
+                className="w-[min(100%,240px)] shrink-0 rounded-lg border border-outline-variant/15 bg-surface-container-lowest p-3 dark:border-slate-700 dark:bg-slate-800/80"
               >
-                <div className="mb-3 flex items-start justify-between gap-2">
+                <div className="mb-2 flex items-start justify-between gap-2">
                   <div>
-                    <p className="font-label text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    <p className="font-label text-[9px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                       {monthLabel(s.referenceMonth)}
                     </p>
-                    <p className="mt-1 font-headline text-lg font-bold text-primary dark:text-slate-100">{formatBRL(s.amount)}</p>
+                    <p className="mt-0.5 font-headline text-sm font-bold tabular-nums text-primary dark:text-slate-100">{formatBRL(s.amount)}</p>
                   </div>
                   <span
                     className={`shrink-0 rounded-full px-2 py-1 font-label text-[10px] font-semibold uppercase ${
@@ -584,8 +584,8 @@ export function CreditCardDetailPage() {
                     {s.status === "paga" ? "Paga" : "Aberta"}
                   </span>
                 </div>
-                {s.note ? <p className="mb-2 text-xs text-slate-600 dark:text-slate-400">{s.note}</p> : null}
-                <div className="flex flex-wrap gap-2 border-t border-outline-variant/10 pt-3 dark:border-slate-600">
+                {s.note ? <p className="mb-1 text-[10px] text-slate-600 dark:text-slate-400">{s.note}</p> : null}
+                <div className="flex flex-wrap gap-1.5 border-t border-outline-variant/10 pt-2 dark:border-slate-600">
                   {s.attachmentDataUrl ? (
                     <a
                       href={s.attachmentDataUrl}
@@ -625,29 +625,29 @@ export function CreditCardDetailPage() {
       ) : null}
 
       {/* Lançamentos recentes */}
-      <section className="overflow-hidden rounded-2xl border border-surface-container bg-white shadow-[0px_4px_12px_rgba(0,40,85,0.05)] dark:border-slate-700 dark:bg-slate-900">
-        <div className="flex items-center justify-between border-b border-surface-container p-6 dark:border-slate-700">
-          <h3 className="font-headline text-xl font-semibold text-primary">Lançamentos recentes</h3>
+      <section className="overflow-hidden rounded-xl border border-surface-container bg-white shadow-[0px_4px_12px_rgba(0,40,85,0.05)] dark:border-slate-700 dark:bg-slate-900">
+        <div className="flex items-center justify-between border-b border-surface-container px-4 py-2.5 dark:border-slate-700">
+          <h3 className="font-headline text-base font-semibold text-primary">Lançamentos recentes</h3>
           <Link
             to={`/lancamentos?cartao=${card.id}`}
-            className="font-label text-[15px] font-semibold text-primary-container hover:underline dark:text-blue-300"
+            className="font-label text-xs font-semibold text-primary-container hover:underline dark:text-blue-300"
           >
             Ver todos
           </Link>
         </div>
         {cardTxns.length === 0 ? (
-          <div className="p-10 text-center text-sm text-slate-600 dark:text-slate-400">
+          <div className="px-4 py-6 text-center text-xs text-slate-600 dark:text-slate-400">
             Nenhum lançamento ainda. Use &quot;Novo lançamento&quot; ou cadastre em Lançamentos.
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left">
               <thead>
-                <tr className="bg-surface-container-low font-label text-[11px] font-semibold uppercase tracking-wider text-slate-600 dark:bg-slate-800/80 dark:text-slate-400">
-                  <th className="px-6 py-4">Data</th>
-                  <th className="px-6 py-4">Descrição</th>
-                  <th className="px-6 py-4">Categoria</th>
-                  <th className="px-6 py-4 text-right">Valor</th>
+                <tr className="bg-surface-container-low font-label text-[9px] font-semibold uppercase tracking-wide text-slate-600 dark:bg-slate-800/80 dark:text-slate-400">
+                  <th className="px-3 py-2">Data</th>
+                  <th className="px-3 py-2">Descrição</th>
+                  <th className="px-3 py-2">Categoria</th>
+                  <th className="px-3 py-2 text-right">Valor</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-surface-container dark:divide-slate-700">
@@ -656,21 +656,21 @@ export function CreditCardDetailPage() {
                     key={t.id}
                     className="group transition-colors hover:bg-surface-container-low dark:hover:bg-slate-800/50"
                   >
-                    <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-600 dark:text-slate-400">
+                    <td className="whitespace-nowrap px-3 py-2 text-xs text-slate-600 dark:text-slate-400">
                       {formatDateShort(t.date)}
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-secondary-container text-primary dark:bg-slate-700 dark:text-blue-200">
-                          <span className="material-symbols-outlined text-[18px]">{categoryMaterialIcon(t.category)}</span>
+                    <td className="px-3 py-2">
+                      <div className="flex items-center gap-2">
+                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-secondary-container text-primary dark:bg-slate-700 dark:text-blue-200">
+                          <span className="material-symbols-outlined text-[16px]">{categoryMaterialIcon(t.category)}</span>
                         </div>
                         <div className="min-w-0">
-                          <span className="font-medium text-primary dark:text-slate-100">{t.description}</span>
+                          <span className="text-xs font-medium text-primary dark:text-slate-100">{t.description}</span>
                           {t.thirdPartyName ? (
                             <button
                               type="button"
                               onClick={() => setThirdPartyTxn(t)}
-                              className="mt-0.5 block truncate text-left text-[11px] font-semibold text-slate-500 hover:underline dark:text-slate-400"
+                              className="mt-0.5 block truncate text-left text-[10px] font-semibold text-slate-500 hover:underline dark:text-slate-400"
                             >
                               {t.thirdPartyName}
                             </button>
@@ -678,7 +678,7 @@ export function CreditCardDetailPage() {
                             <button
                               type="button"
                               onClick={() => setThirdPartyTxn(t)}
-                              className="mt-0.5 block text-[11px] font-semibold text-slate-500 hover:text-primary dark:text-slate-400"
+                              className="mt-0.5 block text-[10px] font-semibold text-slate-500 hover:text-primary dark:text-slate-400"
                             >
                               Atribuir pessoa
                             </button>
@@ -686,13 +686,13 @@ export function CreditCardDetailPage() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <span className="inline-flex rounded-full bg-surface-container px-3 py-1 font-label text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant dark:bg-slate-800 dark:text-slate-300">
+                    <td className="px-3 py-2">
+                      <span className="inline-flex max-w-[8rem] truncate rounded-full bg-surface-container px-2 py-0.5 font-label text-[9px] font-semibold uppercase tracking-wide text-on-surface-variant dark:bg-slate-800 dark:text-slate-300">
                         {(t.category || "—").slice(0, 24)}
                       </span>
                     </td>
                     <td
-                      className={`px-6 py-4 text-right font-semibold ${
+                      className={`px-3 py-2 text-right text-xs font-semibold tabular-nums ${
                         t.amount < 0 ? "text-primary dark:text-slate-100" : "text-secondary dark:text-emerald-400"
                       }`}
                     >
@@ -707,11 +707,11 @@ export function CreditCardDetailPage() {
       </section>
 
       {/* Hero */}
-      <section className="relative h-[300px] overflow-hidden rounded-3xl shadow-2xl">
+      <section className="relative h-[160px] overflow-hidden rounded-2xl shadow-lg md:h-[180px]">
         <img alt="" src={HERO_CARD_IMG} className="h-full w-full object-cover" />
-        <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-primary/80 to-transparent p-8 md:p-10">
-          <p className="mb-2 font-headline text-2xl font-semibold text-on-primary">Segurança em primeiro lugar</p>
-          <p className="max-w-md font-body text-base leading-relaxed text-white/90">
+        <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-primary/80 to-transparent p-4 md:p-5">
+          <p className="mb-1 font-headline text-base font-semibold text-on-primary md:text-lg">Segurança em primeiro lugar</p>
+          <p className="max-w-md font-body text-xs leading-snug text-white/90 md:text-sm">
             Seus dados são protegidos por criptografia de ponta a ponta. Mantenha o backup em Configurações.
           </p>
         </div>

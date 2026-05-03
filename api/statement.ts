@@ -136,6 +136,145 @@ async function chatCompletionJson(input: {
   return content;
 }
 
+/** Modelos com suporte a PDF nativo na API Responses (`input_file`). */
+function pickModelForNativePdf(requested: string): string {
+  const m = (requested || "").trim().toLowerCase();
+  if (
+    m.startsWith("gpt-4o") ||
+    m.startsWith("gpt-4.1") ||
+    m.startsWith("gpt-5") ||
+    m.startsWith("o3") ||
+    m.startsWith("o4")
+  ) {
+    return (requested || "").trim() || DEFAULT_MODEL_FALLBACK;
+  }
+  return DEFAULT_MODEL_FALLBACK;
+}
+
+function extractResponsesOutputText(data: unknown): string | null {
+  if (typeof data !== "object" || data === null) return null;
+  const d = data as Record<string, unknown>;
+  if (typeof d.output_text === "string" && d.output_text.trim()) return d.output_text.trim();
+
+  const output = d.output;
+  if (!Array.isArray(output)) return null;
+  const texts: string[] = [];
+  for (const item of output) {
+    if (typeof item !== "object" || item === null) continue;
+    const o = item as Record<string, unknown>;
+    const content = o.content;
+    if (!Array.isArray(content)) continue;
+    for (const part of content) {
+      if (typeof part !== "object" || part === null) continue;
+      const p = part as Record<string, unknown>;
+      if (p.type === "output_text" && typeof p.text === "string") texts.push(p.text);
+      else if (typeof p.text === "string" && (p.type === "text" || p.type === undefined)) texts.push(p.text);
+    }
+  }
+  const joined = texts.join("\n").trim();
+  return joined.length ? joined : null;
+}
+
+async function responsesCompletionJson(input: {
+  apiKey: string;
+  model: string;
+  userContent: Array<Record<string, unknown>>;
+}): Promise<string> {
+  const model = pickModelForNativePdf(input.model);
+  const res = await fetch("https://api.openai.com/v1/responses", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${input.apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model,
+      input: [{ role: "user", content: input.userContent }],
+      max_output_tokens: 4096,
+      text: { format: { type: "json_object" } },
+    }),
+  });
+
+  const rawText = await res.text();
+  if (!res.ok) {
+    throw new Error(`OpenAI Responses (${res.status}): ${rawText.slice(0, 800)}`);
+  }
+
+  let data: unknown;
+  try {
+    data = JSON.parse(rawText) as unknown;
+  } catch {
+    throw new Error(`Resposta Responses inválida: ${rawText.slice(0, 200)}`);
+  }
+
+  const out = extractResponsesOutputText(data);
+  if (!out) {
+    throw new Error(`OpenAI Responses sem texto útil: ${rawText.slice(0, 500)}`);
+  }
+  return out;
+}
+
+/** PDF sem texto extraível (scan): envia o arquivo pela API Responses (`input_file`), com visão embutida. */
+async function analyzeCreditCardStatementFromPdfNative(input: {
+  apiKey: string;
+  model: string;
+  pdfBase64: string;
+  filename: string;
+  referenceMonth: string | null;
+  categoriesLine: string;
+}): Promise<StatementAnalyzeResult> {
+  const monthHint = input.referenceMonth
+    ? `Mês de referência informado pelo usuário: ${input.referenceMonth}. Prefira datas nesse mês quando o ano estiver implícito na fatura.`
+    : "Inferir o mês de referência a partir do documento quando possível.";
+
+  const system = `Você interpreta FATURAS DE CARTÃO DE CRÉDITO brasileiras a partir do PDF anexo (inclui faturas escaneadas ou só imagem).
+
+Extraia LINHAS DE COMPRAS/DESPESAS (ignore totalizadores genéricos como "total da fatura" como linha importável — use só linhas com data + estabelecimento + valor).
+
+Para cada linha devolva:
+- date no formato YYYY-MM-DD
+- description curta (nome do estabelecimento ou texto da linha)
+- amount: número positivo em reais (valor absoluto da compra nesta fatura)
+- category: escolha EXATAMENTE uma destas opções: ${input.categoriesLine}
+- installmentNote: texto opcional tipo "3/12" se aparecer parcelamento; senão null.
+
+Responda APENAS um objeto JSON válido neste formato (sem markdown ao redor):
+{"markdown":"...","suggestedTransactions":[{"date":"","description":"","amount":0,"category":"","installmentNote":null}],"statementTotalGuess":null}
+
+statementTotalGuess: total da fatura em BRL se estiver explícito no documento, senão null.
+
+${monthHint}`;
+
+  const safeName =
+    input.filename.replace(/[^\w.-]+/g, "_").replace(/_+/g, "_").slice(0, 80) || "fatura.pdf";
+
+  const content = await responsesCompletionJson({
+    apiKey: input.apiKey,
+    model: input.model,
+    userContent: [
+      {
+        type: "input_text",
+        text: `${system}\n\nListe os lançamentos desta fatura para importação em app financeiro. Use o formato JSON acima (obrigatório).`,
+      },
+      {
+        type: "input_file",
+        filename: safeName.endsWith(".pdf") ? safeName : `${safeName}.pdf`,
+        file_data: `data:application/pdf;base64,${input.pdfBase64}`,
+      },
+    ],
+  });
+
+  const parsed = parseJsonContent(content);
+  if (!parsed) {
+    return normalizeAnalyzePayload({
+      markdown: content,
+      suggestedTransactions: [],
+      statementTotalGuess: null,
+    });
+  }
+  return normalizeAnalyzePayload(parsed);
+}
+
 function normalizeAnalyzePayload(parsed: unknown): StatementAnalyzeResult {
   const root =
     typeof parsed === "object" && parsed !== null ? (parsed as Record<string, unknown>) : {};
@@ -439,38 +578,47 @@ export async function handleStatementAnalyzePost(
     let result: StatementAnalyzeResult;
 
     if (mimeType === "application/pdf") {
-      let text: string;
+      let text = "";
+      let pdfTextOk = false;
       try {
         text = await extractPdfText(buf);
+        pdfTextOk = text.length >= 120;
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
         console.error("[paytrackr-statement] pdf-parse", msg);
-        return {
-          status: 422,
-          json: {
-            error:
-              "Não foi possível ler este PDF. Se for só imagem escaneada, exporte páginas como PNG/JPEG ou use captura de tela.",
-          },
-        };
       }
 
-      if (text.length < 120) {
-        return {
-          status: 422,
-          json: {
-            error:
-              "Este PDF não tem texto selecionável (provável scan). Envie a fatura como imagem (PNG/JPEG) ou PDF gerado pelo banco.",
-          },
-        };
+      if (pdfTextOk) {
+        result = await analyzeCreditCardStatementFromText({
+          apiKey: openaiKey,
+          model: openaiModel,
+          statementText: text,
+          referenceMonth,
+          categoriesLine,
+        });
+      } else {
+        try {
+          result = await analyzeCreditCardStatementFromPdfNative({
+            apiKey: openaiKey,
+            model: openaiModel,
+            pdfBase64: p.documentBase64.trim(),
+            filename: "fatura.pdf",
+            referenceMonth,
+            categoriesLine,
+          });
+        } catch (e2) {
+          const msg2 = e2 instanceof Error ? e2.message : String(e2);
+          console.error("[paytrackr-statement] pdf-native-openai", msg2);
+          return {
+            status: 422,
+            json: {
+              error:
+                "Não foi possível extrair texto do PDF nem analisá-lo como documento (OpenAI). Tente PNG/JPEG da fatura ou outro PDF. Detalhe: " +
+                (msg2.length > 220 ? `${msg2.slice(0, 220)}…` : msg2),
+            },
+          };
+        }
       }
-
-      result = await analyzeCreditCardStatementFromText({
-        apiKey: openaiKey,
-        model: openaiModel,
-        statementText: text,
-        referenceMonth,
-        categoriesLine,
-      });
     } else {
       result = await analyzeCreditCardStatementVision({
         apiKey: openaiKey,

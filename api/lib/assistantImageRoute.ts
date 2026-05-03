@@ -66,6 +66,22 @@ export async function handleAssistantImagePost(
   bodyRaw: string,
   options: { openaiKey?: string; openaiModel: string },
 ): Promise<{ status: number; json: Record<string, unknown> }> {
+  try {
+    return await handleAssistantImagePostCore(bodyRaw, options);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[paytrackr-assistant-unhandled]", msg);
+    return {
+      status: 500,
+      json: { error: msg.length > 400 ? `${msg.slice(0, 400)}…` : msg },
+    };
+  }
+}
+
+async function handleAssistantImagePostCore(
+  bodyRaw: string,
+  options: { openaiKey?: string; openaiModel: string },
+): Promise<{ status: number; json: Record<string, unknown> }> {
   const openaiModel = options.openaiModel?.trim() || "gpt-4o-mini";
   const openaiKey = options.openaiKey?.trim();
 
@@ -145,3 +161,4 @@ export async function handleAssistantImagePost(
     };
   }
 }
+

@@ -36,9 +36,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let bodyRaw: string;
     try {
       bodyRaw = await readPostBodyUtf8(req, ASSISTANT_IMAGE_BODY_MAX_BYTES);
-    } catch {
-      sendJson(res, 413, { error: "Corpo da requisição muito grande." });
-      return;
+    } catch (e) {
+      const m = e instanceof Error ? e.message : String(e);
+      if (m.includes("too large") || m.includes("large")) {
+        sendJson(res, 413, { error: "Corpo da requisição muito grande." });
+        return;
+      }
+      throw e;
     }
 
     const openaiKey = process.env.OPENAI_API_KEY?.trim();

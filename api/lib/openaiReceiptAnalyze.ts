@@ -33,7 +33,6 @@ export async function analyzeReceiptWithOpenAI(input: {
       },
       body: JSON.stringify({
         model: input.model,
-        response_format: { type: "json_object" },
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
           {
@@ -45,7 +44,7 @@ export async function analyzeReceiptWithOpenAI(input: {
               },
               {
                 type: "image_url",
-                image_url: { url: imageUrl },
+                image_url: { url: imageUrl, detail: "low" },
               },
             ],
           },
@@ -75,14 +74,22 @@ export async function analyzeReceiptWithOpenAI(input: {
     throw new Error(`Resposta OpenAI inválida: ${rawText.slice(0, 200)}`);
   }
 
-  const content =
+  const choice0 = (
     typeof data === "object" &&
     data !== null &&
     "choices" in data &&
     Array.isArray((data as { choices: unknown }).choices)
-      ? (data as { choices: Array<{ message?: { content?: string } }> }).choices[0]?.message?.content
-      : undefined;
+      ? (data as { choices: Array<{ message?: { content?: string | null; refusal?: string | null } }> })
+          .choices[0]?.message
+      : undefined
+  );
 
+  const refusal = choice0 && typeof choice0.refusal === "string" ? choice0.refusal.trim() : "";
+  if (refusal) {
+    throw new Error(`OpenAI recusou a imagem: ${refusal.slice(0, 400)}`);
+  }
+
+  const content = choice0?.content;
   if (!content || typeof content !== "string") {
     throw new Error("OpenAI não retornou texto na resposta.");
   }

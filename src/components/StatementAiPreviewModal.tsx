@@ -1,7 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { formatBRL, useFinance } from "../context/FinanceContext";
 import { CATEGORY_OPTIONS } from "../domain/categories";
-import { formatStatementInvoiceCyclePt, statementInvoiceCycleIsoRange } from "../domain/money";
+import {
+  coerceStatementReferenceMonthYm,
+  formatStatementInvoiceCyclePt,
+  statementInvoiceCycleIsoRange,
+} from "../domain/money";
 import type { StatementAiSuggestedTxn } from "../services/statementAi";
 
 function iconForCategory(category: string): string {
@@ -93,6 +97,7 @@ export function StatementAiPreviewModal({
   }
 
   function importSelected() {
+    const refYm = coerceStatementReferenceMonthYm(statementReferenceMonth);
     const picked = rows.filter((r) => r.selected && r.amount > 0 && r.description.trim());
     for (const r of picked) {
       const cat = CATEGORY_OPTIONS.includes(r.category as (typeof CATEGORY_OPTIONS)[number])
@@ -121,9 +126,7 @@ export function StatementAiPreviewModal({
         paymentAttachmentDataUrl: null,
         paymentAttachmentName: null,
         thirdPartyName: null,
-        statementReferenceMonth: /^\d{4}-\d{2}$/.test(statementReferenceMonth)
-          ? statementReferenceMonth
-          : null,
+        ...(refYm ? { statementReferenceMonth: refYm } : {}),
         /**
          * Fora do período do mês escolhido, ou fatura já fechada (fim do ciclo antes de hoje) → só histórico.
          * Dentro do período do mês atual em aberto → entra na fatura aberta e no gráfico.

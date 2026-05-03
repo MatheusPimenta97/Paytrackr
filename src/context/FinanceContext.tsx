@@ -46,6 +46,7 @@ import {
 import { newId } from "../domain/id";
 import {
   clampBillingDay,
+  coerceStatementReferenceMonthYm,
   formatBRL,
   greetingForNow,
   greetingMaterialIconForNow,
@@ -223,10 +224,7 @@ function normalizeTransactions(raw: unknown[]): Transaction[] {
         ? t.thirdPartyName.trim().slice(0, 120)
         : null;
     const skipCardInvoiceDelta = t.skipCardInvoiceDelta === true ? true : undefined;
-    const statementReferenceMonth =
-      typeof t.statementReferenceMonth === "string" && /^\d{4}-\d{2}$/.test(t.statementReferenceMonth.trim())
-        ? t.statementReferenceMonth.trim()
-        : undefined;
+    const statementReferenceMonth = coerceStatementReferenceMonthYm(t.statementReferenceMonth) ?? undefined;
     return {
       ...(rest as Transaction),
       creditCardId,
@@ -416,6 +414,9 @@ function financeReducer(state: FinanceState, action: Action): FinanceState {
       const txMerged = { ...raw, id, creditCardId, benefitBucket, ...pay } as Record<string, unknown>;
       delete txMerged.boletoAttachmentDataUrl;
       delete txMerged.boletoAttachmentName;
+      const srm = coerceStatementReferenceMonthYm(raw.statementReferenceMonth);
+      if (srm) txMerged.statementReferenceMonth = srm;
+      else delete txMerged.statementReferenceMonth;
       const tx = txMerged as Transaction;
       const { amount, accountId, goalId } = tx;
       const accId = accountId || state.defaultAccountId;

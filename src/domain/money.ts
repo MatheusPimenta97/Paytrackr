@@ -188,6 +188,13 @@ export function referenceMonthForCardTransaction(txnDateIso: string, closingDay:
   return null;
 }
 
+/** `YYYY-MM` válido a partir de valor salvo/importado (com trim); senão null. */
+export function coerceStatementReferenceMonthYm(v: unknown): string | null {
+  if (typeof v !== "string") return null;
+  const s = v.trim();
+  return /^\d{4}-\d{2}$/.test(s) ? s : null;
+}
+
 /**
  * Mês de referência para gráfico / agrupamento por fatura: se o lançamento veio da importação
  * por IA com `statementReferenceMonth` (YYYY-MM), usa esse mês; senão, deduz pela data + fechamento.
@@ -196,8 +203,8 @@ export function chartReferenceMonthForCardTransaction(
   t: { date: string; statementReferenceMonth?: string | null },
   closingDay: number,
 ): string | null {
-  const m = t.statementReferenceMonth;
-  if (typeof m === "string" && /^\d{4}-\d{2}$/.test(m.trim())) return m.trim();
+  const coerced = coerceStatementReferenceMonthYm(t.statementReferenceMonth);
+  if (coerced) return coerced;
   return referenceMonthForCardTransaction(t.date, closingDay);
 }
 

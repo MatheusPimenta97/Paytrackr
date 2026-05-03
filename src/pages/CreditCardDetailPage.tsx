@@ -75,6 +75,7 @@ export function CreditCardDetailPage() {
     addCreditCardStatement,
     updateCreditCardStatement,
     deleteCreditCardStatement,
+    resetCreditCardActivity,
   } = useFinance();
 
   const card = cardId ? state.creditCards.find((c) => c.id === cardId) : undefined;
@@ -618,6 +619,34 @@ export function CreditCardDetailPage() {
           ))}
         </section>
       )}
+
+      <details className="rounded-lg border border-red-200/80 bg-white/90 py-2 pl-3 pr-2 text-xs shadow-[0px_2px_8px_rgba(0,40,85,0.04)] dark:border-red-900/50 dark:bg-slate-900/80">
+        <summary className="cursor-pointer list-none font-semibold text-error marker:content-none [&::-webkit-details-marker]:hidden">
+          Zerar este cartão (testes do zero)
+        </summary>
+        <p className="mt-1.5 text-[11px] leading-snug text-slate-600 dark:text-slate-400">
+          Apaga <strong className="text-on-surface dark:text-slate-200">todos</strong> os lançamentos deste cartão e as
+          faturas arquivadas. Zera a fatura em aberto (crédito) ou as bolsas (benefícios). Não altera outras contas nem
+          outros cartões.
+        </p>
+        <button
+          type="button"
+          className="mt-2 rounded border border-error/50 bg-error/10 px-2 py-1.5 text-[10px] font-bold text-error hover:bg-error/15 dark:border-red-800 dark:bg-red-950/40"
+          onClick={() => {
+            if (
+              !confirm(
+                "Apagar todos os lançamentos e faturas arquivadas deste cartão? A fatura / bolsas voltam a zero. Não dá para desfazer.",
+              )
+            ) {
+              return;
+            }
+            resetCreditCardActivity(card.id);
+            setInvoiceDetailYm(null);
+          }}
+        >
+          Zerar agora
+        </button>
+      </details>
 
       {/* Bento: IA + gráficos */}
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-12 lg:items-stretch">

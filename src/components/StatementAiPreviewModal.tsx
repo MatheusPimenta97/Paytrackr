@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { formatBRL, useFinance } from "../context/FinanceContext";
 import { CATEGORY_OPTIONS } from "../domain/categories";
+import { formatStatementInvoiceCyclePt, statementInvoiceCycleIsoRange } from "../domain/money";
 import type { StatementAiSuggestedTxn } from "../services/statementAi";
 
 function iconForCategory(category: string): string {
@@ -31,15 +32,26 @@ type RowState = StatementAiSuggestedTxn & { selected: boolean };
 type Props = {
   open: boolean;
   creditCardId: string;
+  /** Mês YYYY-MM escolhido antes de extrair a fatura (define o período do ciclo). */
+  statementReferenceMonth: string;
+  invoiceClosingDay: number;
   markdown: string;
   statementTotalGuess: number | null;
   suggestedTransactions: StatementAiSuggestedTxn[];
   onClose: () => void;
 };
 
+function formatRefMonthTitlePt(ym: string): string {
+  const [y, m] = ym.split("-").map(Number);
+  if (!y || !m || m < 1 || m > 12) return ym;
+  return new Date(y, m - 1, 1).toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+}
+
 export function StatementAiPreviewModal({
   open,
   creditCardId,
+  statementReferenceMonth,
+  invoiceClosingDay,
   markdown,
   statementTotalGuess,
   suggestedTransactions,
@@ -47,6 +59,13 @@ export function StatementAiPreviewModal({
 }: Props) {
   const { addTransaction, state } = useFinance();
   const [rows, setRows] = useState<RowState[]>([]);
+
+  const cycle = useMemo(
+    () => statementInvoiceCycleIsoRange(statementReferenceMonth, invoiceClosingDay),
+    [statementReferenceMonth, invoiceClosingDay],
+  );
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const cycleIsPast = cycle ? cycle.endIso < todayIso : true;
 
   useEffect(() => {
     if (!open) return;
@@ -76,6 +95,9 @@ export function StatementAiPreviewModal({
         r.installmentNote && !r.description.includes(r.installmentNote)
           ? `${r.description} (${r.installmentNote})`
           : r.description;
+      const day = r.date.slice(0, 10);
+      const inCycle = !!(cycle && day >= cycle.startIso && day <= cycle.endIso);
+      const skipCardInvoiceDelta = !inCycle || cycleIsPast;
       addTransaction({
         date: r.date,
         description: desc.trim().slice(0, 240),
@@ -90,8 +112,11 @@ export function StatementAiPreviewModal({
         paymentAttachmentDataUrl: null,
         paymentAttachmentName: null,
         thirdPartyName: null,
-        /** Histórico da fatura importada — não soma na fatura aberta (currentInvoice). */
-        skipCardInvoiceDelta: true,
+        /**
+         * Fora do período do mês escolhido, ou fatura já fechada (fim do ciclo antes de hoje) → só histórico.
+         * Dentro do período do mês atual em aberto → entra na fatura aberta e no gráfico.
+         */
+        skipCardInvoiceDelta,
       });
     }
     onClose();
@@ -111,14 +136,20 @@ export function StatementAiPreviewModal({
           <h2 id="stmt-ai-title" className="font-headline text-lg font-bold text-primary dark:text-slate-100">
             Revisar lançamentos da fatura (IA)
           </h2>
-          <p className="mt-1 text-xs text-on-surface-variant dark:text-slate-400">
-            Confira cada linha antes de importar. A IA pode errar valores ou categorias. Ao importar, os lançamentos
-            entram no histórico do cartão com a data de cada linha e{" "}
-            <strong className="font-semibold text-on-surface dark:text-slate-200">
-              não alteram o valor da fatura aberta
-            </strong>{" "}
-            (para não misturar fatura antiga com o ciclo atual). Ajuste a fatura atual manualmente se precisar
-            alinhar ao banco.
+          <p className="mt-1 text-xs font-semibold text-primary dark:text-emerald-200">
+            Mês da fatura: {formatRefMonthTitlePt(statementReferenceMonth)}
+            {cycle ? (
+              <span className="mt-0.5 block font-normal text-on-surface-variant dark:text-slate-400">
+                Ciclo: {formatStatementInvoiceCyclePt(cycle)}
+              </span>
+            ) : null}
+          </p>
+          <p className="mt-2 text-xs text-on-surface-variant dark:text-slate-400">
+            Confira cada linha. Datas <strong className="text-on-surface dark:text-slate-200">dentro</strong> desse
+            período e fatura ainda em aberto entram na <strong className="text-on-surface dark:text-slate-200">fatura
+            atual</strong>. Fora do período, ou se o ciclo já terminou, ficam como{" "}
+            <strong className="text-on-surface dark:text-slate-200">só histórico</strong> (continuam no gráfico por
+            mês).
           </p>
         </div>
 
@@ -145,13 +176,18 @@ export function StatementAiPreviewModal({
                 <tr className="border-b border-outline-variant/30 text-[10px] uppercase text-on-surface-variant dark:border-slate-600">
                   <th className="p-2">✓</th>
                   <th className="p-2">Data</th>
+                  <th className="p-2">Período</th>
                   <th className="p-2">Descrição</th>
                   <th className="p-2">Valor</th>
                   <th className="p-2">Categoria</th>
                 </tr>
               </thead>
               <tbody>
-                {rows.map((r, i) => (
+                {rows.map((r, i) => {
+                  const d = r.date.slice(0, 10);
+                  const inC = !!(cycle && d >= cycle.startIso && d <= cycle.endIso);
+                  const willSkip = !inC || cycleIsPast;
+                  return (
                   <tr key={`${i}-${r.date}-${r.description.slice(0, 24)}`} className="border-b border-outline-variant/15 dark:border-slate-700">
                     <td className="p-1 align-top">
                       <input
@@ -168,6 +204,13 @@ export function StatementAiPreviewModal({
                         onChange={(e) => updateRow(i, { date: e.target.value })}
                         className="w-full rounded bg-surface-container-high px-1 py-1 dark:bg-slate-800"
                       />
+                    </td>
+                    <td className="p-1 align-top text-[10px] leading-tight text-on-surface-variant">
+                      {willSkip ? (
+                        <span className="text-amber-800 dark:text-amber-300">Histórico</span>
+                      ) : (
+                        <span className="text-secondary dark:text-emerald-300">Fatura atual</span>
+                      )}
                     </td>
                     <td className="p-1 align-top">
                       <input
@@ -207,7 +250,8 @@ export function StatementAiPreviewModal({
                       </select>
                     </td>
                   </tr>
-                ))}
+                );
+                })}
               </tbody>
             </table>
           )}

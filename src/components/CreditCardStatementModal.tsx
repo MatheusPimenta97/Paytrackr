@@ -206,6 +206,8 @@ export function CreditCardStatementModal({
       <StatementAiPreviewModal
         open={aiPreviewOpen}
         creditCardId={creditCardId}
+        statementReferenceMonth={month}
+        invoiceClosingDay={invoiceClosingDay}
         markdown={aiMarkdown}
         statementTotalGuess={aiGuess}
         suggestedTransactions={aiSuggestions}
@@ -223,6 +225,13 @@ export function CreditCardStatementModal({
           {editing ? "Editar fatura" : "Registrar fatura"}
         </h2>
         <form onSubmit={submit} className="space-y-3">
+          <div className="rounded-lg border border-primary/20 bg-primary-fixed/15 px-3 py-2 dark:border-blue-900/40 dark:bg-slate-800/80">
+            <p className="text-[11px] font-bold text-primary dark:text-blue-200">1. Mês de referência da fatura</p>
+            <p className="mt-0.5 text-[10px] leading-snug text-on-surface-variant dark:text-slate-400">
+              Escolha o mês <strong className="text-on-surface dark:text-slate-200">desta</strong> fatura (fechamento)
+              antes de anexar o PDF e usar a IA — assim os lançamentos caem no ciclo certo.
+            </p>
+          </div>
           <div>
             <label className="mb-1 block text-xs font-bold text-on-surface-variant">Mês de referência</label>
             <input
@@ -233,14 +242,58 @@ export function CreditCardStatementModal({
             />
             {cycleForMonth ? (
               <p className="mt-1.5 rounded-lg border border-outline-variant/20 bg-surface-container/60 px-2 py-1.5 text-[10px] leading-snug text-on-surface-variant dark:border-slate-700 dark:bg-slate-800/60">
-                <span className="font-bold text-primary dark:text-slate-200">Período da fatura:</span>{" "}
+                <span className="font-bold text-primary dark:text-slate-200">Período:</span>{" "}
                 {formatStatementInvoiceCyclePt(cycleForMonth)}
-                <span className="mt-0.5 block text-on-surface-variant/85">
-                  Compras do dia seguinte ao fechamento do mês anterior até o dia {invoiceClosingDay} deste mês
-                  (fechamento do cartão).
-                </span>
               </p>
             ) : null}
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-bold text-on-surface-variant">
+              2. Comprovante (opcional) e extração por IA
+            </label>
+            <input ref={fileRef} type="file" accept="application/pdf,image/*" className="text-xs" onChange={onFile} />
+            {attachmentName && (
+              <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-on-surface-variant">
+                <span className="truncate">Anexo: {attachmentName}</span>
+                {attachmentDataUrl ? (
+                  <button
+                    type="button"
+                    className="shrink-0 font-bold text-primary hover:underline dark:text-blue-300"
+                    onClick={() => setAttachmentPreviewOpen(true)}
+                  >
+                    Ver
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  className="shrink-0 font-bold text-error"
+                  onClick={() => {
+                    setAttachmentDataUrl(null);
+                    setAttachmentName(null);
+                    if (fileRef.current) fileRef.current.value = "";
+                  }}
+                >
+                  remover
+                </button>
+              </p>
+            )}
+            {statementAiAvailable && (
+              <div className="mt-2">
+                <button
+                  type="button"
+                  disabled={aiBusy || !/^\d{4}-\d{2}$/.test(month)}
+                  onClick={() => void runStatementAi()}
+                  className="rounded-lg border border-secondary/40 bg-secondary-container/20 px-3 py-2 text-xs font-bold text-secondary hover:bg-secondary-container/35 disabled:opacity-50 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200"
+                >
+                  {aiBusy ? "Analisando fatura…" : "Extrair lançamentos com IA"}
+                </button>
+                <p className="mt-1 text-[10px] text-on-surface-variant">
+                  {!/^\d{4}-\d{2}$/.test(month)
+                    ? "Defina o mês de referência acima para habilitar a extração."
+                    : "PDF ou imagem. Revise cada linha antes de importar."}
+                </p>
+              </div>
+            )}
           </div>
           <div>
             <label className="mb-1 block text-xs font-bold text-on-surface-variant">Valor total (R$)</label>
@@ -280,50 +333,6 @@ export function CreditCardStatementModal({
               onChange={(e) => setNote(e.target.value)}
               className="w-full rounded-lg bg-surface-container-high px-3 py-2 text-sm"
             />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-bold text-on-surface-variant">Comprovante (opcional)</label>
-            <input ref={fileRef} type="file" accept="application/pdf,image/*" className="text-xs" onChange={onFile} />
-            {attachmentName && (
-              <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-on-surface-variant">
-                <span className="truncate">Anexo: {attachmentName}</span>
-                {attachmentDataUrl ? (
-                  <button
-                    type="button"
-                    className="shrink-0 font-bold text-primary hover:underline dark:text-blue-300"
-                    onClick={() => setAttachmentPreviewOpen(true)}
-                  >
-                    Ver
-                  </button>
-                ) : null}
-                <button
-                  type="button"
-                  className="shrink-0 font-bold text-error"
-                  onClick={() => {
-                    setAttachmentDataUrl(null);
-                    setAttachmentName(null);
-                    if (fileRef.current) fileRef.current.value = "";
-                  }}
-                >
-                  remover
-                </button>
-              </p>
-            )}
-            {statementAiAvailable && (
-              <div className="mt-2">
-                <button
-                  type="button"
-                  disabled={aiBusy}
-                  onClick={() => void runStatementAi()}
-                  className="rounded-lg border border-secondary/40 bg-secondary-container/20 px-3 py-2 text-xs font-bold text-secondary hover:bg-secondary-container/35 disabled:opacity-50 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200"
-                >
-                  {aiBusy ? "Analisando fatura…" : "Extrair lançamentos com IA"}
-                </button>
-                <p className="mt-1 text-[10px] text-on-surface-variant">
-                  PDF com texto ou imagem da fatura. Revise tudo antes de importar nos lançamentos do cartão.
-                </p>
-              </div>
-            )}
           </div>
           {aiErr && <p className="text-xs font-semibold text-error">{aiErr}</p>}
           {error && <p className="text-sm font-semibold text-error">{error}</p>}

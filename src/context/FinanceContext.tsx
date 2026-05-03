@@ -323,6 +323,7 @@ type Action =
   | { type: "UPDATE_CREDIT_CARD"; id: string; patch: Partial<Omit<CreditCard, "id">> }
   | { type: "SYNC_CREDIT_CARD_OPEN_INVOICE"; cardId: string; markExpenseHistoryBefore?: string }
   | { type: "DELETE_CREDIT_CARD"; id: string }
+  | { type: "RESET_CREDIT_CARD_ACTIVITY"; cardId: string }
   | {
       type: "ADD_CREDIT_CARD_STATEMENT";
       payload: Omit<CreditCardStatement, "id" | "createdAt"> & { id?: string; createdAt?: string };
@@ -748,6 +749,30 @@ function financeReducer(state: FinanceState, action: Action): FinanceState {
         ),
       };
     }
+    case "RESET_CREDIT_CARD_ACTIVITY": {
+      const { cardId } = action;
+      const cc = state.creditCards.find((c) => c.id === cardId);
+      if (!cc) return state;
+      const removeList = state.transactions.filter((t) => t.creditCardId === cardId);
+      let goals = state.goals;
+      for (const tx of removeList) {
+        if (tx.goalId && tx.amount < 0) {
+          goals = goals.map((g) =>
+            g.id === tx.goalId
+              ? { ...g, current: Math.max(0, roundMoney(g.current - Math.abs(tx.amount))) }
+              : g
+          );
+        }
+      }
+      const transactions = state.transactions.filter((t) => t.creditCardId !== cardId);
+      const creditCardStatements = state.creditCardStatements.filter((s) => s.creditCardId !== cardId);
+      const creditCards = state.creditCards.map((c) => {
+        if (c.id !== cardId) return c;
+        if (c.kind === "credito") return { ...c, currentInvoice: 0 };
+        return { ...c, currentInvoice: 0, benefitBalances: defaultBenefitBalances() };
+      });
+      return { ...state, transactions, creditCardStatements, creditCards, goals };
+    }
     case "ADD_CREDIT_CARD_STATEMENT": {
       const id = action.payload.id ?? newId();
       const st = action.payload.status === "paga" ? ("paga" as const) : ("aberta" as const);
@@ -1023,6 +1048,8 @@ type FinanceContextValue = {
    */
   syncCreditCardOpenInvoice: (cardId: string, opts?: { markExpenseHistoryBefore?: string }) => void;
   deleteCreditCard: (id: string) => void;
+  /** Remove lançamentos e faturas arquivadas deste cartão; zera fatura aberta / bolsas de benefício. */
+  resetCreditCardActivity: (cardId: string) => void;
   addCreditCardStatement: (
     s: Omit<CreditCardStatement, "id" | "createdAt"> & { id?: string; createdAt?: string }
   ) => void;
@@ -1261,6 +1288,10 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     dispatch({ type: "DELETE_CREDIT_CARD", id });
   }, []);
 
+  const resetCreditCardActivity = useCallback((cardId: string) => {
+    dispatch({ type: "RESET_CREDIT_CARD_ACTIVITY", cardId });
+  }, []);
+
   const addCreditCardStatement = useCallback(
     (s: Omit<CreditCardStatement, "id" | "createdAt"> & { id?: string; createdAt?: string }) => {
       dispatch({ type: "ADD_CREDIT_CARD_STATEMENT", payload: s });
@@ -1437,6 +1468,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       updateCreditCard,
       syncCreditCardOpenInvoice,
       deleteCreditCard,
+      resetCreditCardActivity,
       addCreditCardStatement,
       updateCreditCardStatement,
       deleteCreditCardStatement,
@@ -1484,6 +1516,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     updateCreditCard,
     syncCreditCardOpenInvoice,
     deleteCreditCard,
+    resetCreditCardActivity,
     addCreditCardStatement,
     updateCreditCardStatement,
     deleteCreditCardStatement,

@@ -1,4 +1,5 @@
 import { CATEGORY_OPTIONS } from "../domain/categories";
+import { refineStatementTransactionCategory } from "../domain/statementCategoryRefine";
 
 export type StatementAiSuggestedTxn = {
   date: string;
@@ -141,15 +142,17 @@ export async function analyzeCreditCardStatementDocument(
     for (const row of body.suggestedTransactions) {
       if (!row || typeof row !== "object") continue;
       const r = row as Record<string, unknown>;
+      const desc = typeof r.description === "string" ? r.description : "";
+      const catRaw = typeof r.category === "string" ? r.category : "Outros";
       const ekRaw = typeof r.entryKind === "string" ? r.entryKind.trim().toLowerCase() : "";
       const ekNorm = ekRaw.normalize("NFD").replace(/\p{M}/gu, "");
       const entryKind: "expense" | "credit" =
         ekRaw === "credit" || ekNorm === "credito" ? "credit" : "expense";
       suggestedTransactions.push({
         date: typeof r.date === "string" ? r.date : "",
-        description: typeof r.description === "string" ? r.description : "",
+        description: desc,
         amount: typeof r.amount === "number" && Number.isFinite(r.amount) ? Math.abs(r.amount) : 0,
-        category: typeof r.category === "string" ? r.category : "Outros",
+        category: refineStatementTransactionCategory(desc, catRaw, CATEGORY_OPTIONS),
         installmentNote:
           typeof r.installmentNote === "string" && r.installmentNote.trim()
             ? r.installmentNote.trim()

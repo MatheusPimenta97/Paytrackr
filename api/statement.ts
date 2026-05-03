@@ -6,6 +6,7 @@
  * runtime (`ERR_MODULE_NOT_FOUND`). O mesmo padrão de `api/receipt.ts`.
  */
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { refineStatementTransactionCategory } from "../src/domain/statementCategoryRefine";
 
 // --- sendJson (inline; era api/lib/sendJson.ts)
 function sendJson(res: ServerResponse, status: number, payload: Record<string, unknown>): void {
@@ -179,27 +180,28 @@ function extractResponsesOutputText(data: unknown): string | null {
 
 /** Regras comuns aos três modos de extração (PDF nativo, imagem, texto). */
 function buildStatementExtractionGuide(categoriesLine: string): string {
-  return `INCLUA em suggestedTransactions TODAS as linhas financeiras desta fatura que impactam o total, não só a seção “compras e saques”:
+  return `INCLUA em suggestedTransactions TODAS as linhas financeiras desta fatura que compõem o total a pagar / limite utilizado, de TODAS as seções (nacionais, internacional em R$, IOF, repasse de IOF, encargos, multa, juros, parcelas, etc.). Não pare na primeira tabela.
 
-• Compras/saques nacionais: data, estabelecimento, valor em R$.
-• Compras internacionais: use o valor em R$ já impresso na fatura (“Valor em R$”, “BRL”, total da transação em reais). Se só existir USD + câmbio, calcule R$ = USD × câmbio da própria linha e arredonde em 2 casas.
-• IOF (ex.: “IOF”, “IOF de financiamento”), repasse de IOF, anuidade/tarifas, seguros cobrados na fatura — uma linha por valor com data do documento.
-• Encargos do rotativo/atraso: “ENCARGOS REFINANCIAMENTO”, “JUROS DE MORA”, “MULTA”, “Encargos financeiros” etc. — uma linha por encargo.
-• Pagamentos que abatem a fatura (ex.: “Pagamento via conta”, créditos): mesmo formato, amount = valor absoluto em BRL e entryKind "credit".
+REGRAS DE DESCRIPTION (obrigatório):
+• Para COMPRAS (nacional ou internacional): use o NOME DO ESTABELECIMENTO exatamente como impresso na fatura (ex.: "Google YouTubePremiumSA", "CARREFOUR TBE 24BARUERI", "CURSOR, AI POWERED IDEN", "TOTALPASSSAO PAULOBRA"). NUNCA substitua por rótulos genéricos como "Compras nacionais - EB", "Compras internacionais", "Estabelecimento X" ou siglas inventadas — isso quebra a categorização.
+• Para tarifas/encargos sem estabelecimento comercial: descrições fixas claras são OK (ex.: "IOF — financiamento", "Encargos refinanciamento (rotativo)", "Juros de mora", "Multa por atraso", "Repasse de IOF (internacional)", "Pagamento via conta").
+• Uma linha em suggestedTransactions = UMA linha de valor na fatura (não agrupe várias compras em uma linha sintética).
 
-Para cada linha:
-- date: YYYY-MM-DD
-- description: texto curto e claro (ex.: “IOF — financiamento”, “Multa por atraso”, “Pagamento via conta”)
-- amount: número > 0 em reais (sempre magnitude; créditos também positivos aqui)
-- category: EXATAMENTE uma das opções enviadas
-- installmentNote: parcela “3/12” se houver; senão null
-- entryKind: "expense" (padrão, pode omitir) ou "credit" para pagamentos/créditos na fatura
+INTERNACIONAL E IOF:
+• Cada compra internacional: valor em R$ conforme impresso ("Valor em R$", "BRL", coluna em reais). Se só houver USD + "Dólar de conversão", calcule R$ = USD × câmbio da linha, 2 decimais.
+• "Repasse de IOF" / totais de IOF de internacional: linha separada se constar valor próprio.
+• IOF de financiamento, encargos do rotativo, juros de mora, multa: uma linha por valor com a data impressa ao lado.
 
-statementTotalGuess: use o total COMPLETO deste fechamento em BRL. Priorize, quando existirem e forem claramente desta fatura, expressões como “Limite total utilizado”, “Valor total a pagar”, “Total da fatura” / “Total atual da fatura”. NÃO preencha só com subtotais parciais (ex.: “Total lançamentos no cartão”, “Total compras e saques”) se no documento houver um total MAIOR que já inclua internacional em R$, IOF, encargos e demais tarifas. Se houver vários números, escolha o que representa o fechamento integral e explique no markdown.
+CATEGORIA (category):
+• Use o nome do estabelecimento E palavras da fatura (ex.: "supermercado", "lazer", "outros SAO PAULO", "restaurante") para escolher entre as opções. Ex.: supermercado/padaria → Alimentação; streaming/cinema/academia/pass → Lazer; farmácia/hospital → Saúde; Uber/combustível → Transporte; hotel/aéreo → Viagem; software/nuvem (Cursor, AWS, GitHub) → Eletrônicos; encargos/IOF/multa/tarifa bancária → Outros.
 
-No markdown, inclua uma seção "## Conciliação" listando os principais totais que leu no PDF, a soma aproximada das linhas extraídas e observando que seções diferentes (compras nacionais vs internacional vs encargos) costumam aparecer separadas no banco.
+entryKind "credit" apenas para pagamentos que abatem a fatura (ex. pagamento via conta). amount sempre > 0 (magnitude).
 
-Opções de category (use a string exatamente como abaixo): ${categoriesLine}`;
+statementTotalGuess: número do TOTAL FECHADO desta fatura em BRL. Prioridade MÁXIMA a frases explícitas como "O total da sua fatura é", "Total da fatura", depois "Limite total utilizado" / "Valor total a pagar" quando for claramente o fechamento. NÃO use só "Total lançamentos no cartão" ou "Total compras e saques" se existir um total maior que já inclua internacional + encargos + IOF. statementTotalGuess deve coincidir com esse total integral quando estiver legível.
+
+No markdown, seção "## Conciliação": totais lidos no PDF (incl. subtotais por seção), soma das linhas extraídas (despesas − créditos) e, se faltar algo para bater no total, liste o que pode ter ficado de fora.
+
+Opções de category (string exata): ${categoriesLine}`;
 }
 
 async function responsesCompletionJson(input: {
@@ -468,13 +470,6 @@ export const DEFAULT_STATEMENT_CATEGORIES = [
   "Outros",
 ] as const;
 
-function normalizeCategory(raw: string, allowed: readonly string[]): string {
-  const t = raw.trim();
-  if (allowed.includes(t)) return t;
-  const f = allowed.find((a) => a.toLowerCase() === t.toLowerCase());
-  return f ?? "Outros";
-}
-
 function normalizeCategoriesPayload(raw: unknown): string[] {
   if (!Array.isArray(raw)) return [...DEFAULT_STATEMENT_CATEGORIES];
   const out: string[] = [];
@@ -500,7 +495,7 @@ async function extractPdfText(buffer: Buffer): Promise<string> {
 function applyCategoryWhitelist(result: StatementAnalyzeResult, allowed: readonly string[]): StatementAnalyzeResult {
   const suggestedTransactions: StatementSuggestedTxn[] = result.suggestedTransactions.map((t) => ({
     ...t,
-    category: normalizeCategory(t.category, allowed),
+    category: refineStatementTransactionCategory(t.description, t.category, allowed),
   }));
   return { ...result, suggestedTransactions };
 }

@@ -20,6 +20,10 @@ function monthLabel(ym: string): string {
   return new Date(y, m - 1, 1).toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
 }
 
+function firstDayOfMonthIso(d = new Date()): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
+}
+
 export function CreditCardDetailPage() {
   const { cardId } = useParams<{ cardId: string }>();
   const navigate = useNavigate();
@@ -29,6 +33,7 @@ export function CreditCardDetailPage() {
     addCreditCardStatement,
     updateCreditCardStatement,
     deleteCreditCardStatement,
+    syncCreditCardOpenInvoice,
   } = useFinance();
 
   const card = cardId ? state.creditCards.find((c) => c.id === cardId) : undefined;
@@ -39,6 +44,7 @@ export function CreditCardDetailPage() {
     referenceMonth: string;
     amount: number;
   } | null>(null);
+  const [invoiceCutDate, setInvoiceCutDate] = useState(() => firstDayOfMonthIso());
 
   const cardTxns = useMemo(() => {
     if (!cardId) return [];
@@ -240,6 +246,60 @@ export function CreditCardDetailPage() {
           </div>
         </div>
       </div>
+
+      {isCredito ? (
+        <details className="mb-8 rounded-xl border border-outline-variant/25 bg-surface-container-lowest/80 p-4 text-sm dark:border-slate-700 dark:bg-slate-900/50">
+          <summary className="cursor-pointer font-bold text-primary dark:text-slate-100">
+            Corrigir fatura atual (dados já gravados errados)
+          </summary>
+          <p className="mt-2 text-xs leading-relaxed text-on-surface-variant dark:text-slate-400">
+            Se importou fatura antiga pela IA e o valor da fatura aberta ficou alto, escolha uma{" "}
+            <strong className="text-on-surface dark:text-slate-200">data de corte</strong>: todas as{" "}
+            <strong className="text-on-surface dark:text-slate-200">despesas</strong> com data{" "}
+            <strong className="text-on-surface dark:text-slate-200">antes</strong> dela passam a contar só como
+            histórico (não entram na fatura aberta) e o total é recalculado. Ajuste a data ao seu caso (ex.: primeiro
+            dia do mês do ciclo atual).
+          </p>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <label className="flex flex-wrap items-center gap-2 text-xs font-semibold text-on-surface-variant">
+              Data de corte
+              <input
+                type="date"
+                value={invoiceCutDate}
+                onChange={(e) => setInvoiceCutDate(e.target.value)}
+                className="rounded-lg border border-outline-variant/40 bg-white px-2 py-1.5 text-sm dark:border-slate-600 dark:bg-slate-800"
+              />
+            </label>
+            <button
+              type="button"
+              onClick={() => {
+                if (
+                  !/^\d{4}-\d{2}-\d{2}$/.test(invoiceCutDate) ||
+                  !confirm(
+                    `Marcar despesas com data antes de ${invoiceCutDate} como só histórico e recalcular a fatura aberta?`,
+                  )
+                ) {
+                  return;
+                }
+                syncCreditCardOpenInvoice(card.id, { markExpenseHistoryBefore: invoiceCutDate });
+              }}
+              className="rounded-lg bg-secondary px-3 py-2 text-xs font-bold text-white dark:bg-emerald-700"
+            >
+              Marcar antes da data + recalcular
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (!confirm("Recalcular só a fatura aberta a partir dos lançamentos (sem alterar datas)?")) return;
+                syncCreditCardOpenInvoice(card.id);
+              }}
+              className="rounded-lg border border-outline-variant px-3 py-2 text-xs font-bold dark:border-slate-600"
+            >
+              Só recalcular
+            </button>
+          </div>
+        </details>
+      ) : null}
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
         <section className="lg:col-span-8">

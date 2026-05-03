@@ -52,6 +52,7 @@ import {
   isInCurrentMonth,
   roundMoney,
 } from "../domain/money";
+import { openInvoiceTotalFromCardTransactions } from "../domain/creditCardInvoice";
 import { currentMonthKey, recurringChargeForCreditCard } from "../domain/recurring";
 import { pullLanDevSync, pushLanDevSync } from "../sync/lanDevSync";
 
@@ -320,6 +321,7 @@ type Action =
   | { type: "UPDATE_ACCOUNT"; id: string; patch: Partial<Pick<Account, "name" | "balance" | "icon">> }
   | { type: "ADD_CREDIT_CARD"; payload: Omit<CreditCard, "id"> & { id?: string } }
   | { type: "UPDATE_CREDIT_CARD"; id: string; patch: Partial<Omit<CreditCard, "id">> }
+  | { type: "SYNC_CREDIT_CARD_OPEN_INVOICE"; cardId: string; markExpenseHistoryBefore?: string }
   | { type: "DELETE_CREDIT_CARD"; id: string }
   | {
       type: "ADD_CREDIT_CARD_STATEMENT";
@@ -709,6 +711,28 @@ function financeReducer(state: FinanceState, action: Action): FinanceState {
         }),
       };
     }
+    case "SYNC_CREDIT_CARD_OPEN_INVOICE": {
+      const { cardId, markExpenseHistoryBefore } = action;
+      const cc = state.creditCards.find((c) => c.id === cardId);
+      if (!cc || cc.kind !== "credito") return state;
+      let transactions = state.transactions;
+      if (
+        typeof markExpenseHistoryBefore === "string" &&
+        /^\d{4}-\d{2}-\d{2}$/.test(markExpenseHistoryBefore.trim())
+      ) {
+        const cut = markExpenseHistoryBefore.trim();
+        transactions = transactions.map((t) => {
+          if (t.creditCardId !== cardId || t.amount >= 0) return t;
+          if (t.date >= cut) return t;
+          return { ...t, skipCardInvoiceDelta: true };
+        });
+      }
+      const inv = openInvoiceTotalFromCardTransactions(cardId, transactions);
+      const creditCards = state.creditCards.map((c) =>
+        c.id === cardId ? { ...c, currentInvoice: inv } : c,
+      );
+      return { ...state, transactions, creditCards };
+    }
     case "DELETE_CREDIT_CARD": {
       return {
         ...state,
@@ -993,6 +1017,11 @@ type FinanceContextValue = {
   updateAccount: (id: string, patch: Partial<Pick<Account, "name" | "balance" | "icon">>) => void;
   addCreditCard: (c: Omit<CreditCard, "id"> & { id?: string }) => void;
   updateCreditCard: (id: string, patch: Partial<Omit<CreditCard, "id">>) => void;
+  /**
+   * Recalcula a fatura em aberto do cartão a partir dos lançamentos (respeitando `skipCardInvoiceDelta`).
+   * Com `markExpenseHistoryBefore`, marcam-se despesas com data &lt; essa data como só histórico antes do recálculo.
+   */
+  syncCreditCardOpenInvoice: (cardId: string, opts?: { markExpenseHistoryBefore?: string }) => void;
   deleteCreditCard: (id: string) => void;
   addCreditCardStatement: (
     s: Omit<CreditCardStatement, "id" | "createdAt"> & { id?: string; createdAt?: string }
@@ -1215,6 +1244,19 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     dispatch({ type: "UPDATE_CREDIT_CARD", id, patch });
   }, []);
 
+  const syncCreditCardOpenInvoice = useCallback(
+    (cardId: string, opts?: { markExpenseHistoryBefore?: string }) => {
+      dispatch({
+        type: "SYNC_CREDIT_CARD_OPEN_INVOICE",
+        cardId,
+        ...(opts?.markExpenseHistoryBefore
+          ? { markExpenseHistoryBefore: opts.markExpenseHistoryBefore }
+          : {}),
+      });
+    },
+    [],
+  );
+
   const deleteCreditCard = useCallback((id: string) => {
     dispatch({ type: "DELETE_CREDIT_CARD", id });
   }, []);
@@ -1393,6 +1435,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       updateAccount,
       addCreditCard,
       updateCreditCard,
+      syncCreditCardOpenInvoice,
       deleteCreditCard,
       addCreditCardStatement,
       updateCreditCardStatement,
@@ -1439,6 +1482,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     updateAccount,
     addCreditCard,
     updateCreditCard,
+    syncCreditCardOpenInvoice,
     deleteCreditCard,
     addCreditCardStatement,
     updateCreditCardStatement,

@@ -29,34 +29,49 @@ function readBody(req: IncomingMessage, maxBytes: number): Promise<string> {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Accept");
-
-  if (req.method === "OPTIONS") {
-    res.statusCode = 204;
-    return res.end();
-  }
-
-  if (req.method !== "POST") {
-    res.statusCode = 405;
-    return res.end();
-  }
-
-  let bodyRaw: string;
   try {
-    bodyRaw = await readBody(req, ASSISTANT_IMAGE_BODY_MAX_BYTES);
-  } catch {
-    res.statusCode = 413;
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Accept");
+
+    if (req.method === "OPTIONS") {
+      res.statusCode = 204;
+      return res.end();
+    }
+
+    if (req.method !== "POST") {
+      res.statusCode = 405;
+      return res.end();
+    }
+
+    let bodyRaw: string;
+    try {
+      bodyRaw = await readBody(req, ASSISTANT_IMAGE_BODY_MAX_BYTES);
+    } catch {
+      res.statusCode = 413;
+      res.setHeader("Content-Type", "application/json; charset=utf-8");
+      return res.end(JSON.stringify({ error: "Corpo da requisição muito grande." }));
+    }
+
+    const openaiKey = process.env.OPENAI_API_KEY?.trim();
+    const openaiModel = process.env.OPENAI_MODEL?.trim() || "gpt-4o-mini";
+
+    const result = await handleAssistantImagePost(bodyRaw, { openaiKey, openaiModel });
+    res.statusCode = result.status;
     res.setHeader("Content-Type", "application/json; charset=utf-8");
-    return res.end(JSON.stringify({ error: "Corpo da requisição muito grande." }));
+    return res.end(JSON.stringify(result.json));
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[paytrackr-assistant-image]", msg);
+    res.statusCode = 500;
+    res.setHeader("Content-Type", "application/json; charset=utf-8");
+    return res.end(
+      JSON.stringify({
+        error:
+          msg.length > 300
+            ? `Erro interno ao processar o pedido: ${msg.slice(0, 300)}…`
+            : `Erro interno ao processar o pedido: ${msg}`,
+      }),
+    );
   }
-
-  const openaiKey = process.env.OPENAI_API_KEY?.trim();
-  const openaiModel = process.env.OPENAI_MODEL?.trim() || "gpt-4o-mini";
-
-  const result = await handleAssistantImagePost(bodyRaw, { openaiKey, openaiModel });
-  res.statusCode = result.status;
-  res.setHeader("Content-Type", "application/json; charset=utf-8");
-  return res.end(JSON.stringify(result.json));
 }

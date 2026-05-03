@@ -88,8 +88,19 @@ function createAssistantMiddleware(openaiKey: string | undefined, openaiModel: s
       return;
     }
 
-    const result = await handleAssistantImagePost(bodyRaw, { openaiKey, openaiModel });
-    sendJson(res, result.status, result.json);
+    try {
+      const result = await handleAssistantImagePost(bodyRaw, { openaiKey, openaiModel });
+      sendJson(res, result.status, result.json);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("[paytrackr-assistant-image]", msg);
+      sendJson(res, 500, {
+        error:
+          msg.length > 300
+            ? `Erro interno ao processar o pedido: ${msg.slice(0, 300)}…`
+            : `Erro interno ao processar o pedido: ${msg}`,
+      });
+    }
   };
 }
 

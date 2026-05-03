@@ -12,6 +12,55 @@ export const ALLOWED_ASSISTANT_IMAGE_MIME = new Set([
   "image/gif",
 ]);
 
+/** Navegadores e SOs enviam aliases; alguns prints vêm como octet-stream ou mime vazio. */
+const MIME_ALIASES: Record<string, string> = {
+  "image/jpg": "image/jpeg",
+  "image/pjpeg": "image/jpeg",
+  "image/x-png": "image/png",
+  "image/apng": "image/png",
+  "application/octet-stream": "__sniff",
+};
+
+/** Detecta JPEG/PNG/GIF/WebP pelos primeiros bytes decodificados do base64. */
+function sniffImageMimeFromBase64(b64: string): string | null {
+  const trimmed = b64.replace(/\s/g, "");
+  if (!trimmed) return null;
+  let buf: Buffer;
+  try {
+    buf = Buffer.from(trimmed.slice(0, 16384), "base64");
+  } catch {
+    return null;
+  }
+  if (buf.length < 12) return null;
+  if (buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return "image/jpeg";
+  if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47) return "image/png";
+  if (buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46) return "image/gif";
+  if (
+    buf[0] === 0x52 &&
+    buf[1] === 0x49 &&
+    buf[2] === 0x46 &&
+    buf[3] === 0x46 &&
+    buf[8] === 0x57 &&
+    buf[9] === 0x45 &&
+    buf[10] === 0x42 &&
+    buf[11] === 0x50
+  )
+    return "image/webp";
+  return null;
+}
+
+function resolveImageMimeType(rawMime: string | undefined, imageBase64: string): string | null {
+  const m = typeof rawMime === "string" ? rawMime.trim().toLowerCase() : "";
+  const aliased = m ? (MIME_ALIASES[m] ?? m) : "";
+  if (aliased && aliased !== "__sniff" && ALLOWED_ASSISTANT_IMAGE_MIME.has(aliased)) {
+    return aliased;
+  }
+  if (aliased === "__sniff" || !m || m === "application/octet-stream") {
+    return sniffImageMimeFromBase64(imageBase64);
+  }
+  return sniffImageMimeFromBase64(imageBase64);
+}
+
 export async function handleAssistantImagePost(
   bodyRaw: string,
   options: { openaiKey?: string; openaiModel: string },
@@ -54,21 +103,23 @@ export async function handleAssistantImagePost(
     return { status: 400, json: { error: "imageBase64 obrigatório." } };
   }
 
-  const mimeType =
-    typeof p.mimeType === "string" && ALLOWED_ASSISTANT_IMAGE_MIME.has(p.mimeType.trim())
-      ? p.mimeType.trim()
-      : null;
+  const trimmedB64 = p.imageBase64.trim();
+  const mimeType = resolveImageMimeType(
+    typeof p.mimeType === "string" ? p.mimeType : undefined,
+    trimmedB64,
+  );
 
   if (!mimeType) {
     return {
       status: 400,
       json: {
-        error: `mimeType deve ser um de: ${[...ALLOWED_ASSISTANT_IMAGE_MIME].join(", ")}.`,
+        error:
+          "Não foi possível detectar o formato da imagem. Envie JPEG, PNG, WebP ou GIF (capturas às vezes vêm sem tipo — tente salvar como PNG ou tirar foto pelo app).",
       },
     };
   }
 
-  const approxBytes = Math.floor((p.imageBase64.length * 3) / 4);
+  const approxBytes = Math.floor((trimmedB64.length * 3) / 4);
   if (approxBytes > 10 * 1024 * 1024) {
     return { status: 413, json: { error: "Imagem muito grande (máx. ~10 MB)." } };
   }
@@ -78,7 +129,7 @@ export async function handleAssistantImagePost(
       apiKey: openaiKey,
       model: openaiModel,
       mimeType,
-      imageBase64: p.imageBase64.trim(),
+      imageBase64: trimmedB64,
     });
     return { status: 200, json: { markdown } };
   } catch (err) {

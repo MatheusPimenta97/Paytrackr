@@ -18,34 +18,49 @@ export async function analyzeReceiptWithOpenAI(input: {
 }): Promise<{ markdown: string }> {
   const imageUrl = `data:${input.mimeType};base64,${input.imageBase64}`;
 
-  const res = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${input.apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: input.model,
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        {
-          role: "user",
-          content: [
-            {
-              type: "text",
-              text: "Analise esta imagem como comprovante de pagamento.",
-            },
-            {
-              type: "image_url",
-              image_url: { url: imageUrl },
-            },
-          ],
-        },
-      ],
-      max_tokens: 2000,
-    }),
-  });
+  const ac = new AbortController();
+  const timeoutMs = 120_000;
+  const timeoutId = setTimeout(() => ac.abort(), timeoutMs);
+
+  let res: Response;
+  try {
+    res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      signal: ac.signal,
+      headers: {
+        Authorization: `Bearer ${input.apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: input.model,
+        response_format: { type: "json_object" },
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT },
+          {
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: "Analise esta imagem como comprovante de pagamento.",
+              },
+              {
+                type: "image_url",
+                image_url: { url: imageUrl },
+              },
+            ],
+          },
+        ],
+        max_tokens: 2000,
+      }),
+    });
+  } catch (err) {
+    clearTimeout(timeoutId);
+    if (err instanceof Error && err.name === "AbortError") {
+      throw new Error(`OpenAI: tempo esgotado (${timeoutMs / 1000} s).`);
+    }
+    throw err;
+  }
+  clearTimeout(timeoutId);
 
   const rawText = await res.text();
 

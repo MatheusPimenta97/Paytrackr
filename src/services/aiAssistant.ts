@@ -68,9 +68,16 @@ O app envia **POST** com corpo:
 `;
 
 function stripDataUrlPrefix(dataUrl: string): { base64: string; mimeType: string } {
-  const m = /^data:([^;]+);base64,(.+)$/s.exec(dataUrl.trim());
+  const m = /^data:([^;]*);base64,(.+)$/s.exec(dataUrl.trim());
   if (!m) return { base64: dataUrl, mimeType: "image/jpeg" };
-  return { base64: m[2], mimeType: m[1] || "image/jpeg" };
+  const rawMime = (m[1] || "").trim().toLowerCase();
+  const mime =
+    rawMime === "image/jpg" || rawMime === "image/pjpeg"
+      ? "image/jpeg"
+      : rawMime === "image/x-png"
+        ? "image/png"
+        : rawMime || "image/jpeg";
+  return { base64: m[2], mimeType: mime };
 }
 
 /** URL do POST do assistente: env explícito, ou em dev o proxy do Vite na mesma origem. */

@@ -145,3 +145,34 @@ export function daysUntilCreditCardDue(dueDay: number, now = new Date()): number
   const startToday = startOfDayLocal(now);
   return Math.round((due.getTime() - startToday.getTime()) / 86_400_000);
 }
+
+/** Próxima data de fechamento (ciclo mensal pelo dia do mês). */
+export function nextCreditCardClosingDate(closingDay: number, now = new Date()): Date {
+  const y = now.getFullYear();
+  const m = now.getMonth();
+  let close = calendarDateForBillingDayInMonth(y, m, closingDay);
+  const startToday = startOfDayLocal(now);
+  const closeStart = startOfDayLocal(close);
+  if (closeStart < startToday) {
+    const nextM = m === 11 ? 0 : m + 1;
+    const nextY = m === 11 ? y + 1 : y;
+    close = calendarDateForBillingDayInMonth(nextY, nextM, closingDay);
+  }
+  return close;
+}
+
+/** Dias até o próximo fechamento (0 = hoje). */
+export function daysUntilCreditCardClosing(closingDay: number, now = new Date()): number {
+  const close = nextCreditCardClosingDate(closingDay, now);
+  const startToday = startOfDayLocal(now);
+  return Math.round((startOfDayLocal(close).getTime() - startToday.getTime()) / 86_400_000);
+}
+
+/** Ex.: "15 out" para o próximo fechamento (título curto). */
+export function formatNextClosingShort(closingDay: number, now = new Date()): string {
+  const d = nextCreditCardClosingDate(closingDay, now);
+  return d
+    .toLocaleDateString("pt-BR", { day: "numeric", month: "short" })
+    .replace(/\./g, "")
+    .trim();
+}

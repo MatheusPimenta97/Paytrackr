@@ -32,6 +32,11 @@ export type Transaction = {
   paymentAttachmentName?: string | null;
   /** Quem usou o cartão (emprestado / outra pessoa), opcional */
   thirdPartyName?: string | null;
+  /**
+   * Se true: o lançamento fica vinculado ao cartão (histórico) mas **não** soma em
+   * `currentInvoice` (ex.: linhas de fatura passada importadas pela IA).
+   */
+  skipCardInvoiceDelta?: boolean;
 };
 
 export type GoalKind = "on_track" | "long_term" | "attention";

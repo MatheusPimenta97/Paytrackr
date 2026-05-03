@@ -216,11 +216,13 @@ function normalizeTransactions(raw: unknown[]): Transaction[] {
       typeof t.thirdPartyName === "string" && t.thirdPartyName.trim()
         ? t.thirdPartyName.trim().slice(0, 120)
         : null;
+    const skipCardInvoiceDelta = t.skipCardInvoiceDelta === true ? true : undefined;
     return {
       ...(rest as Transaction),
       creditCardId,
       benefitBucket,
       thirdPartyName,
+      skipCardInvoiceDelta,
       ...pay,
     };
   });
@@ -420,8 +422,10 @@ function financeReducer(state: FinanceState, action: Action): FinanceState {
         if (card.kind === "beneficios" && benefitBucket) {
           creditCards = adjustBenefitBalance(creditCards, card.id, benefitBucket, amount);
         } else if (card.kind === "credito") {
-          const invDelta = amount < 0 ? Math.abs(amount) : -amount;
-          creditCards = adjustCardInvoice(creditCards, card.id, invDelta);
+          if (tx.skipCardInvoiceDelta !== true) {
+            const invDelta = amount < 0 ? Math.abs(amount) : -amount;
+            creditCards = adjustCardInvoice(creditCards, card.id, invDelta);
+          }
         } else {
           accounts = state.accounts.map((a) =>
             a.id === accId ? { ...a, balance: roundMoney(a.balance + amount) } : a
@@ -478,7 +482,7 @@ function financeReducer(state: FinanceState, action: Action): FinanceState {
       if (card && tx.creditCardId) {
         if (card.kind === "beneficios" && tx.benefitBucket && isBenefitBucket(tx.benefitBucket)) {
           creditCards = adjustBenefitBalance(creditCards, card.id, tx.benefitBucket, -tx.amount);
-        } else if (card.kind === "credito") {
+        } else if (card.kind === "credito" && tx.skipCardInvoiceDelta !== true) {
           creditCards = adjustCardInvoice(creditCards, card.id, tx.amount);
         }
       } else {

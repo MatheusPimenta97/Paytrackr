@@ -90,6 +90,8 @@ export function StatementAiPreviewModal({
         paymentAttachmentDataUrl: null,
         paymentAttachmentName: null,
         thirdPartyName: null,
+        /** Histórico da fatura importada — não soma na fatura aberta (currentInvoice). */
+        skipCardInvoiceDelta: true,
       });
     }
     onClose();
@@ -110,7 +112,13 @@ export function StatementAiPreviewModal({
             Revisar lançamentos da fatura (IA)
           </h2>
           <p className="mt-1 text-xs text-on-surface-variant dark:text-slate-400">
-            Confira cada linha antes de importar. A IA pode errar valores ou categorias.
+            Confira cada linha antes de importar. A IA pode errar valores ou categorias. Ao importar, os lançamentos
+            entram no histórico do cartão com a data de cada linha e{" "}
+            <strong className="font-semibold text-on-surface dark:text-slate-200">
+              não alteram o valor da fatura aberta
+            </strong>{" "}
+            (para não misturar fatura antiga com o ciclo atual). Ajuste a fatura atual manualmente se precisar
+            alinhar ao banco.
           </p>
         </div>
 

@@ -190,9 +190,10 @@ REGRAS DE DESCRIPTION (obrigatório):
 • Uma linha em suggestedTransactions = UMA linha de valor na fatura (não agrupe várias compras em uma linha sintética).
 
 INTERNACIONAL E IOF:
-• Cada compra internacional: valor em R$ conforme impresso ("Valor em R$", "BRL", coluna em reais). Se só houver USD + "Dólar de conversão", calcule R$ = USD × câmbio da linha, 2 decimais.
-• "Repasse de IOF" / totais de IOF de internacional: linha separada se constar valor próprio.
-• IOF de financiamento, encargos do rotativo, juros de mora, multa: uma linha por valor com a data impressa ao lado.
+• Valor em R$ da COMPRA INTERNACIONAL: use o montante que o banco COBROU na fatura (valor final da transação em reais). Em muitos PDFs há duas figuras: uma auxiliar (ex.: "8,99 BRL" / valor convertido base) e o TOTAL da linha na coluna **R$** à direita (ex.: **9,49**) — quando os dois forem diferentes, use **sempre o maior / o da coluna principal R$ daquela linha**, que já inclui IOF ou spread; **não** use só o "BRL" menor se existir total maior na mesma entrada.
+• Se existir apenas um valor em R$ na linha, use esse. Se só houver USD + "Dólar de conversão" sem coluna R$ explícita, calcule R$ = USD × câmbio da linha, 2 decimais.
+• "Repasse de IOF" / IOF de internacional em linha separada: só inclua como linha extra se o banco listar valor próprio; não duplique o IOF já embutido no total R$ da compra acima.
+• IOF de financiamento (rotativo), encargos, juros de mora, multa: uma linha por valor com a data impressa ao lado.
 
 CATEGORIA (category):
 • Use o nome do estabelecimento E palavras da fatura (ex.: "supermercado", "lazer", "outros SAO PAULO", "restaurante") para escolher entre as opções. Ex.: supermercado/padaria → Alimentação; streaming/cinema/academia/pass → Lazer; farmácia/hospital → Saúde; Uber/combustível → Transporte; hotel/aéreo → Viagem; software/nuvem (Cursor, AWS, GitHub) → Eletrônicos; encargos/IOF/multa/tarifa bancária → Outros.

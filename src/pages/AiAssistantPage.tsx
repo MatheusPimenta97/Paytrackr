@@ -1,19 +1,30 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { useFinance } from "../context/FinanceContext";
+import {
+  isAllowedPaymentReceiptDataUrl,
+  parseAiReceiptMarkdown,
+} from "../domain/receiptMarkdownParse";
 import { analyzePaymentReceiptImage } from "../services/aiAssistant";
+
+const PAYMENT_ATTACHMENT_MAX_LEN = 2_500_000;
 
 /** Arquivo local pode ser maior; antes do POST a imagem é comprimida (limite ~4,5 MB na Vercel). */
 const MAX_BYTES = 12 * 1024 * 1024;
 
 export function AiAssistantPage() {
+  const { addTransaction, state } = useFinance();
   const inputId = useId();
   const fileRef = useRef<HTMLInputElement>(null);
+  const lastReceiptDataUrlRef = useRef<string | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [fileLabel, setFileLabel] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<string | null>(null);
   const [demoMode, setDemoMode] = useState(false);
+  const [registerError, setRegisterError] = useState<string | null>(null);
+  const [registerOk, setRegisterOk] = useState<string | null>(null);
 
   useEffect(() => {
     return () => {
@@ -25,6 +36,9 @@ export function AiAssistantPage() {
     setError(null);
     setResult(null);
     setDemoMode(false);
+    setRegisterError(null);
+    setRegisterOk(null);
+    lastReceiptDataUrlRef.current = null;
     if (!file) {
       setPreview(null);
       setFileLabel("");
@@ -54,6 +68,8 @@ export function AiAssistantPage() {
     setLoading(true);
     setError(null);
     setResult(null);
+    setRegisterError(null);
+    setRegisterOk(null);
     try {
       let dataUrl = preview;
       if (preview.startsWith("blob:")) {
@@ -65,6 +81,8 @@ export function AiAssistantPage() {
           reader.readAsDataURL(blob);
         });
       }
+      lastReceiptDataUrlRef.current =
+        typeof dataUrl === "string" && dataUrl.startsWith("data:") ? dataUrl : null;
       const out = await analyzePaymentReceiptImage(dataUrl);
       setResult(out.markdown);
       setDemoMode(out.demoMode);
@@ -74,6 +92,52 @@ export function AiAssistantPage() {
       setLoading(false);
     }
   }, [preview]);
+
+  const registerFromResult = useCallback(() => {
+    if (!result) return;
+    setRegisterError(null);
+    setRegisterOk(null);
+    const parsed = parseAiReceiptMarkdown(result, state.profile.displayName);
+    if (!parsed.ok) {
+      setRegisterError(parsed.error);
+      return;
+    }
+    const { amountAbs, dateIso, paymentMethod, flow, description } = parsed.data;
+    const signed = flow === "expense" ? -amountAbs : amountAbs;
+    const receiptUrl = lastReceiptDataUrlRef.current;
+    const attach =
+      flow === "expense" &&
+      (paymentMethod === "pix" || paymentMethod === "boleto") &&
+      receiptUrl &&
+      receiptUrl.length <= PAYMENT_ATTACHMENT_MAX_LEN &&
+      isAllowedPaymentReceiptDataUrl(receiptUrl)
+        ? {
+            url: receiptUrl,
+            name: (fileLabel || "comprovante").slice(0, 240),
+          }
+        : { url: null as string | null, name: null as string | null };
+
+    addTransaction({
+      date: dateIso,
+      description,
+      category: "Outros",
+      amount: signed,
+      status: flow === "income" ? "recebido" : "confirmado",
+      icon: "payments",
+      accountId: state.defaultAccountId,
+      creditCardId: null,
+      benefitBucket: null,
+      paymentMethod: flow === "expense" ? paymentMethod : null,
+      paymentAttachmentDataUrl: attach.url,
+      paymentAttachmentName: attach.name,
+      thirdPartyName: null,
+    });
+    setRegisterOk(
+      flow === "expense"
+        ? `Despesa de R$ ${amountAbs.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} registrada na conta.`
+        : `Receita de R$ ${amountAbs.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} registrada na conta.`
+    );
+  }, [addTransaction, fileLabel, result, state.defaultAccountId, state.profile.displayName]);
 
   const explicitAssistantUrl = import.meta.env.VITE_AI_ASSISTANT_URL?.trim();
   const usesDevProxy = import.meta.env.DEV && !explicitAssistantUrl;
@@ -211,12 +275,41 @@ export function AiAssistantPage() {
           <pre className="max-h-[480px] overflow-auto whitespace-pre-wrap rounded-lg bg-surface-container-low p-4 text-sm leading-relaxed text-on-surface dark:bg-slate-900 dark:text-slate-200">
             {result}
           </pre>
-          <p className="mt-4 text-xs text-on-surface-variant dark:text-slate-400">
-            Confira valores e dados antes de registrar — em seguida abra{" "}
-            <Link to="/lancamentos?novo=1" className="font-bold text-primary underline dark:text-blue-300">
-              Novo lançamento
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+            <button
+              type="button"
+              onClick={registerFromResult}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-secondary px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:opacity-95 dark:bg-emerald-700"
+            >
+              <span className="material-symbols-outlined text-[20px]">playlist_add</span>
+              Registrar na conta (automático)
+            </button>
+            <Link
+              to="/lancamentos?novo=1"
+              className="text-center text-sm font-semibold text-primary underline dark:text-blue-300 sm:text-left"
+            >
+              Ou abrir Novo lançamento para ajustar
             </Link>
-            .
+          </div>
+          {registerOk ? (
+            <p className="mt-2 text-sm font-semibold text-secondary dark:text-emerald-300">
+              {registerOk}{" "}
+              <Link to="/lancamentos" className="font-bold underline">
+                Ver lançamentos
+              </Link>
+            </p>
+          ) : null}
+          {registerError ? (
+            <p className="mt-2 text-sm font-semibold text-error">{registerError}</p>
+          ) : null}
+          <p className="mt-2 text-xs text-on-surface-variant dark:text-slate-400">
+            O botão lê valor, data e participantes do texto acima. Receita x despesa usa o nome em{" "}
+            <Link to="/settings" className="font-bold text-primary underline dark:text-blue-300">
+              Meu perfil
+            </Link>{" "}
+            comparado a <strong className="font-semibold">De</strong> e <strong className="font-semibold">Para</strong>
+            . Sem correspondência, assume-se <strong className="font-semibold">despesa</strong> (Pix enviado). Confira
+            sempre o extrato.
           </p>
         </section>
       ) : null}

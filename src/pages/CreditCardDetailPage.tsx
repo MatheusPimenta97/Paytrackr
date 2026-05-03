@@ -225,35 +225,28 @@ export function CreditCardDetailPage() {
     const dots = ["bg-primary", "bg-[#7490c3]", "bg-[#cee6f3]", "bg-[#4b626c]", "bg-[#e0e3e5]", "bg-slate-400"];
     const jurosKey = "Juros e encargos";
     const jurosVal = map.get(jurosKey) ?? 0;
-    const withoutJuros = sorted.filter(([k]) => k !== jurosKey);
 
-    /** Até 5 linhas: se houver juros/encargos, garante uma linha própria; o restante compete pelo ranking. */
-    const MAX_MAIN = 5;
-    const picked: [string, number][] = [];
-    if (jurosVal > 0) {
-      picked.push([jurosKey, jurosVal]);
-    }
-    for (const row of withoutJuros) {
-      if (picked.length >= MAX_MAIN) break;
-      picked.push(row);
+    /** Top 5 por valor; se “Juros e encargos” tiver valor mas cair fora do top 5, inclui como linha extra. */
+    const top5 = sorted.slice(0, 5);
+    const topNames = new Set(top5.map(([k]) => k));
+    const rows: [string, number][] = [...top5];
+    if (jurosVal > 0 && !topNames.has(jurosKey)) {
+      rows.push([jurosKey, jurosVal]);
     }
 
-    const shownSum = picked.reduce((s, [, v]) => s + v, 0);
+    const shownSum = rows.reduce((s, [, v]) => s + v, 0);
     const restVal = Math.max(0, total - shownSum);
-    const rowsOut: { name: string; pct: number; dot: string }[] = picked.map(([name, v], i) => ({
+    if (restVal > 0.005) {
+      rows.push(["Demais categorias", restVal]);
+    }
+
+    rows.sort((a, b) => b[1] - a[1]);
+
+    return rows.map(([name, v], i) => ({
       name,
       pct: Math.round((v / total) * 100),
-      dot: dots[i % dots.length]!,
+      dot: dots[Math.min(i, dots.length - 1)]!,
     }));
-
-    if (restVal > 0.005) {
-      rowsOut.push({
-        name: "Demais categorias",
-        pct: Math.round((restVal / total) * 100),
-        dot: dots[5]!,
-      });
-    }
-    return rowsOut;
   }, [cardTxns]);
 
   const aiInsight = useMemo(() => {

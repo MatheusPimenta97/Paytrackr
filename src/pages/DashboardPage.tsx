@@ -523,6 +523,7 @@ export function DashboardPage() {
               </p>
               <button
                 type="button"
+                data-tour="first-card"
                 onClick={() => {
                   setCardFormEditing(null);
                   setCardFormOpen(true);
@@ -873,6 +874,7 @@ export function DashboardPage() {
                     </p>
                     <button
                       type="button"
+                      data-tour="first-card"
                       onClick={() => {
                         setCardFormEditing(null);
                         setCardFormOpen(true);

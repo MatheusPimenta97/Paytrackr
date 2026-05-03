@@ -1,11 +1,22 @@
-import { useEffect, useState } from "react";
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { runDashboardOnboardingTour } from "../onboarding/runDashboardOnboardingTour";
+import { CelebrationBurst } from "./CelebrationBurst";
 import { DataScopeBanner } from "./DataScopeBanner";
+import { IncomeOnboardingModal } from "./IncomeOnboardingModal";
 import { ProfileAvatar } from "./ProfileAvatar";
 import { QuickCalculatorModal } from "./QuickCalculatorModal";
 import { WelcomeOnboardingModal } from "./WelcomeOnboardingModal";
 import { useFinance } from "../context/FinanceContext";
+
+function incomeOnboardingStorageKey(uid: string) {
+  return `paytrackr-income-v1-${uid}`;
+}
+
+function dashboardTourStorageKey(uid: string) {
+  return `paytrackr-tour-dashboard-v1-${uid}`;
+}
 
 const sidebarNav = [
   { to: "/", label: "Dashboard", icon: "dashboard" },
@@ -20,12 +31,17 @@ const sidebarNav = [
 export function DashboardLayout() {
   const [calcOpen, setCalcOpen] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   const { mode, firebaseProfile, logout } = useAuth();
   const { state, updateProfile } = useFinance();
   const photo = state.profile.photoDataUrl;
   const displayName = state.profile.displayName.trim() || "Perfil";
 
   const [welcomeOpen, setWelcomeOpen] = useState(false);
+  const [incomeOpen, setIncomeOpen] = useState(false);
+  const [celebration, setCelebration] = useState(false);
+  const tourScheduleRef = useRef<number | null>(null);
+  const tourActiveRef = useRef(false);
 
   useEffect(() => {
     if (mode !== "firebase" || !firebaseProfile?.uid) {
@@ -54,6 +70,26 @@ export function DashboardLayout() {
     setWelcomeOpen(true);
   }, [mode, firebaseProfile?.uid, state.profile.displayName]);
 
+  useEffect(() => {
+    if (mode !== "firebase" || !firebaseProfile?.uid) {
+      setIncomeOpen(false);
+      return;
+    }
+    if (welcomeOpen) {
+      setIncomeOpen(false);
+      return;
+    }
+    try {
+      if (localStorage.getItem(incomeOnboardingStorageKey(firebaseProfile.uid))) {
+        setIncomeOpen(false);
+        return;
+      }
+    } catch {
+      /* ignore */
+    }
+    setIncomeOpen(true);
+  }, [mode, firebaseProfile?.uid, welcomeOpen]);
+
   function completeWelcome(name: string) {
     if (!firebaseProfile?.uid) return;
     updateProfile({ displayName: name.slice(0, 120) });
@@ -64,6 +100,73 @@ export function DashboardLayout() {
     }
     setWelcomeOpen(false);
   }
+
+  function confirmIncomeOnboarding(monthlySalary: number) {
+    if (!firebaseProfile?.uid) return;
+    updateProfile({ monthlySalary });
+    try {
+      localStorage.setItem(incomeOnboardingStorageKey(firebaseProfile.uid), "1");
+    } catch {
+      /* ignore */
+    }
+    setIncomeOpen(false);
+    setCelebration(true);
+    window.setTimeout(() => setCelebration(false), 2100);
+  }
+
+  useEffect(() => {
+    if (mode !== "firebase" || !firebaseProfile?.uid || welcomeOpen || celebration || incomeOpen) {
+      return;
+    }
+    const uid = firebaseProfile.uid;
+    const incKey = incomeOnboardingStorageKey(uid);
+    const tourKey = dashboardTourStorageKey(uid);
+    try {
+      if (!localStorage.getItem(incKey)) return;
+      if (localStorage.getItem(tourKey)) return;
+    } catch {
+      return;
+    }
+
+    if (location.pathname !== "/") {
+      navigate("/");
+      return;
+    }
+
+    if (tourScheduleRef.current !== null) {
+      window.clearTimeout(tourScheduleRef.current);
+      tourScheduleRef.current = null;
+    }
+
+    tourScheduleRef.current = window.setTimeout(() => {
+      tourScheduleRef.current = null;
+      if (tourActiveRef.current) return;
+      tourActiveRef.current = true;
+      runDashboardOnboardingTour(() => {
+        tourActiveRef.current = false;
+        try {
+          localStorage.setItem(tourKey, "1");
+        } catch {
+          /* ignore */
+        }
+      });
+    }, 260);
+
+    return () => {
+      if (tourScheduleRef.current !== null) {
+        window.clearTimeout(tourScheduleRef.current);
+        tourScheduleRef.current = null;
+      }
+    };
+  }, [
+    mode,
+    firebaseProfile?.uid,
+    welcomeOpen,
+    celebration,
+    incomeOpen,
+    location.pathname,
+    navigate,
+  ]);
 
   async function handleLogout() {
     await logout();
@@ -83,6 +186,12 @@ export function DashboardLayout() {
         suggestedName={welcomeSuggested}
         onComplete={completeWelcome}
       />
+      <IncomeOnboardingModal
+        open={incomeOpen}
+        initialMonthlySalary={state.profile.monthlySalary}
+        onConfirm={confirmIncomeOnboarding}
+      />
+      <CelebrationBurst active={celebration} />
       <QuickCalculatorModal open={calcOpen} onClose={() => setCalcOpen(false)} />
 
       {/* Sidebar desktop — 72px, expande no hover */}

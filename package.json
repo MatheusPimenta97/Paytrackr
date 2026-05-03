@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "driver.js": "^1.4.0",
     "firebase": "^12.12.1",
     "pdf-parse": "^2.4.5",
     "react": "^19.0.0",

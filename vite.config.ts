@@ -14,7 +14,7 @@ import {
   ASSISTANT_STATEMENT_HTTP_PATH,
   handleStatementAnalyzePost,
   STATEMENT_DOCUMENT_BODY_MAX_BYTES,
-} from "./api/lib/statementAnalyzeRoute";
+} from "./api/statement";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SYNC_FILE = path.join(__dirname, ".paytrackr-lan-sync.json");

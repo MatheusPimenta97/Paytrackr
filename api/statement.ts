@@ -6,7 +6,7 @@
  * runtime (`ERR_MODULE_NOT_FOUND`). O mesmo padrão de `api/receipt.ts`.
  */
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { refineStatementTransactionCategory } from "../src/domain/statementCategoryRefine";
+import { refineStatementTransactionCategory } from "./statementCategoryRefine";
 
 // --- sendJson (inline; era api/lib/sendJson.ts)
 function sendJson(res: ServerResponse, status: number, payload: Record<string, unknown>): void {

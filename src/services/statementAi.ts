@@ -1,5 +1,5 @@
 import { CATEGORY_OPTIONS } from "../domain/categories";
-import { refineStatementTransactionCategory } from "../domain/statementCategoryRefine";
+import { refineStatementTransactionCategory } from "../../api/statementCategoryRefine";
 
 export type StatementAiSuggestedTxn = {
   date: string;

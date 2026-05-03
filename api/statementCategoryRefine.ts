@@ -1,4 +1,7 @@
-import { CATEGORY_OPTIONS } from "./categories";
+/**
+ * Refino de categoria pós-IA — fica em `api/` para o bundle serverless (Vercel)
+ * não importar de `src/` (não existe em `/var/task/src`).
+ */
 
 export function normalizeStatementCategory(raw: string, allowed: readonly string[]): string {
   const t = raw.trim();
@@ -17,13 +20,12 @@ function foldAscii(s: string): string {
 }
 
 /**
- * Se a categoria já for específica, mantém; se for "Outros", tenta deduzir pelo nome do estabelecimento
- * (útil quando a IA devolve descrições genéricas ou categoriza tudo como Outros).
+ * Se a categoria já for específica, mantém; se for "Outros", tenta deduzir pelo texto da descrição.
  */
 export function refineStatementTransactionCategory(
   description: string,
   category: string,
-  allowed: readonly string[] = CATEGORY_OPTIONS,
+  allowed: readonly string[],
 ): string {
   let cat = normalizeStatementCategory(category, allowed);
   if (cat !== "Outros") return cat;

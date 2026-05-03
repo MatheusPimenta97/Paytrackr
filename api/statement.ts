@@ -182,31 +182,28 @@ function extractResponsesOutputText(data: unknown): string | null {
 
 /** Regras comuns aos três modos de extração (PDF nativo, imagem, texto). */
 function buildStatementExtractionGuide(categoriesLine: string): string {
-  return `OBJETIVO: suggestedTransactions deve listar o MÁXIMO de linhas com valor que o PDF mostrar (compras nacionais, cada compra internacional, encargos, IOF, multa, juros, repasse de IOF em linha própria, etc.). Percorra TODAS as seções/tabelas; não pare na primeira.
+  return `INCLUA em suggestedTransactions TODAS as linhas financeiras desta fatura que compõem o total a pagar / limite utilizado, de TODAS as seções (nacionais, internacional em R$, IOF, repasse de IOF, encargos, multa, juros, parcelas, etc.). Não pare na primeira tabela.
 
-DESCRIPTION:
-• Compras: nome do ESTABELECIMENTO como no PDF (ex.: "Google YouTubePremiumSA", "CARREFOUR…", "CURSOR…"). Não use rótulos genéricos ("Compras nacionais - EB", "Compras internacionais" sozinho).
-• Tarifas/encargos: texto claro (ex.: "IOF — financiamento", "Encargos refinanciamento", "Juros de mora", "Multa", "Repasse de IOF", "Pagamento via conta").
-• Uma linha JSON = um lançamento com valor no extrato (não agrupe várias compras numa linha só).
+REGRAS DE DESCRIPTION (obrigatório):
+• Para COMPRAS (nacional ou internacional): use o NOME DO ESTABELECIMENTO exatamente como impresso na fatura (ex.: "Google YouTubePremiumSA", "CARREFOUR TBE 24BARUERI", "CURSOR, AI POWERED IDEN", "TOTALPASSSAO PAULOBRA"). NUNCA substitua por rótulos genéricos como "Compras nacionais - EB", "Compras internacionais", "Estabelecimento X" ou siglas inventadas — isso quebra a categorização.
+• Para tarifas/encargos sem estabelecimento comercial: descrições fixas claras são OK (ex.: "IOF — financiamento", "Encargos refinanciamento (rotativo)", "Juros de mora", "Multa por atraso", "Repasse de IOF (internacional)", "Pagamento via conta").
+• Uma linha em suggestedTransactions = UMA linha de valor na fatura (não agrupe várias compras em uma linha sintética).
 
-INTERNACIONAL (valor em R$):
-• Se na mesma entrada houver valor auxiliar (ex.: "8,99 BRL") e outro maior na coluna **R$** da linha (ex.: **9,49**), use o da **coluna R$ / total cobrado** (o maior), não só o BRL menor.
-• Se houver só um R$, use esse. Só USD + dólar de conversão: R$ = USD × câmbio, 2 decimais.
-• Linhas de "Repasse de IOF" / IOF que o banco mostra **separadas** do valor da compra: inclua como lançamento à parte. Só evite duplicar o **mesmo** valor numérico duas vezes para o **mesmo** estabelecimento/data (mesmo centavo duas vezes).
+INTERNACIONAL E IOF:
+• Cada compra internacional: valor em R$ conforme impresso ("Valor em R$", "BRL", coluna em reais). Se só houver USD + "Dólar de conversão", calcule R$ = USD × câmbio da linha, 2 decimais.
+• "Repasse de IOF" / totais de IOF de internacional: linha separada se constar valor próprio.
+• IOF de financiamento, encargos do rotativo, juros de mora, multa: uma linha por valor com a data impressa ao lado.
 
-CATEGORIA: use nome + palavras do PDF (supermercado → Alimentação; streaming/academia → Lazer; farmácia → Saúde; Uber/posto → Transporte; hotel/voo → Viagem; Cursor/AWS → Eletrônicos; encargos/IOF/multa → Outros). Opções exatas: ${categoriesLine}
+CATEGORIA (category):
+• Use o nome do estabelecimento E palavras da fatura (ex.: "supermercado", "lazer", "outros SAO PAULO", "restaurante") para escolher entre as opções. Ex.: supermercado/padaria → Alimentação; streaming/cinema/academia/pass → Lazer; farmácia/hospital → Saúde; Uber/combustível → Transporte; hotel/aéreo → Viagem; software/nuvem (Cursor, AWS, GitHub) → Eletrônicos; encargos/IOF/multa/tarifa bancária → Outros.
 
-entryKind "credit" só para pagamento/crédito que abate a fatura (ex.: pagamento via conta). amount sempre > 0.
+entryKind "credit" apenas para pagamentos que abatem a fatura (ex. pagamento via conta). amount sempre > 0 (magnitude).
 
-statementTotalGuess (total fechado em BRL):
-• PRIORIDADE 1: frases como "O total da sua fatura é", "Total da fatura" (valor integral a pagar).
-• PRIORIDADE 2: "Limite total utilizado" / "Valor total a pagar" / "Total a pagar" deste fechamento.
-• NÃO use como statementTotalGuess subtotais menores se existir total MAIOR no mesmo documento: ex. ignore "Total lançamentos no cartão", "Total dos lançamentos atuais", "Total compras e saques", "Lançamentos no cartão" quando houver outro número claramente maior que já some internacional + encargos (ex.: 365,36 > 352,92 > 225,06 — escolha o que representa o fechamento completo).
-• Se houver vários totais e tiver dúvida, prefira o **maior** valor que o texto associar ao fechamento/fatura deste mês (não limite de crédito genérico "limite total 676" sem ser o utilizado).
+statementTotalGuess: número do TOTAL FECHADO desta fatura em BRL. Prioridade MÁXIMA a frases explícitas como "O total da sua fatura é", "Total da fatura", depois "Limite total utilizado" / "Valor total a pagar" quando for claramente o fechamento. NÃO use só "Total lançamentos no cartão" ou "Total compras e saques" se existir um total maior que já inclua internacional + encargos + IOF. statementTotalGuess deve coincidir com esse total integral quando estiver legível.
 
-CHECK: depois de montar suggestedTransactions, some mentalmente despesas − créditos; a soma deve se aproximar do total que você colocou em statementTotalGuess (tolerância pequena de arredondamento). Se a soma ficar muito abaixo, você provavelmente omitiu seções — volte ao PDF.
+No markdown, seção "## Conciliação": totais lidos no PDF (incl. subtotais por seção), soma das linhas extraídas (despesas − créditos) e, se faltar algo para bater no total, liste o que pode ter ficado de fora.
 
-Markdown: seção "## Conciliação" com totais lidos, soma das linhas extraídas e diferença se houver.`;
+Opções de category (string exata): ${categoriesLine}`;
 }
 
 function normalizeStatementCategoryForStatementApi(raw: string, allowed: readonly string[]): string {

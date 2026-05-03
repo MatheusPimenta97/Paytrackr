@@ -88,6 +88,11 @@ export function StatementAiPreviewModal({
       return s + (r.entryKind === "credit" ? -mag : mag);
     }, 0);
 
+  const totalVsLinesMismatch =
+    statementTotalGuess != null &&
+    statementTotalGuess > 0 &&
+    Math.abs(statementTotalGuess - selectedNet) > Math.max(2, statementTotalGuess * 0.02);
+
   function updateRow(i: number, patch: Partial<RowState>) {
     setRows((prev) => prev.map((r, j) => (j === i ? { ...r, ...patch } : r)));
   }
@@ -169,10 +174,19 @@ export function StatementAiPreviewModal({
             </pre>
           </div>
           {statementTotalGuess != null && statementTotalGuess > 0 && (
-            <p className="mt-2 text-xs font-semibold text-primary dark:text-emerald-300">
-              Total indicado na fatura (IA): {formatBRL(statementTotalGuess)} · Soma líquida das linhas selecionadas
-              (despesas − créditos): {formatBRL(selectedNet)}
-            </p>
+            <div className="mt-2 space-y-1">
+              <p className="text-xs font-semibold text-primary dark:text-emerald-300">
+                Total indicado na fatura (IA): {formatBRL(statementTotalGuess)} · Soma líquida das linhas selecionadas
+                (despesas − créditos): {formatBRL(selectedNet)}
+              </p>
+              {totalVsLinesMismatch ? (
+                <p className="text-[11px] font-semibold leading-snug text-amber-900 dark:text-amber-200">
+                  Atenção: a soma das linhas e o total da IA divergem mais que ~2% ou R$ 2,00. Confira se faltam
+                  lançamentos (internacional, IOF, encargos) ou desmarque linhas que não pertençam a esta fatura; o
+                  total do PDF manda.
+                </p>
+              ) : null}
+            </div>
           )}
         </div>
 

@@ -3,7 +3,8 @@ import { analyzeReceiptWithOpenAI } from "./openaiReceiptAnalyze";
 /** Mesmo caminho que o frontend usa em dev (proxy Vite) e em prod (serverless). */
 export const ASSISTANT_IMAGE_HTTP_PATH = "/api/paytrackr/assistant/image";
 
-export const ASSISTANT_IMAGE_BODY_MAX_BYTES = 14 * 1024 * 1024;
+/** Limite seguro abaixo do teto da Vercel (~4,5 MB no corpo da requisição serverless). */
+export const ASSISTANT_IMAGE_BODY_MAX_BYTES = 4 * 1024 * 1024;
 
 export const ALLOWED_ASSISTANT_IMAGE_MIME = new Set([
   "image/jpeg",
@@ -120,8 +121,8 @@ export async function handleAssistantImagePost(
   }
 
   const approxBytes = Math.floor((trimmedB64.length * 3) / 4);
-  if (approxBytes > 10 * 1024 * 1024) {
-    return { status: 413, json: { error: "Imagem muito grande (máx. ~10 MB)." } };
+  if (approxBytes > 3 * 1024 * 1024) {
+    return { status: 413, json: { error: "Imagem muito grande após decodificar (máx. ~3 MB). Reduza a resolução." } };
   }
 
   try {

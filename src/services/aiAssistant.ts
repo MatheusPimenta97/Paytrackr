@@ -67,6 +67,41 @@ O app envia **POST** com corpo:
 - **Sugestão de lançamento** (ainda não gravamos automaticamente — confirmação humana depois).
 `;
 
+const MAX_JSON_PAYLOAD_CHARS = 3_900_000;
+
+/**
+ * Redimensiona e converte para JPEG antes do POST — prints em PNG costumam estourar o limite
+ * da Vercel (~4,5 MB no corpo JSON); isso mantém leitura do comprovante boa para a API de visão.
+ */
+async function prepareReceiptImageForApiUpload(dataUrl: string): Promise<string> {
+  const maxSide = 1920;
+  const jpegQuality = 0.87;
+  try {
+    const img = new Image();
+    img.decoding = "async";
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = () => reject(new Error("decode"));
+      img.src = dataUrl;
+    });
+    const w0 = img.naturalWidth;
+    const h0 = img.naturalHeight;
+    if (!w0 || !h0) return dataUrl;
+    const scale = Math.min(1, maxSide / Math.max(w0, h0));
+    const tw = Math.max(1, Math.round(w0 * scale));
+    const th = Math.max(1, Math.round(h0 * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = tw;
+    canvas.height = th;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return dataUrl;
+    ctx.drawImage(img, 0, 0, tw, th);
+    return canvas.toDataURL("image/jpeg", jpegQuality);
+  } catch {
+    return dataUrl;
+  }
+}
+
 function stripDataUrlPrefix(dataUrl: string): { base64: string; mimeType: string } {
   const m = /^data:([^;]*);base64,(.+)$/s.exec(dataUrl.trim());
   if (!m) return { base64: dataUrl, mimeType: "image/jpeg" };
@@ -94,22 +129,30 @@ function resolveAssistantEndpoint(): string {
  * Em **produção**, sem URL configurada, devolve texto demo (não chama rede).
  */
 export async function analyzePaymentReceiptImage(imageDataUrl: string): Promise<AiAssistantImageResult> {
-  const { base64, mimeType } = stripDataUrlPrefix(imageDataUrl);
+  const prepared = await prepareReceiptImageForApiUpload(imageDataUrl);
+  const { base64, mimeType } = stripDataUrlPrefix(prepared);
   const endpoint = resolveAssistantEndpoint();
 
   if (!endpoint) {
     return { ok: true, markdown: DEMO_MARKDOWN, demoMode: true };
   }
 
+  const bodyStr = JSON.stringify({
+    intent: "payment_receipt",
+    imageBase64: base64,
+    mimeType,
+    locale: "pt-BR",
+  });
+  if (bodyStr.length > MAX_JSON_PAYLOAD_CHARS) {
+    throw new Error(
+      "A imagem continua grande demais para envio (limite do hosting). Tente uma foto com resolução menor ou recorte só o comprovante.",
+    );
+  }
+
   const res = await fetch(endpoint, {
     method: "POST",
     headers: { "Content-Type": "application/json", Accept: "application/json" },
-    body: JSON.stringify({
-      intent: "payment_receipt",
-      imageBase64: base64,
-      mimeType,
-      locale: "pt-BR",
-    }),
+    body: bodyStr,
   });
 
   const rawText = await res.text();

@@ -2,7 +2,8 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { analyzePaymentReceiptImage } from "../services/aiAssistant";
 
-const MAX_BYTES = 6 * 1024 * 1024;
+/** Arquivo local pode ser maior; antes do POST a imagem é comprimida (limite ~4,5 MB na Vercel). */
+const MAX_BYTES = 12 * 1024 * 1024;
 
 export function AiAssistantPage() {
   const inputId = useId();
@@ -106,9 +107,9 @@ export function AiAssistantPage() {
         </p>
         <p className="mt-1 text-on-surface-variant dark:text-slate-400">
           {usesDevProxy
-            ? "O Vite encaminha para a OpenAI usando OPENAI_API_KEY do .env (reinicie o dev server após alterar o .env). Fotos seguem dados sensíveis."
+            ? "O Vite encaminha para a OpenAI usando OPENAI_API_KEY do .env (reinicie o dev server após alterar o .env). Em produção na Vercel, imagens são reduzidas antes do envio para caber no limite do servidor (~4,5 MB)."
             : configured
-              ? "As fotos dos comprovantes vão ao seu servidor; contenham dados sensíveis — revise LGPD e custo da API de visão."
+              ? "As fotos são comprimidas no navegador antes do envio (requisito em hosts como a Vercel, ~4,5 MB). Dados sensíveis — revise LGPD e custo da API de visão."
               : "Configure VITE_AI_ASSISTANT_URL no .env (e faça novo build) ou use npm run dev com o proxy local."}
         </p>
       </div>

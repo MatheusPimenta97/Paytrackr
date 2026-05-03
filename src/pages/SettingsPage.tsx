@@ -7,7 +7,7 @@ import { parseMoneyInput } from "../domain/money";
 export function SettingsPage() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { logout, mode, userEmail } = useAuth();
   const saldoSectionRef = useRef<HTMLElement>(null);
   const syncSectionRef = useRef<HTMLElement>(null);
   const { resetData, state, setAccountBalance, exportBackup, restoreBackup, copyBackupToClipboard } =
@@ -40,9 +40,15 @@ export function SettingsPage() {
   return (
     <div className="mx-auto max-w-2xl px-6 pb-12 md:px-12">
       <h1 className="mb-2 font-headline text-3xl font-extrabold text-primary">Configurações</h1>
+      {mode === "firebase" && userEmail && (
+        <p className="mb-2 text-sm text-on-surface-variant">
+          Sessão Firebase: <span className="font-semibold text-primary">{userEmail}</span>
+        </p>
+      )}
       <p className="mb-4 text-on-surface-variant">
         Dados salvos localmente neste navegador ({state.transactions.length} lançamentos,{" "}
-        {state.goals.length} metas, {state.recurringExpenses.length} recorrentes).
+        {state.goals.length} metas, {state.recurringExpenses.length} recorrentes). Sincronização na nuvem com Firestore
+        vem no próximo passo.
       </p>
       <p className="mb-8 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:gap-x-6">
         <Link
@@ -209,7 +215,7 @@ export function SettingsPage() {
         <button
           type="button"
           onClick={() => {
-            logout();
+            void logout();
             navigate("/login", { replace: true });
           }}
           className="rounded-lg border border-outline-variant/40 bg-surface-container-high px-4 py-2 text-sm font-bold text-primary transition-colors hover:bg-surface-container"

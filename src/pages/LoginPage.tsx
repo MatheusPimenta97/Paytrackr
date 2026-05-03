@@ -15,7 +15,7 @@ const GOOGLE_ICON_SRC =
   "https://lh3.googleusercontent.com/aida-public/AB6AXuAhHnY6C6oTvENiwIz-tCiWqfwoAq1p-7Z2hfjr_GiHrNVTSCTkGct3R27LaXwZc1uPHEZbRctwkRxEXcZSuU5yiyMvTHWH2Gku6wlY6iYNlsafZKSC6fU9Zs7wmSvYSJcyMlFD_DLvifvlS2vOa611RmrX3uFxN7zgVY4zwEe-zD0iIFN7TUzsuIvL5KyrtTgaa82cFNY0eHnB3ozFywXhcUUrRu0bp8NIViAxcyrE3Pwj5jQtGnxLanxRmlMAzFptl8pZ8fyXbDDR";
 
 export function LoginPage() {
-  const { isAuthenticated, ready, login } = useAuth();
+  const { isAuthenticated, ready, login, loginWithGoogle, mode } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -23,6 +23,7 @@ export function LoginPage() {
   const [remember, setRemember] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [exiting, setExiting] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     document.title = "Login | PayTrackr";
@@ -35,16 +36,37 @@ export function LoginPage() {
     return <Navigate to="/" replace />;
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    const ok = login(email, password, remember);
-    if (!ok) {
-      setError("E-mail ou senha incorretos.");
-      return;
+    setSubmitting(true);
+    try {
+      const ok = await login(email, password, remember);
+      if (!ok) {
+        setError("E-mail ou senha incorretos.");
+        return;
+      }
+      setExiting(true);
+      window.setTimeout(() => navigate("/", { replace: true }), 720);
+    } finally {
+      setSubmitting(false);
     }
-    setExiting(true);
-    window.setTimeout(() => navigate("/", { replace: true }), 720);
+  }
+
+  async function handleGoogle() {
+    setError(null);
+    setSubmitting(true);
+    try {
+      const ok = await loginWithGoogle(remember);
+      if (!ok) {
+        setError("Não foi possível entrar com Google (popup bloqueado ou provedor desativado no Firebase).");
+        return;
+      }
+      setExiting(true);
+      window.setTimeout(() => navigate("/", { replace: true }), 720);
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   const inputClass =
@@ -111,6 +133,11 @@ export function LoginPage() {
               <p className="mt-0.5 text-sm dark:text-slate-300" style={{ color: LOGIN_ON_SURFACE_VARIANT }}>
                 Acesse sua conta com segurança
               </p>
+              {mode === "demo" && (
+                <p className="mx-auto mt-2 max-w-[280px] rounded-lg bg-secondary-container/25 px-2 py-1 text-[10px] leading-snug text-on-secondary-container dark:bg-emerald-950/35 dark:text-emerald-200">
+                  Demo: <strong>demo@paytrackr.com</strong> · <strong>paytrackr</strong>
+                </p>
+              )}
             </div>
 
             <div
@@ -122,6 +149,12 @@ export function LoginPage() {
                 <p className="mt-1 text-sm" style={{ color: LOGIN_ON_SURFACE_VARIANT }}>
                   Insira suas credenciais para gerenciar suas finanças.
                 </p>
+                {mode === "demo" && (
+                  <p className="mt-2 rounded-lg bg-secondary-container/25 px-2 py-1.5 text-[11px] text-on-secondary-container dark:bg-emerald-950/35 dark:text-emerald-200">
+                    Modo demo local: use <strong>demo@paytrackr.com</strong> / <strong>paytrackr</strong>. Com Firebase
+                    configurado (.env), este aviso some e vale login real.
+                  </p>
+                )}
               </div>
 
               <form className="space-y-4" onSubmit={handleSubmit} noValidate>
@@ -236,11 +269,11 @@ export function LoginPage() {
 
                 <button
                   type="submit"
-                  disabled={exiting}
+                  disabled={exiting || submitting}
                   className="h-11 w-full rounded-lg text-sm font-semibold text-white shadow-sm transition-all hover:opacity-95 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-80 sm:h-12 sm:text-[15px] dark:bg-slate-700"
                   style={{ backgroundColor: LOGIN_PRIMARY }}
                 >
-                  {exiting ? "Entrando…" : "Entrar"}
+                  {exiting || submitting ? "Entrando…" : "Entrar"}
                 </button>
               </form>
 
@@ -261,9 +294,14 @@ export function LoginPage() {
               <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
-                  disabled
-                  title="Disponível em breve"
-                  className="flex h-10 cursor-not-allowed items-center justify-center gap-1.5 rounded-lg border opacity-70 dark:border-slate-600 sm:h-11"
+                  disabled={mode !== "firebase" || exiting || submitting}
+                  title={
+                    mode === "firebase"
+                      ? "Entrar com Google"
+                      : "Ative Firebase (variáveis VITE_FIREBASE_*) para usar Google"
+                  }
+                  onClick={() => void handleGoogle()}
+                  className="flex h-10 items-center justify-center gap-1.5 rounded-lg border disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-600 sm:h-11"
                   style={{ borderColor: LOGIN_OUTLINE_VARIANT, backgroundColor: LOGIN_SURFACE_BRIGHT }}
                 >
                   <img src={GOOGLE_ICON_SRC} alt="" className="h-4 w-4 shrink-0 sm:h-5 sm:w-5" loading="lazy" />

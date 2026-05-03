@@ -38,9 +38,9 @@ export function ProfileAvatar({ className = "" }: Props) {
     navigate("/perfil");
   }
 
-  function handleLogout() {
+  async function handleLogout() {
     setOpen(false);
-    logout();
+    await logout();
     navigate("/login", { replace: true });
   }
 
@@ -85,7 +85,7 @@ export function ProfileAvatar({ className = "" }: Props) {
           <button
             type="button"
             role="menuitem"
-            onClick={handleLogout}
+            onClick={() => void handleLogout()}
             className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm font-bold text-error transition-colors hover:bg-error-container/40"
           >
             <span className="material-symbols-outlined text-[20px]">logout</span>

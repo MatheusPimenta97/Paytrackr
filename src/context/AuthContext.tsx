@@ -1,4 +1,13 @@
 import {
+  browserLocalPersistence,
+  browserSessionPersistence,
+  onAuthStateChanged,
+  setPersistence,
+  signInWithEmailAndPassword,
+  signInWithPopup,
+  signOut,
+} from "firebase/auth";
+import {
   createContext,
   useCallback,
   useContext,
@@ -8,22 +17,30 @@ import {
   type ReactNode,
 } from "react";
 
+import { getFirebaseAuth, getGoogleAuthProvider } from "../firebase/init";
+
 const STORAGE_KEY = "paytrackr-auth-v1";
 
-/** Credenciais de demonstração (ambiente local). */
+/** Credenciais de demonstração quando Firebase não está configurado. */
 export const DEMO_EMAIL = "demo@paytrackr.com";
 export const DEMO_PASSWORD = "paytrackr";
 
+export type AuthMode = "demo" | "firebase";
+
 type AuthContextValue = {
+  mode: AuthMode;
   isAuthenticated: boolean;
   ready: boolean;
-  login: (email: string, password: string, remember: boolean) => boolean;
-  logout: () => void;
+  /** E-mail da sessão Firebase; demo não preenche. */
+  userEmail: string | null;
+  login: (email: string, password: string, remember: boolean) => Promise<boolean>;
+  loginWithGoogle: (remember: boolean) => Promise<boolean>;
+  logout: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-function readStoredSession(): boolean {
+function readStoredDemoSession(): boolean {
   try {
     if (localStorage.getItem(STORAGE_KEY) === "1") return true;
     if (sessionStorage.getItem(STORAGE_KEY) === "1") return true;
@@ -35,14 +52,41 @@ function readStoredSession(): boolean {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
+  const [mode, setMode] = useState<AuthMode>("demo");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
 
   useEffect(() => {
-    setIsAuthenticated(readStoredSession());
-    setReady(true);
+    const auth = getFirebaseAuth();
+    if (!auth) {
+      setMode("demo");
+      setUserEmail(null);
+      setIsAuthenticated(readStoredDemoSession());
+      setReady(true);
+      return;
+    }
+
+    setMode("firebase");
+    const unsub = onAuthStateChanged(auth, (user) => {
+      setUserEmail(user?.email ?? null);
+      setIsAuthenticated(!!user);
+      setReady(true);
+    });
+    return () => unsub();
   }, []);
 
-  const login = useCallback((email: string, password: string, remember: boolean) => {
+  const login = useCallback(async (email: string, password: string, remember: boolean) => {
+    const auth = getFirebaseAuth();
+    if (auth) {
+      try {
+        await setPersistence(auth, remember ? browserLocalPersistence : browserSessionPersistence);
+        await signInWithEmailAndPassword(auth, email.trim(), password);
+        return true;
+      } catch {
+        return false;
+      }
+    }
+
     const ok =
       email.trim().toLowerCase() === DEMO_EMAIL.toLowerCase() && password === DEMO_PASSWORD;
     if (!ok) return false;
@@ -61,7 +105,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return true;
   }, []);
 
-  const logout = useCallback(() => {
+  const loginWithGoogle = useCallback(async (remember: boolean) => {
+    const auth = getFirebaseAuth();
+    if (!auth) return false;
+    try {
+      await setPersistence(auth, remember ? browserLocalPersistence : browserSessionPersistence);
+      await signInWithPopup(auth, getGoogleAuthProvider());
+      return true;
+    } catch {
+      return false;
+    }
+  }, []);
+
+  const logout = useCallback(async () => {
+    const auth = getFirebaseAuth();
+    if (auth) {
+      try {
+        await signOut(auth);
+      } catch {
+        /* ignore */
+      }
+    }
     try {
       localStorage.removeItem(STORAGE_KEY);
       sessionStorage.removeItem(STORAGE_KEY);
@@ -69,11 +133,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       /* ignore */
     }
     setIsAuthenticated(false);
+    setUserEmail(null);
   }, []);
 
   const value = useMemo(
-    () => ({ isAuthenticated, ready, login, logout }),
-    [isAuthenticated, ready, login, logout]
+    () => ({ mode, isAuthenticated, ready, userEmail, login, loginWithGoogle, logout }),
+    [mode, isAuthenticated, ready, userEmail, login, loginWithGoogle, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

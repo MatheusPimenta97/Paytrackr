@@ -203,7 +203,10 @@ Responda APENAS JSON:
 
 ${monthHint}`;
 
-  const clipped = input.statementText.length > 120_000 ? input.statementText.slice(0, 120_000) + "\n...[texto truncado]" : input.statementText;
+  const clipped =
+    input.statementText.length > 120_000
+      ? input.statementText.slice(0, 120_000) + "\n...[texto truncado]"
+      : input.statementText;
 
   const content = await chatCompletionJson({
     apiKey: input.apiKey,

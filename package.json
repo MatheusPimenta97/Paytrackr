@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@vercel/node": "^5.7.15",
     "driver.js": "^1.4.0",
     "firebase": "^12.12.1",
     "pdf-parse": "^2.4.5",
@@ -23,7 +24,6 @@
     "@types/node": "^25.5.0",
     "@types/react": "^19.0.10",
     "@types/react-dom": "^19.0.4",
-    "@vercel/node": "^5.7.15",
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",
     "postcss": "^8.5.3",

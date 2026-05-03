@@ -1,10 +1,10 @@
-import type { IncomingMessage } from "node:http";
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
 import {
   ASSISTANT_IMAGE_BODY_MAX_BYTES,
   handleAssistantImagePost,
-} from "../../../server/assistantImageRoute";
+} from "../../lib/assistantImageRoute";
+import { readPostBodyUtf8 } from "../../lib/readPostBodyUtf8";
 
 export const config = {
   api: {
@@ -12,20 +12,15 @@ export const config = {
   },
 };
 
-function readBody(req: IncomingMessage, maxBytes: number): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const chunks: Buffer[] = [];
-    let total = 0;
-    req.on("data", (c: Buffer) => {
-      total += c.length;
-      if (total > maxBytes) {
-        reject(new Error("body too large"));
-      }
-      chunks.push(c);
-    });
-    req.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
-    req.on("error", reject);
-  });
+function sendJson(res: VercelResponse, status: number, json: Record<string, unknown>) {
+  res.statusCode = status;
+  res.setHeader("Content-Type", "application/json; charset=utf-8");
+  try {
+    res.end(JSON.stringify(json));
+  } catch {
+    res.statusCode = 500;
+    res.end(JSON.stringify({ error: "Falha ao serializar resposta JSON." }));
+  }
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -46,32 +41,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     let bodyRaw: string;
     try {
-      bodyRaw = await readBody(req, ASSISTANT_IMAGE_BODY_MAX_BYTES);
+      bodyRaw = await readPostBodyUtf8(req, ASSISTANT_IMAGE_BODY_MAX_BYTES);
     } catch {
-      res.statusCode = 413;
-      res.setHeader("Content-Type", "application/json; charset=utf-8");
-      return res.end(JSON.stringify({ error: "Corpo da requisição muito grande." }));
+      sendJson(res, 413, { error: "Corpo da requisição muito grande." });
+      return;
     }
 
     const openaiKey = process.env.OPENAI_API_KEY?.trim();
     const openaiModel = process.env.OPENAI_MODEL?.trim() || "gpt-4o-mini";
 
     const result = await handleAssistantImagePost(bodyRaw, { openaiKey, openaiModel });
-    res.statusCode = result.status;
-    res.setHeader("Content-Type", "application/json; charset=utf-8");
-    return res.end(JSON.stringify(result.json));
+    sendJson(res, result.status, result.json);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[paytrackr-assistant-image]", msg);
-    res.statusCode = 500;
-    res.setHeader("Content-Type", "application/json; charset=utf-8");
-    return res.end(
-      JSON.stringify({
-        error:
-          msg.length > 300
-            ? `Erro interno ao processar o pedido: ${msg.slice(0, 300)}…`
-            : `Erro interno ao processar o pedido: ${msg}`,
-      }),
-    );
+    sendJson(res, 500, {
+      error:
+        msg.length > 300
+          ? `Erro interno ao processar o pedido: ${msg.slice(0, 300)}…`
+          : `Erro interno ao processar o pedido: ${msg}`,
+    });
   }
 }

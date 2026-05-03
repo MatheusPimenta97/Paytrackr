@@ -9,12 +9,12 @@ import {
   ASSISTANT_IMAGE_BODY_MAX_BYTES,
   ASSISTANT_IMAGE_HTTP_PATH,
   handleAssistantImagePost,
-} from "./server/assistantImageRoute";
+} from "./api/lib/assistantImageRoute";
 import {
   ASSISTANT_STATEMENT_HTTP_PATH,
   handleStatementAnalyzePost,
   STATEMENT_DOCUMENT_BODY_MAX_BYTES,
-} from "./server/statementAnalyzeRoute";
+} from "./api/lib/statementAnalyzeRoute";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SYNC_FILE = path.join(__dirname, ".paytrackr-lan-sync.json");

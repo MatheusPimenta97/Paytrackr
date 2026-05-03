@@ -122,7 +122,10 @@ export async function handleAssistantImagePost(
 
   const approxBytes = Math.floor((trimmedB64.length * 3) / 4);
   if (approxBytes > 3 * 1024 * 1024) {
-    return { status: 413, json: { error: "Imagem muito grande após decodificar (máx. ~3 MB). Reduza a resolução." } };
+    return {
+      status: 413,
+      json: { error: "Imagem muito grande após decodificar (máx. ~3 MB). Reduza a resolução." },
+    };
   }
 
   try {

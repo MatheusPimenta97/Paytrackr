@@ -8,6 +8,7 @@ export const CATEGORY_OPTIONS = [
   "Transporte",
   "Saúde",
   "Vestuário",
+  "Juros e encargos",
   "Outros",
 ] as const;
 

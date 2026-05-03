@@ -6,6 +6,14 @@ import type { BenefitBucket, Transaction, TxnPaymentMethod, TxnStatus } from "..
 import { useFinance } from "../context/FinanceContext";
 
 const MAX_RECEIPT_FILE_BYTES = 900 * 1024;
+const MAX_JUSTIFICATION_LEN = 500;
+
+const JUSTIFICATION_PRESETS: { label: string; text: string }[] = [
+  { label: "Atraso na fatura", text: "Atraso no pagamento da fatura anterior." },
+  { label: "Rotativo / refinanciamento", text: "Encargo por uso do crédito rotativo ou refinanciamento da fatura." },
+  { label: "Multa / mora", text: "Multa e/ou juros de mora por pagamento após o vencimento." },
+  { label: "Tarifa / IOF / anuidade", text: "Tarifa bancária, IOF, anuidade ou seguro do cartão conforme fatura." },
+];
 const PAYMENT_OPTIONS: { value: TxnPaymentMethod; label: string }[] = [
   { value: "conta", label: "Conta corrente" },
   { value: "pix", label: "PIX" },
@@ -25,6 +33,7 @@ const ICONS = [
   "potted_plant",
   "apartment",
   "checkroom",
+  "percent",
 ] as const;
 
 function moneyInputFromAbsAmount(n: number): string {
@@ -42,6 +51,8 @@ type Props = {
   initialCreditCardId?: string | null;
   /** Se definido, o modal altera este lançamento em vez de criar um novo. */
   editingTransaction?: Transaction | null;
+  /** z-index acima do detalhe de fatura no cartão (z-125) e do modal de fatura (z-130). */
+  stackOnTop?: boolean;
 };
 
 export function TransactionFormModal({
@@ -49,6 +60,7 @@ export function TransactionFormModal({
   onClose,
   initialCreditCardId = null,
   editingTransaction = null,
+  stackOnTop = false,
 }: Props) {
   const { addTransaction, updateTransaction, state } = useFinance();
   const [description, setDescription] = useState("");
@@ -65,6 +77,7 @@ export function TransactionFormModal({
   const [paymentAttachmentDataUrl, setPaymentAttachmentDataUrl] = useState<string | null>(null);
   const [paymentAttachmentName, setPaymentAttachmentName] = useState<string | null>(null);
   const [thirdPartyName, setThirdPartyName] = useState("");
+  const [justification, setJustification] = useState("");
   const [error, setError] = useState<string | null>(null);
   const receiptFileRef = useRef<HTMLInputElement>(null);
 
@@ -99,6 +112,7 @@ export function TransactionFormModal({
       setPaymentAttachmentDataUrl(editingTransaction.paymentAttachmentDataUrl ?? null);
       setPaymentAttachmentName(editingTransaction.paymentAttachmentName ?? null);
       setThirdPartyName(editingTransaction.thirdPartyName ?? "");
+      setJustification(editingTransaction.justification ?? "");
       if (receiptFileRef.current) receiptFileRef.current.value = "";
       return;
     }
@@ -115,6 +129,7 @@ export function TransactionFormModal({
     setPaymentAttachmentDataUrl(null);
     setPaymentAttachmentName(null);
     setThirdPartyName("");
+    setJustification("");
     if (receiptFileRef.current) receiptFileRef.current.value = "";
     if (initialCreditCardId && state.creditCards.some((c) => c.id === initialCreditCardId)) {
       setCreditCardId(initialCreditCardId);
@@ -168,6 +183,7 @@ export function TransactionFormModal({
       setError("Informe a descrição.");
       return;
     }
+    const justTrim = justification.trim().slice(0, MAX_JUSTIFICATION_LEN);
     const ccid = creditCardId || null;
     const card = ccid ? state.creditCards.find((c) => c.id === ccid) : null;
     if (card?.kind === "beneficios") {
@@ -195,6 +211,8 @@ export function TransactionFormModal({
         ? paymentAttachmentName
         : null;
 
+    const justificationPayload = justTrim ? justTrim : null;
+
     if (editingTransaction) {
       updateTransaction(editingTransaction.id, {
         date,
@@ -211,6 +229,7 @@ export function TransactionFormModal({
         paymentMethod: flow === "expense" && !ccid ? paymentMethod : null,
         paymentAttachmentDataUrl: attachUrl,
         paymentAttachmentName: attachName,
+        justification: justificationPayload,
       });
     } else {
       addTransaction({
@@ -228,12 +247,14 @@ export function TransactionFormModal({
         paymentMethod: flow === "expense" && !ccid ? paymentMethod : null,
         paymentAttachmentDataUrl: attachUrl,
         paymentAttachmentName: attachName,
+        justification: justificationPayload,
       });
       setDescription("");
       setAmountRaw("");
       setGoalId("");
       setCreditCardId("");
       setThirdPartyName("");
+      setJustification("");
       setPaymentMethod("conta");
       clearReceiptAttachment();
     }
@@ -241,7 +262,9 @@ export function TransactionFormModal({
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-end justify-center bg-primary/40 p-4 sm:items-center">
+    <div
+      className={`fixed inset-0 flex items-end justify-center bg-primary/40 p-4 sm:items-center ${stackOnTop ? "z-[135]" : "z-[100]"}`}
+    >
       <button type="button" className="absolute inset-0 cursor-default" aria-label="Fechar" onClick={onClose} />
       <div
         className="relative w-full max-w-lg rounded-xl bg-surface-container-lowest p-6 shadow-2xl"
@@ -260,6 +283,40 @@ export function TransactionFormModal({
               onChange={(e) => setDescription(e.target.value)}
               className="w-full rounded-lg bg-surface-container-high px-3 py-2 text-sm focus:ring-2 focus:ring-primary"
             />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-bold text-on-surface-variant">
+              Justificativa <span className="font-normal text-on-surface-variant/80">(opcional)</span>
+            </label>
+            <p className="mb-1.5 text-[10px] leading-snug text-on-surface-variant">
+              Útil para{" "}
+              <strong className="text-on-surface">juros de mora</strong>,{" "}
+              <strong className="text-on-surface">encargos de refinanciamento</strong>,{" "}
+              <strong className="text-on-surface">multa</strong>, tarifas e similares. Use os atalhos ou escreva
+              livremente.
+            </p>
+            <div className="mb-2 flex flex-wrap gap-1.5">
+              {JUSTIFICATION_PRESETS.map((p) => (
+                <button
+                  key={p.label}
+                  type="button"
+                  onClick={() => setJustification(p.text.slice(0, MAX_JUSTIFICATION_LEN))}
+                  className="rounded-full border border-outline-variant/40 bg-surface-container-high/80 px-2.5 py-1 text-[10px] font-semibold text-primary hover:bg-primary/10 dark:border-slate-600 dark:text-blue-200 dark:hover:bg-slate-800"
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+            <textarea
+              value={justification}
+              onChange={(e) => setJustification(e.target.value.slice(0, MAX_JUSTIFICATION_LEN))}
+              placeholder="Ex.: atraso de 3 dias no pagamento; parcelamento do saldo…"
+              rows={3}
+              className="w-full resize-y rounded-lg bg-surface-container-high px-3 py-2 text-sm focus:ring-2 focus:ring-primary"
+            />
+            <p className="mt-1 text-[10px] text-on-surface-variant">
+              {justification.length}/{MAX_JUSTIFICATION_LEN} caracteres
+            </p>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>

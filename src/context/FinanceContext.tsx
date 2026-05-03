@@ -217,6 +217,7 @@ function normalizeTransactions(raw: unknown[]): Transaction[] {
       boletoAttachmentDataUrl: _b,
       boletoAttachmentName: _bn,
       statementReferenceMonth: _srmRaw,
+      justification: _juRaw,
       ...rest
     } = t;
     const thirdPartyName =
@@ -225,6 +226,10 @@ function normalizeTransactions(raw: unknown[]): Transaction[] {
         : null;
     const skipCardInvoiceDelta = t.skipCardInvoiceDelta === true ? true : undefined;
     const statementReferenceMonth = coerceStatementReferenceMonthYm(t.statementReferenceMonth) ?? undefined;
+    const justification =
+      typeof t.justification === "string" && t.justification.trim()
+        ? t.justification.trim().slice(0, 500)
+        : undefined;
     return {
       ...(rest as Transaction),
       creditCardId,
@@ -232,6 +237,7 @@ function normalizeTransactions(raw: unknown[]): Transaction[] {
       thirdPartyName,
       skipCardInvoiceDelta,
       ...(statementReferenceMonth ? { statementReferenceMonth } : {}),
+      ...(justification ? { justification } : {}),
       ...pay,
     };
   });
@@ -418,6 +424,12 @@ function financeReducer(state: FinanceState, action: Action): FinanceState {
       const srm = coerceStatementReferenceMonthYm(raw.statementReferenceMonth);
       if (srm) txMerged.statementReferenceMonth = srm;
       else delete txMerged.statementReferenceMonth;
+      const ju =
+        typeof raw.justification === "string" && raw.justification.trim()
+          ? raw.justification.trim().slice(0, 500)
+          : null;
+      if (ju) txMerged.justification = ju;
+      else delete txMerged.justification;
       const tx = txMerged as Transaction;
       const { amount, accountId, goalId } = tx;
       const accId = accountId || state.defaultAccountId;

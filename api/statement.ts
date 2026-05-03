@@ -195,7 +195,7 @@ INTERNACIONAL E IOF:
 • IOF de financiamento, encargos do rotativo, juros de mora, multa: uma linha por valor com a data impressa ao lado.
 
 CATEGORIA (category):
-• Use o nome do estabelecimento E palavras da fatura (ex.: "supermercado", "lazer", "outros SAO PAULO", "restaurante") para escolher entre as opções. Ex.: supermercado/padaria → Alimentação; streaming/cinema/academia/pass → Lazer; farmácia/hospital → Saúde; Uber/combustível → Transporte; hotel/aéreo → Viagem; software/nuvem (Cursor, AWS, GitHub) → Eletrônicos; loja de roupa/calçados (Zara, C&A, Renner…) → Vestuário; encargos/IOF/multa/tarifa bancária → Outros.
+• Use o nome do estabelecimento E palavras da fatura (ex.: "supermercado", "lazer", "outros SAO PAULO", "restaurante") para escolher entre as opções. Ex.: supermercado/padaria → Alimentação; streaming/cinema/academia/pass → Lazer; farmácia/hospital → Saúde; Uber/combustível → Transporte; hotel/aéreo → Viagem; software/nuvem (Cursor, AWS, GitHub) → Eletrônicos; loja de roupa/calçados (Zara, C&A, Renner…) → Vestuário; juros de mora, encargos de refinanciamento/rotativo, multa, IOF, tarifa, anuidade → **Juros e encargos** (string exata); pagamento que abate a fatura continua credit + descrição clara, não use "Juros e encargos" para isso.
 
 entryKind "credit" apenas para pagamentos que abatem a fatura (ex. pagamento via conta). amount sempre > 0 (magnitude).
 
@@ -231,12 +231,15 @@ function refineStatementTransactionCategory(
   let cat = normalizeStatementCategoryForStatementApi(category, allowed);
   if (cat !== "Outros") return cat;
   const d = foldAsciiStatementApi(description);
+  if (/\b(pagamento\s+via\s+conta)\b/.test(d)) {
+    return cat;
+  }
   if (
-    /\b(iof|encargo|refinanc|juros\s*de\s*mora|multa|repasse\s*de\s*iof|tarifa|anuidade|seguro\s+cart|pagamento\s+via\s+conta)\b/.test(
+    /\b(iof|encargo|refinanc|juros\s*de\s*mora|multa|repasse\s*de\s*iof|tarifa|anuidade|seguro\s+cart|rotativo)\b/.test(
       d,
     )
   ) {
-    return "Outros";
+    return normalizeStatementCategoryForStatementApi("Juros e encargos", allowed);
   }
   const rules: Array<[RegExp, string]> = [
     [
@@ -528,6 +531,7 @@ export const DEFAULT_STATEMENT_CATEGORIES = [
   "Transporte",
   "Saúde",
   "Vestuário",
+  "Juros e encargos",
   "Outros",
 ] as const;
 

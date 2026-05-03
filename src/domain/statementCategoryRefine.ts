@@ -28,12 +28,15 @@ export function refineStatementTransactionCategory(
   let cat = normalizeStatementCategory(category, allowed);
   if (cat !== "Outros") return cat;
   const d = foldAscii(description);
+  if (/\b(pagamento\s+via\s+conta)\b/.test(d)) {
+    return cat;
+  }
   if (
-    /\b(iof|encargo|refinanc|juros\s*de\s*mora|multa|repasse\s*de\s*iof|tarifa|anuidade|seguro\s+cart|pagamento\s+via\s+conta)\b/.test(
+    /\b(iof|encargo|refinanc|juros\s*de\s*mora|multa|repasse\s*de\s*iof|tarifa|anuidade|seguro\s+cart|rotativo)\b/.test(
       d,
     )
   ) {
-    return "Outros";
+    return normalizeStatementCategory("Juros e encargos", allowed);
   }
   const rules: Array<[RegExp, string]> = [
     [

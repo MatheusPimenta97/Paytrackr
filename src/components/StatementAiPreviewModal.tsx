@@ -28,6 +28,8 @@ function iconForCategory(category: string): string {
       return "local_hospital";
     case "Vestuário":
       return "checkroom";
+    case "Juros e encargos":
+      return "percent";
     default:
       return "shopping_bag";
   }

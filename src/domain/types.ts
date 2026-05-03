@@ -33,6 +33,11 @@ export type Transaction = {
   /** Quem usou o cartão (emprestado / outra pessoa), opcional */
   thirdPartyName?: string | null;
   /**
+   * Texto livre para justificar o lançamento (ex.: juros de mora, multa, encargos).
+   * Opcional; máx. ~500 caracteres na UI.
+   */
+  justification?: string | null;
+  /**
    * Se true: o lançamento fica vinculado ao cartão (histórico) mas **não** soma em
    * `currentInvoice` (ex.: linhas de fatura passada importadas pela IA).
    */

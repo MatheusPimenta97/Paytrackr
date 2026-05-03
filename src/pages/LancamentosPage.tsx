@@ -42,19 +42,21 @@ function exportCsv(
     date: string;
     description: string;
     category: string;
+    justificativa: string;
     cartao: string;
     pagamento: string;
     status: string;
     amount: number;
   }[]
 ) {
-  const header = "Data,Descrição,Categoria,Cartão,Pagamento,Status,Valor\n";
+  const header = "Data,Descrição,Categoria,Justificativa,Cartão,Pagamento,Status,Valor\n";
   const body = rows
     .map((r) =>
       [
         r.date,
         `"${r.description.replace(/"/g, '""')}"`,
         r.category,
+        `"${r.justificativa.replace(/"/g, '""')}"`,
         `"${r.cartao.replace(/"/g, '""')}"`,
         r.pagamento,
         r.status,
@@ -118,6 +120,7 @@ export function LancamentosPage() {
         return (
           t.description.toLowerCase().includes(q) ||
           t.category.toLowerCase().includes(q) ||
+          (t.justification && t.justification.toLowerCase().includes(q)) ||
           (cardLbl && cardLbl.includes(q))
         );
       })
@@ -304,6 +307,7 @@ export function LancamentosPage() {
                     date: t.date,
                     description: t.description,
                     category: t.category,
+                    justificativa: t.justification?.trim() ?? "",
                     cartao: transactionCardLabel(t, state.creditCards) || "—",
                     pagamento: transactionPaymentLabel(t),
                     status: t.status,
@@ -391,18 +395,28 @@ export function LancamentosPage() {
                       {formatDateShort(row.date)}
                     </td>
                     <td className="align-middle px-4 py-4 md:px-6">
-                      <div className="flex min-w-0 items-center gap-2.5">
+                      <div className="flex min-w-0 items-start gap-2.5">
                         <div
                           className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${iconWrap}`}
                         >
                           <span className="material-symbols-outlined">{row.icon}</span>
                         </div>
-                        <span
-                          className="min-w-0 truncate font-bold text-on-surface"
-                          title={row.description}
-                        >
-                          {row.description}
-                        </span>
+                        <div className="min-w-0 flex-1">
+                          <div
+                            className="truncate font-bold text-on-surface"
+                            title={row.description}
+                          >
+                            {row.description}
+                          </div>
+                          {row.justification?.trim() ? (
+                            <p
+                              className="mt-0.5 line-clamp-2 text-[11px] font-medium leading-snug text-on-surface-variant"
+                              title={row.justification.trim()}
+                            >
+                              {row.justification.trim()}
+                            </p>
+                          ) : null}
+                        </div>
                       </div>
                     </td>
                     <td className="align-middle px-4 py-4 md:px-6">

@@ -7,8 +7,8 @@ import {
   type StatementSuggestedTxn,
 } from "./openaiStatementAnalyze";
 
-/** POST handler para extrair lançamentos da fatura (imagem ou PDF). */
-export const ASSISTANT_STATEMENT_HTTP_PATH = "/api/paytrackr/assistant/statement";
+/** POST handler para extrair lançamentos da fatura (imagem ou PDF). Rota plana — ver `api/statement.ts`. */
+export const ASSISTANT_STATEMENT_HTTP_PATH = "/api/statement";
 
 export const STATEMENT_DOCUMENT_BODY_MAX_BYTES = 18 * 1024 * 1024;
 

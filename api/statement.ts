@@ -1,12 +1,17 @@
+/**
+ * POST /api/statement — extrair lançamentos de fatura (PDF/imagem).
+ * Rota **plana**: na Vercel, funções em `api/paytrackr/assistant/...` costumam falhar
+ * (mesmo motivo de `/api/receipt` ser plano — ver comentário em `api/receipt.ts`).
+ */
 import type { IncomingMessage, ServerResponse } from "node:http";
 
 import {
   handleStatementAnalyzePost,
   STATEMENT_DOCUMENT_BODY_MAX_BYTES,
-} from "../../lib/statementAnalyzeRoute";
-import type { NodeRequestWithBody } from "../../lib/readPostBodyUtf8";
-import { readPostBodyUtf8 } from "../../lib/readPostBodyUtf8";
-import { sendJson } from "../../lib/sendJson";
+} from "./lib/statementAnalyzeRoute";
+import type { NodeRequestWithBody } from "./lib/readPostBodyUtf8";
+import { readPostBodyUtf8 } from "./lib/readPostBodyUtf8";
+import { sendJson } from "./lib/sendJson";
 
 export default async function handler(req: IncomingMessage, res: ServerResponse) {
   try {
@@ -43,7 +48,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     sendJson(res, result.status, result.json);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.error("[paytrackr-assistant-statement]", msg);
+    console.error("[api/statement]", msg);
     sendJson(res, 500, {
       error:
         msg.length > 300

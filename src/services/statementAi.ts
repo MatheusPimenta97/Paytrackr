@@ -25,18 +25,20 @@ function stripDataUrlPrefix(dataUrl: string): { base64: string; mimeType: string
   return { base64: b64, mimeType: mime };
 }
 
-/** Deriva o URL de fatura a partir do endpoint de comprovante. */
+/** Deriva o URL de fatura a partir do endpoint de comprovante (mesma origem, rota plana `/api/statement`). */
 export function resolveStatementAssistantEndpoint(): string {
   const base = import.meta.env.VITE_AI_ASSISTANT_URL?.trim();
   if (base) {
-    if (base.endsWith("/image")) return `${base.slice(0, -"/image".length)}/statement`;
-    if (/\/receipt\/?$/.test(base)) {
-      const root = base.replace(/\/receipt\/?$/, "");
-      return `${root}/paytrackr/assistant/statement`;
+    const normalized = base.replace(/\/$/, "");
+    if (/\/receipt\/?$/i.test(normalized)) {
+      return normalized.replace(/\/receipt\/?$/i, "/statement");
     }
-    return `${base.replace(/\/$/, "")}/statement`;
+    if (/\/image\/?$/i.test(normalized)) {
+      return normalized.replace(/\/image\/?$/i, "/statement");
+    }
+    return `${normalized}/statement`;
   }
-  if (import.meta.env.DEV) return "/api/paytrackr/assistant/statement";
+  if (import.meta.env.DEV) return "/api/statement";
   return "";
 }
 
@@ -90,7 +92,13 @@ export async function analyzeCreditCardStatementDocument(
       typeof (raw as { error: unknown }).error === "string"
         ? (raw as { error: string }).error.trim()
         : "";
-    throw new Error(apiErr || (typeof raw === "string" ? raw : `HTTP ${res.status}`));
+    const rawStr = typeof raw === "string" ? raw : rawText;
+    if (!apiErr && rawStr.trimStart().startsWith("<")) {
+      throw new Error(
+        `A API devolveu HTML em vez de JSON (HTTP ${res.status}). Faça deploy com a rota /api/statement ou atualize VITE_AI_ASSISTANT_URL.`
+      );
+    }
+    throw new Error(apiErr || (typeof raw === "string" ? raw.slice(0, 200) : `HTTP ${res.status}`));
   }
 
   const body = raw as {

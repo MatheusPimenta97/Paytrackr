@@ -11,6 +11,10 @@
       "destination": "/api/receipt"
     },
     {
+      "source": "/api/paytrackr/assistant/statement",
+      "destination": "/api/statement"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

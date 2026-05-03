@@ -136,8 +136,19 @@ function createStatementAssistantMiddleware(openaiKey: string | undefined, opena
       return;
     }
 
-    const result = await handleStatementAnalyzePost(bodyRaw, { openaiKey, openaiModel });
-    sendJson(res, result.status, result.json);
+    try {
+      const result = await handleStatementAnalyzePost(bodyRaw, { openaiKey, openaiModel });
+      sendJson(res, result.status, result.json);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("[paytrackr-assistant-statement]", msg);
+      sendJson(res, 500, {
+        error:
+          msg.length > 300
+            ? `Erro interno ao processar o pedido: ${msg.slice(0, 300)}…`
+            : `Erro interno ao processar o pedido: ${msg}`,
+      });
+    }
   };
 }
 

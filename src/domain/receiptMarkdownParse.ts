@@ -36,11 +36,12 @@ function nameMatchesDisplay(nameBlock: string, displayName: string): boolean {
 
 function getSection(markdown: string, heading: string): string | null {
   const lines = markdown.split(/\r?\n/);
-  const target = `## ${heading}`.toLowerCase();
+  const esc = heading.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const headingRe = new RegExp(`^##\\s*${esc}\\b`, "i");
   let i = 0;
   while (i < lines.length) {
-    const t = lines[i].trim().toLowerCase();
-    if (t === target || t.startsWith(`${target} `)) {
+    const raw = lines[i].trim();
+    if (headingRe.test(raw)) {
       i++;
       const buf: string[] = [];
       while (i < lines.length && !/^\s*##\s+\S/.test(lines[i])) {
@@ -75,10 +76,24 @@ function firstDdMmYyyy(text: string): string | null {
   return iso;
 }
 
+function stripDeParaPrefix(line: string): string {
+  let s = line.replace(/\*+/g, "").trim();
+  s = s.replace(/^de:\s*/i, "").replace(/^para:\s*/i, "").trim();
+  return s;
+}
+
 function extractParticipantName(participantsSection: string, label: "**De:**" | "**Para:**"): string {
-  const idx = participantsSection.indexOf(label);
-  if (idx === -1) return "";
-  const rest = participantsSection.slice(idx + label.length);
+  const key = label === "**De:**" ? "De" : "Para";
+  let rest: string;
+  const at = participantsSection.indexOf(label);
+  if (at !== -1) {
+    rest = participantsSection.slice(at + label.length);
+  } else {
+    const re = new RegExp(`(^|[\\n])\\s*\\*{0,2}${key}:\\*{0,2}\\s*`, "im");
+    const m = re.exec(participantsSection);
+    if (!m) return "";
+    rest = participantsSection.slice(m.index + m[0].length);
+  }
   const lines = rest.split(/\n/);
   for (const raw of lines) {
     const line = raw.replace(/\*+/g, "").trim();
@@ -91,7 +106,8 @@ function extractParticipantName(participantsSection: string, label: "**De:**" | 
     if (/^chave pix:/i.test(line)) continue;
     if (/^agência/i.test(line)) continue;
     if (/^conta/i.test(line)) continue;
-    if (line.length >= 2) return line.slice(0, 120);
+    const name = stripDeParaPrefix(line);
+    if (name.length >= 2) return name.slice(0, 120);
   }
   return "";
 }
@@ -134,7 +150,10 @@ export function parseAiReceiptMarkdown(
     return { ok: false, error: "Não encontrei a data (dd/mm/aaaa) no resultado." };
   }
 
-  const paymentMethod = paymentMethodFromTipo(tipoSec || md);
+  let paymentMethod = paymentMethodFromTipo(tipoSec || md);
+  if (paymentMethod === "conta" && /\bpix\b|chave\s*pix|end-to-end/i.test(participants + md)) {
+    paymentMethod = "pix";
+  }
   const deName = extractParticipantName(participants, "**De:**");
   const paraName = extractParticipantName(participants, "**Para:**");
 

@@ -6,6 +6,8 @@ export type StatementAiSuggestedTxn = {
   amount: number;
   category: string;
   installmentNote?: string | null;
+  /** Pagamento/crédito que reduz a fatura (ex.: pagamento via conta). */
+  entryKind?: "expense" | "credit";
 };
 
 export type StatementAiResult = {
@@ -139,6 +141,10 @@ export async function analyzeCreditCardStatementDocument(
     for (const row of body.suggestedTransactions) {
       if (!row || typeof row !== "object") continue;
       const r = row as Record<string, unknown>;
+      const ekRaw = typeof r.entryKind === "string" ? r.entryKind.trim().toLowerCase() : "";
+      const ekNorm = ekRaw.normalize("NFD").replace(/\p{M}/gu, "");
+      const entryKind: "expense" | "credit" =
+        ekRaw === "credit" || ekNorm === "credito" ? "credit" : "expense";
       suggestedTransactions.push({
         date: typeof r.date === "string" ? r.date : "",
         description: typeof r.description === "string" ? r.description : "",
@@ -148,6 +154,7 @@ export async function analyzeCreditCardStatementDocument(
           typeof r.installmentNote === "string" && r.installmentNote.trim()
             ? r.installmentNote.trim()
             : null,
+        ...(entryKind === "credit" ? { entryKind: "credit" as const } : {}),
       });
     }
   }

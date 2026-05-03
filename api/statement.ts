@@ -69,6 +69,8 @@ export type StatementSuggestedTxn = {
   amount: number;
   category: string;
   installmentNote?: string | null;
+  /** "credit" = pagamento/crédito que reduz o saldo da fatura (ex.: pagamento via conta). Demais = despesa. */
+  entryKind?: "expense" | "credit";
 };
 
 export type StatementAnalyzeResult = {
@@ -175,6 +177,31 @@ function extractResponsesOutputText(data: unknown): string | null {
   return joined.length ? joined : null;
 }
 
+/** Regras comuns aos três modos de extração (PDF nativo, imagem, texto). */
+function buildStatementExtractionGuide(categoriesLine: string): string {
+  return `INCLUA em suggestedTransactions TODAS as linhas financeiras desta fatura que impactam o total, não só a seção “compras e saques”:
+
+• Compras/saques nacionais: data, estabelecimento, valor em R$.
+• Compras internacionais: use o valor em R$ já impresso na fatura (“Valor em R$”, “BRL”, total da transação em reais). Se só existir USD + câmbio, calcule R$ = USD × câmbio da própria linha e arredonde em 2 casas.
+• IOF (ex.: “IOF”, “IOF de financiamento”), repasse de IOF, anuidade/tarifas, seguros cobrados na fatura — uma linha por valor com data do documento.
+• Encargos do rotativo/atraso: “ENCARGOS REFINANCIAMENTO”, “JUROS DE MORA”, “MULTA”, “Encargos financeiros” etc. — uma linha por encargo.
+• Pagamentos que abatem a fatura (ex.: “Pagamento via conta”, créditos): mesmo formato, amount = valor absoluto em BRL e entryKind "credit".
+
+Para cada linha:
+- date: YYYY-MM-DD
+- description: texto curto e claro (ex.: “IOF — financiamento”, “Multa por atraso”, “Pagamento via conta”)
+- amount: número > 0 em reais (sempre magnitude; créditos também positivos aqui)
+- category: EXATAMENTE uma das opções enviadas
+- installmentNote: parcela “3/12” se houver; senão null
+- entryKind: "expense" (padrão, pode omitir) ou "credit" para pagamentos/créditos na fatura
+
+statementTotalGuess: use o total COMPLETO deste fechamento em BRL. Priorize, quando existirem e forem claramente desta fatura, expressões como “Limite total utilizado”, “Valor total a pagar”, “Total da fatura” / “Total atual da fatura”. NÃO preencha só com subtotais parciais (ex.: “Total lançamentos no cartão”, “Total compras e saques”) se no documento houver um total MAIOR que já inclua internacional em R$, IOF, encargos e demais tarifas. Se houver vários números, escolha o que representa o fechamento integral e explique no markdown.
+
+No markdown, inclua uma seção "## Conciliação" listando os principais totais que leu no PDF, a soma aproximada das linhas extraídas e observando que seções diferentes (compras nacionais vs internacional vs encargos) costumam aparecer separadas no banco.
+
+Opções de category (use a string exatamente como abaixo): ${categoriesLine}`;
+}
+
 async function responsesCompletionJson(input: {
   apiKey: string;
   model: string;
@@ -229,19 +256,10 @@ async function analyzeCreditCardStatementFromPdfNative(input: {
 
   const system = `Você interpreta FATURAS DE CARTÃO DE CRÉDITO brasileiras a partir do PDF anexo (inclui faturas escaneadas ou só imagem).
 
-Extraia LINHAS DE COMPRAS/DESPESAS (ignore totalizadores genéricos como "total da fatura" como linha importável — use só linhas com data + estabelecimento + valor).
+${buildStatementExtractionGuide(input.categoriesLine)}
 
-Para cada linha devolva:
-- date no formato YYYY-MM-DD
-- description curta (nome do estabelecimento ou texto da linha)
-- amount: número positivo em reais (valor absoluto da compra nesta fatura)
-- category: escolha EXATAMENTE uma destas opções: ${input.categoriesLine}
-- installmentNote: texto opcional tipo "3/12" se aparecer parcelamento; senão null.
-
-Responda APENAS um objeto JSON válido neste formato (sem markdown ao redor):
-{"markdown":"...","suggestedTransactions":[{"date":"","description":"","amount":0,"category":"","installmentNote":null}],"statementTotalGuess":null}
-
-statementTotalGuess: total da fatura em BRL se estiver explícito no documento, senão null.
+Responda APENAS um objeto JSON válido (sem markdown ao redor):
+{"markdown":"...","suggestedTransactions":[{"date":"YYYY-MM-DD","description":"","amount":0,"category":"","installmentNote":null,"entryKind":"expense"}],"statementTotalGuess":null}
 
 ${monthHint}`;
 
@@ -309,12 +327,17 @@ function normalizeAnalyzePayload(parsed: unknown): StatementAnalyzeResult {
         typeof r.installmentNote === "string" && r.installmentNote.trim()
           ? r.installmentNote.trim().slice(0, 80)
           : null;
+      const ekRaw = typeof r.entryKind === "string" ? r.entryKind.trim().toLowerCase() : "";
+      const ekNorm = ekRaw.normalize("NFD").replace(/\p{M}/gu, "");
+      const entryKind: "expense" | "credit" =
+        ekRaw === "credit" || ekNorm === "credito" ? "credit" : "expense";
       suggestedTransactions.push({
         date,
         description: description.slice(0, 240),
         amount: Math.round(amt * 100) / 100,
         category: category.slice(0, 80),
         installmentNote,
+        ...(entryKind === "credit" ? { entryKind: "credit" as const } : {}),
       });
     }
   }
@@ -337,19 +360,10 @@ async function analyzeCreditCardStatementVision(input: {
 
   const system = `Você interpreta FATURAS DE CARTÃO DE CRÉDITO brasileiras (PDF renderizado como imagem ou captura de tela).
 
-Extraia LINHAS DE COMPRAS/DESPESAS (ignore totalizadores genéricos como "total da fatura" como linha importável — use só linhas com data + estabelecimento + valor).
+${buildStatementExtractionGuide(input.categoriesLine)}
 
-Para cada linha devolva:
-- date no formato YYYY-MM-DD
-- description curta (nome do estabelecimento ou texto da linha)
-- amount: número positivo em reais (valor absoluto da compra nesta fatura)
-- category: escolha EXATAMENTE uma destas opções: ${input.categoriesLine}
-- installmentNote: texto opcional tipo "3/12" se aparecer parcelamento; senão null.
-
-Responda APENAS JSON válido neste formato:
-{"markdown":"...","suggestedTransactions":[{"date":"","description":"","amount":0,"category":"","installmentNote":null}],"statementTotalGuess":null}
-
-statementTotalGuess: total da fatura em BRL se estiver explícito no documento, senão null.
+Responda APENAS JSON válido:
+{"markdown":"...","suggestedTransactions":[{"date":"YYYY-MM-DD","description":"","amount":0,"category":"","installmentNote":null,"entryKind":"expense"}],"statementTotalGuess":null}
 
 ${monthHint}`;
 
@@ -392,15 +406,10 @@ async function analyzeCreditCardStatementFromText(input: {
 
   const system = `Você interpreta TEXTO EXTRAÍDO de uma fatura de cartão de crédito brasileiro.
 
-Extraia lançamentos com data, estabelecimento e valor. Ignore linhas que são apenas totais ou resumo sem detalhe.
-
-Regras:
-- amount: sempre positivo em BRL para cada compra nesta fatura.
-- category: EXATAMENTE uma de: ${input.categoriesLine}
-- installmentNote: parcela ex. "2/10" se constar; senão null.
+${buildStatementExtractionGuide(input.categoriesLine)}
 
 Responda APENAS JSON:
-{"markdown":"...","suggestedTransactions":[{"date":"YYYY-MM-DD","description":"","amount":0,"category":"","installmentNote":null}],"statementTotalGuess":null}
+{"markdown":"...","suggestedTransactions":[{"date":"YYYY-MM-DD","description":"","amount":0,"category":"","installmentNote":null,"entryKind":"expense"}],"statementTotalGuess":null}
 
 ${monthHint}`;
 

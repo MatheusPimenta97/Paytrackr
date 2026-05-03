@@ -27,7 +27,7 @@ function iconForCategory(category: string): string {
   }
 }
 
-type RowState = StatementAiSuggestedTxn & { selected: boolean };
+type RowState = StatementAiSuggestedTxn & { selected: boolean; entryKind: "expense" | "credit" };
 
 type Props = {
   open: boolean;
@@ -72,6 +72,7 @@ export function StatementAiPreviewModal({
     setRows(
       suggestedTransactions.map((t) => ({
         ...t,
+        entryKind: t.entryKind === "credit" ? "credit" : "expense",
         selected: true,
       })),
     );
@@ -79,7 +80,13 @@ export function StatementAiPreviewModal({
 
   if (!open) return null;
 
-  const selectedSum = rows.filter((r) => r.selected).reduce((s, r) => s + r.amount, 0);
+  /** Despesas somam positivo; créditos na fatura (pagamentos) abatem. */
+  const selectedNet = rows
+    .filter((r) => r.selected)
+    .reduce((s, r) => {
+      const mag = Math.round(r.amount * 100) / 100;
+      return s + (r.entryKind === "credit" ? -mag : mag);
+    }, 0);
 
   function updateRow(i: number, patch: Partial<RowState>) {
     setRows((prev) => prev.map((r, j) => (j === i ? { ...r, ...patch } : r)));
@@ -98,11 +105,13 @@ export function StatementAiPreviewModal({
       const day = r.date.slice(0, 10);
       const inCycle = !!(cycle && day >= cycle.startIso && day <= cycle.endIso);
       const skipCardInvoiceDelta = !inCycle || cycleIsPast;
+      const mag = Math.round(r.amount * 100) / 100;
+      const signed = r.entryKind === "credit" ? mag : -mag;
       addTransaction({
         date: r.date,
         description: desc.trim().slice(0, 240),
         category: cat,
-        amount: -Math.round(r.amount * 100) / 100,
+        amount: signed,
         status: "confirmado",
         icon: iconForCategory(cat),
         accountId: state.defaultAccountId,
@@ -161,8 +170,8 @@ export function StatementAiPreviewModal({
           </div>
           {statementTotalGuess != null && statementTotalGuess > 0 && (
             <p className="mt-2 text-xs font-semibold text-primary dark:text-emerald-300">
-              Total indicado na fatura (IA): {formatBRL(statementTotalGuess)} · Soma das linhas selecionadas:{" "}
-              {formatBRL(selectedSum)}
+              Total indicado na fatura (IA): {formatBRL(statementTotalGuess)} · Soma líquida das linhas selecionadas
+              (despesas − créditos): {formatBRL(selectedNet)}
             </p>
           )}
         </div>
@@ -177,6 +186,7 @@ export function StatementAiPreviewModal({
                   <th className="p-2">✓</th>
                   <th className="p-2">Data</th>
                   <th className="p-2">Período</th>
+                  <th className="p-2">Tipo</th>
                   <th className="p-2">Descrição</th>
                   <th className="p-2">Valor</th>
                   <th className="p-2">Categoria</th>
@@ -211,6 +221,20 @@ export function StatementAiPreviewModal({
                       ) : (
                         <span className="text-secondary dark:text-emerald-300">Fatura atual</span>
                       )}
+                    </td>
+                    <td className="p-1 align-top">
+                      <select
+                        value={r.entryKind}
+                        onChange={(e) =>
+                          updateRow(i, {
+                            entryKind: e.target.value === "credit" ? "credit" : "expense",
+                          })
+                        }
+                        className="w-full max-w-[9.5rem] rounded bg-surface-container-high px-1 py-1 text-[10px] font-semibold dark:bg-slate-800"
+                      >
+                        <option value="expense">Despesa</option>
+                        <option value="credit">Crédito (abate)</option>
+                      </select>
                     </td>
                     <td className="p-1 align-top">
                       <input

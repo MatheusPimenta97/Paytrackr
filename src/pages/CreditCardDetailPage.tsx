@@ -43,6 +43,29 @@ function ymKey(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
+function parseYmFirstDay(ym: string): Date {
+  const [y, m] = ym.split("-").map(Number);
+  if (!y || !m) return new Date();
+  return new Date(y, m - 1, 1);
+}
+
+/** Meses YYYY-MM consecutivos de startYm até endYm (inclusive), na ordem cronológica. */
+function eachYmInclusiveFromTo(startYm: string, endYm: string): string[] {
+  if (startYm > endYm) return [];
+  const out: string[] = [];
+  let d = parseYmFirstDay(startYm);
+  const endT = parseYmFirstDay(endYm).getTime();
+  while (d.getTime() <= endT) {
+    out.push(ymKey(d));
+    d = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+  }
+  return out;
+}
+
+const INVOICE_HISTORY_MAX_MONTHS = 48;
+
+type InvoiceHistoryHorizon = 4 | 8 | 12 | 24 | "all";
+
 export function CreditCardDetailPage() {
   const { cardId } = useParams<{ cardId: string }>();
   const navigate = useNavigate();
@@ -63,8 +86,9 @@ export function CreditCardDetailPage() {
     amount: number;
   } | null>(null);
   const [attachmentPreview, setAttachmentPreview] = useState<{ dataUrl: string; name: string } | null>(null);
-  /** Mês YYYY-MM da barra clicada — detalhe da fatura / ciclo */
+  /** Mês YYYY-MM do ponto clicado — detalhe da fatura / ciclo */
   const [invoiceDetailYm, setInvoiceDetailYm] = useState<string | null>(null);
+  const [invoiceHistoryHorizonStr, setInvoiceHistoryHorizonStr] = useState<string>("4");
 
   const cardTxns = useMemo(() => {
     if (!cardId) return [];
@@ -96,12 +120,50 @@ export function CreditCardDetailPage() {
     return map;
   }, [card, cardTxns]);
 
-  const invoiceBars = useMemo(() => {
+  const invoiceHistoryHorizon: InvoiceHistoryHorizon =
+    invoiceHistoryHorizonStr === "all"
+      ? "all"
+      : ([4, 8, 12, 24].includes(Number(invoiceHistoryHorizonStr))
+          ? (Number(invoiceHistoryHorizonStr) as 4 | 8 | 12 | 24)
+          : 4);
+
+  const invoiceHistorySeries = useMemo(() => {
+    if (!card || card.kind !== "credito") return [];
     const now = new Date();
-    const rows: { ym: string; label: string; amount: number; isCurrent: boolean }[] = [];
-    for (let i = 3; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const ym = ymKey(d);
+    const nowYm = ymKey(now);
+
+    let ymList: string[] = [];
+
+    if (invoiceHistoryHorizon === "all") {
+      const fromData = new Set<string>();
+      for (const s of statements) {
+        if (/^\d{4}-\d{2}$/.test(s.referenceMonth)) fromData.add(s.referenceMonth);
+      }
+      for (const ym of rawAmountSumByReferenceMonth.keys()) {
+        if (/^\d{4}-\d{2}$/.test(ym)) fromData.add(ym);
+      }
+      fromData.add(nowYm);
+      if (fromData.size <= 1) {
+        for (let i = 3; i >= 0; i--) {
+          ymList.push(ymKey(new Date(now.getFullYear(), now.getMonth() - i, 1)));
+        }
+      } else {
+        const sorted = [...fromData].sort();
+        const minYm = sorted[0]!;
+        ymList = eachYmInclusiveFromTo(minYm, nowYm);
+        if (ymList.length > INVOICE_HISTORY_MAX_MONTHS) {
+          ymList = ymList.slice(-INVOICE_HISTORY_MAX_MONTHS);
+        }
+      }
+    } else {
+      const n = invoiceHistoryHorizon;
+      for (let i = n - 1; i >= 0; i--) {
+        ymList.push(ymKey(new Date(now.getFullYear(), now.getMonth() - i, 1)));
+      }
+    }
+
+    return ymList.map((ym, idx, arr) => {
+      const d = parseYmFirstDay(ym);
       const st = statements.find((s) => s.referenceMonth === ym);
       const rawSum = rawAmountSumByReferenceMonth.get(ym) ?? 0;
       const fromTxns = Math.max(0, -rawSum);
@@ -111,19 +173,10 @@ export function CreditCardDetailPage() {
         .replace(/\./g, "")
         .toUpperCase()
         .slice(0, 3);
-      rows.push({
-        ym,
-        label,
-        amount,
-        isCurrent: i === 3,
-      });
-    }
-    const max = Math.max(...rows.map((r) => r.amount), 1);
-    return rows.map((r) => ({
-      ...r,
-      heightPct: Math.round((r.amount / max) * 100),
-    }));
-  }, [statements, rawAmountSumByReferenceMonth]);
+      const isCurrent = idx === arr.length - 1;
+      return { ym, label, amount, isCurrent };
+    });
+  }, [card, statements, rawAmountSumByReferenceMonth, invoiceHistoryHorizon]);
 
   const invoiceDetailCycleTxns = useMemo(() => {
     if (!invoiceDetailYm || !card || card.kind !== "credito") return [];
@@ -593,58 +646,146 @@ export function CreditCardDetailPage() {
           {isCredito ? (
             <>
               <div className="flex flex-col rounded-xl border border-surface-container bg-white p-4 shadow-[0px_4px_12px_rgba(0,40,85,0.05)] dark:border-slate-700 dark:bg-slate-900">
-                <h3 className="mb-0.5 shrink-0 font-headline text-base font-semibold text-primary">Histórico de faturas</h3>
-                <p className="mb-3 text-[10px] leading-snug text-slate-500 dark:text-slate-400">
-                  Ciclo pelo fechamento do cartão. Toque no mês para ver lançamentos e a fatura anexada.
-                </p>
-                <div className="flex h-[124px] shrink-0 items-stretch justify-between gap-2 px-0.5">
-                  {invoiceBars.map((bar) => {
-                    const fillPct = Math.max(bar.amount === 0 ? 0 : 10, bar.heightPct);
-                    const isOpen = invoiceDetailYm === bar.ym;
-                    return (
-                      <button
-                        key={bar.ym}
-                        type="button"
-                        onClick={() => setInvoiceDetailYm(bar.ym)}
-                        className={`group flex min-w-0 flex-1 flex-col items-stretch gap-1 rounded-xl border p-1.5 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 ${
-                          isOpen
-                            ? "border-primary/50 bg-primary/5 shadow-sm dark:border-blue-600/60 dark:bg-blue-950/30"
-                            : "border-transparent hover:border-slate-200 hover:bg-slate-50/80 dark:hover:border-slate-600 dark:hover:bg-slate-800/40"
-                        }`}
-                        aria-label={`Detalhes da fatura ${bar.label}`}
-                      >
-                        <span
-                          className={`min-h-[14px] text-center font-label text-[10px] font-bold tabular-nums leading-tight ${
-                            bar.isCurrent
-                              ? "text-primary dark:text-blue-200"
-                              : "text-slate-700 dark:text-slate-300"
-                          }`}
-                        >
-                          {formatBRL(bar.amount)}
-                        </span>
-                        <div className="relative mx-auto mt-0.5 w-full max-w-[52px] flex-1 min-h-[68px] rounded-xl bg-slate-100/90 p-1 dark:bg-slate-800/80">
-                          <div
-                            className={`absolute bottom-1 left-1 right-1 rounded-lg transition-all ${
-                              bar.isCurrent
-                                ? "bg-primary shadow-[0_-2px_0_rgba(0,40,85,0.12)_inset] dark:bg-blue-600"
-                                : "bg-primary/45 dark:bg-blue-800/80"
-                            }`}
-                            style={{ height: `${fillPct}%` }}
-                          />
-                        </div>
-                        <span
-                          className={`text-center font-label text-[9px] font-bold uppercase tracking-wide ${
-                            bar.isCurrent
-                              ? "text-primary dark:text-blue-200"
-                              : "text-slate-600 dark:text-slate-400"
-                          }`}
-                        >
-                          {bar.label}
-                        </span>
-                      </button>
-                    );
-                  })}
+                <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
+                  <h3 className="font-headline text-base font-semibold text-primary">Histórico de faturas</h3>
+                  <label className="flex shrink-0 items-center gap-1.5">
+                    <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">Período</span>
+                    <select
+                      value={invoiceHistoryHorizonStr}
+                      onChange={(e) => setInvoiceHistoryHorizonStr(e.target.value)}
+                      className="max-w-[11rem] cursor-pointer rounded-lg border border-slate-200 bg-surface-container-high py-1 pl-2 pr-7 text-[10px] font-semibold text-primary shadow-sm dark:border-slate-600 dark:bg-slate-800 dark:text-blue-200"
+                      aria-label="Quantidade de meses no gráfico"
+                    >
+                      <option value="4">4 meses</option>
+                      <option value="8">8 meses</option>
+                      <option value="12">12 meses</option>
+                      <option value="24">24 meses</option>
+                      <option value="all">Desde o 1º dado (máx. {INVOICE_HISTORY_MAX_MONTHS} m.)</option>
+                    </select>
+                  </label>
                 </div>
+                <p className="mb-2 text-[10px] leading-snug text-slate-500 dark:text-slate-400">
+                  Ciclo pelo fechamento do cartão. Toque em um ponto para ver lançamentos e a fatura anexada.
+                </p>
+                {(() => {
+                  const VB_W = 320;
+                  const VB_H = 118;
+                  const padL = 6;
+                  const padR = 6;
+                  const padT = 8;
+                  const padB = 24;
+                  const plotW = VB_W - padL - padR;
+                  const plotH = VB_H - padT - padB;
+                  const series = invoiceHistorySeries;
+                  if (series.length === 0) {
+                    return (
+                      <p className="rounded-lg border border-dashed border-slate-200 py-8 text-center text-xs text-slate-500 dark:border-slate-600 dark:text-slate-400">
+                        Sem dados para o gráfico.
+                      </p>
+                    );
+                  }
+                  const maxVal = Math.max(1, ...series.map((s) => s.amount));
+                  const pts = series.map((s, i) => {
+                    const n = series.length;
+                    const x = padL + (n <= 1 ? plotW / 2 : (i / (n - 1)) * plotW);
+                    const y = padT + plotH * (1 - s.amount / maxVal);
+                    return { x, y, ...s };
+                  });
+                  const linePoints = pts.map((p) => `${p.x},${p.y}`).join(" ");
+                  const labelStep = Math.max(1, Math.ceil(series.length / 8));
+                  return (
+                    <div className="w-full shrink-0 overflow-x-auto rounded-lg border border-slate-100/90 bg-slate-50/50 dark:border-slate-700/80 dark:bg-slate-800/30">
+                      <svg
+                        viewBox={`0 0 ${VB_W} ${VB_H}`}
+                        className="mx-auto block h-[7.5rem] min-w-[260px] w-full max-w-full"
+                        preserveAspectRatio="xMidYMid meet"
+                        role="img"
+                        aria-label="Evolução do total por mês de referência do ciclo"
+                      >
+                        <desc>Totais por mês de referência da fatura; toque nos pontos para detalhes.</desc>
+                        {[0, 0.5, 1].map((t) => {
+                          const gy = padT + plotH * (1 - t);
+                          return (
+                            <line
+                              key={t}
+                              x1={padL}
+                              x2={VB_W - padR}
+                              y1={gy}
+                              y2={gy}
+                              className="stroke-slate-200 dark:stroke-slate-600"
+                              strokeWidth={1}
+                              strokeDasharray="3 4"
+                              strokeOpacity={0.85}
+                            />
+                          );
+                        })}
+                        <polyline
+                          fill="none"
+                          strokeWidth={2.5}
+                          strokeLinejoin="round"
+                          strokeLinecap="round"
+                          className="stroke-primary dark:stroke-blue-400"
+                          points={linePoints}
+                        />
+                        {pts.map((p) => {
+                          const isOpen = invoiceDetailYm === p.ym;
+                          return (
+                            <circle
+                              key={p.ym}
+                              role="button"
+                              tabIndex={0}
+                              cx={p.x}
+                              cy={p.y}
+                              r={isOpen ? 6 : 4}
+                              className={`cursor-pointer transition-all ${
+                                isOpen
+                                  ? "fill-primary stroke-white stroke-[2.5] dark:fill-blue-400 dark:stroke-slate-900"
+                                  : p.isCurrent
+                                    ? "fill-white stroke-primary stroke-[2] dark:fill-slate-900 dark:stroke-blue-400"
+                                    : "fill-white stroke-slate-300 stroke-[1.5] dark:fill-slate-900 dark:stroke-slate-500"
+                              }`}
+                              onClick={() => setInvoiceDetailYm(p.ym)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " ") {
+                                  e.preventDefault();
+                                  setInvoiceDetailYm(p.ym);
+                                }
+                              }}
+                            >
+                              <title>
+                                {p.ym}: {formatBRL(p.amount)}
+                              </title>
+                            </circle>
+                          );
+                        })}
+                        {pts.map((p, idx) => {
+                          const showLabel = idx % labelStep === 0 || idx === pts.length - 1;
+                          if (!showLabel) return null;
+                          return (
+                            <text
+                              key={`${p.ym}-lbl`}
+                              x={p.x}
+                              y={VB_H - 5}
+                              textAnchor={idx === 0 ? "start" : idx === pts.length - 1 ? "end" : "middle"}
+                              className="pointer-events-none fill-slate-500 text-[8px] font-semibold uppercase dark:fill-slate-400"
+                              style={{ fontSize: 8 }}
+                            >
+                              {p.label}
+                            </text>
+                          );
+                        })}
+                      </svg>
+                    </div>
+                  );
+                })()}
+                <p className="mt-1 text-[9px] text-slate-400 dark:text-slate-500">
+                  Máximo no período:{" "}
+                  {formatBRL(
+                    invoiceHistorySeries.length > 0
+                      ? Math.max(...invoiceHistorySeries.map((s) => s.amount))
+                      : 0,
+                  )}
+                </p>
                 <div className="mt-3 flex flex-wrap justify-end gap-1.5 border-t border-surface-container/80 pt-2 dark:border-slate-700/80">
                   <button
                     type="button"

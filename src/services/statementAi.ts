@@ -25,18 +25,38 @@ function stripDataUrlPrefix(dataUrl: string): { base64: string; mimeType: string
   return { base64: b64, mimeType: mime };
 }
 
-/** Deriva o URL de fatura a partir do endpoint de comprovante (mesma origem, rota plana `/api/statement`). */
+/**
+ * Rota legada (aninhada) falha na Vercel; a plana é `/api/statement`.
+ * Aplica também a URLs já resolvidas (build antigo ou env com path errado).
+ */
+function toFlatStatementApiUrl(endpoint: string): string {
+  return endpoint.trim().replace(/\/api\/paytrackr\/assistant\/statement/gi, "/api/statement");
+}
+
+/** Deriva o URL de fatura a partir do endpoint de comprovante (sempre rota plana `/api/statement`). */
 export function resolveStatementAssistantEndpoint(): string {
   const base = import.meta.env.VITE_AI_ASSISTANT_URL?.trim();
   if (base) {
-    const normalized = base.replace(/\/$/, "");
-    if (/\/receipt\/?$/i.test(normalized)) {
-      return normalized.replace(/\/receipt\/?$/i, "/statement");
+    let u = base.replace(/\/$/, "");
+    u = u.replace(/\/api\/paytrackr\/assistant\/statement$/i, "/api/statement");
+    if (/\/receipt\/?$/i.test(u)) {
+      u = u.replace(/\/receipt\/?$/i, "/statement");
+    } else if (/\/image\/?$/i.test(u)) {
+      u = u.replace(/\/image\/?$/i, "/statement");
+    } else {
+      try {
+        const p = new URL(u);
+        if (p.pathname === "/" || p.pathname === "") {
+          u = `${p.origin}/api/statement`;
+        } else if (!/\/statement$/i.test(u)) {
+          u = `${u}/statement`;
+        }
+      } catch {
+        if (u === "/api/receipt") u = "/api/statement";
+        else if (!/\/statement$/i.test(u)) u = `${u}/statement`;
+      }
     }
-    if (/\/image\/?$/i.test(normalized)) {
-      return normalized.replace(/\/image\/?$/i, "/statement");
-    }
-    return `${normalized}/statement`;
+    return toFlatStatementApiUrl(u);
   }
   if (import.meta.env.DEV) return "/api/statement";
   return "";
@@ -49,7 +69,7 @@ export async function analyzeCreditCardStatementDocument(
   documentDataUrl: string,
   options: { referenceMonth: string },
 ): Promise<StatementAiResult> {
-  const endpoint = resolveStatementAssistantEndpoint();
+  let endpoint = toFlatStatementApiUrl(resolveStatementAssistantEndpoint());
   const { base64, mimeType } = stripDataUrlPrefix(documentDataUrl);
 
   if (!endpoint) {

@@ -1,5 +1,3 @@
-import { PDFParse } from "pdf-parse";
-
 import {
   analyzeCreditCardStatementFromText,
   analyzeCreditCardStatementVision,
@@ -51,6 +49,8 @@ function normalizeCategoriesPayload(raw: unknown): string[] {
 }
 
 async function extractPdfText(buffer: Buffer): Promise<string> {
+  /** Import dinâmico: evita falha de cold start na Vercel se o bundle do pdfjs falhar ao carregar com o handler. */
+  const { PDFParse } = await import("pdf-parse");
   const parser = new PDFParse({ data: new Uint8Array(buffer) });
   try {
     const tr = await parser.getText();

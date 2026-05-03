@@ -4,9 +4,11 @@
  * **Um único arquivo** (sem `import "./lib/..."`): na Vercel cada rota em `api/*.ts`
  * vira um bundle separado; imports relativos para `api/lib/*` não são resolvidos no
  * runtime (`ERR_MODULE_NOT_FOUND`). O mesmo padrão de `api/receipt.ts`.
+ *
+ * Refino de categoria pós-IA está INLINE abaixo: a Vercel publica só `api/statement.js`
+ * (sem `statementCategoryRefine.js` nem `src/`). Mantenha em sincronia com `src/domain/statementCategoryRefine.ts`.
  */
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { refineStatementTransactionCategory } from "./statementCategoryRefine";
 
 // --- sendJson (inline; era api/lib/sendJson.ts)
 function sendJson(res: ServerResponse, status: number, payload: Record<string, unknown>): void {
@@ -202,6 +204,60 @@ statementTotalGuess: número do TOTAL FECHADO desta fatura em BRL. Prioridade M�
 No markdown, seção "## Conciliação": totais lidos no PDF (incl. subtotais por seção), soma das linhas extraídas (despesas − créditos) e, se faltar algo para bater no total, liste o que pode ter ficado de fora.
 
 Opções de category (string exata): ${categoriesLine}`;
+}
+
+function normalizeStatementCategoryForStatementApi(raw: string, allowed: readonly string[]): string {
+  const t = raw.trim();
+  if (allowed.includes(t)) return t;
+  const f = allowed.find((a) => a.toLowerCase() === t.toLowerCase());
+  return f ?? "Outros";
+}
+
+function foldAsciiStatementApi(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** Inline: não importar módulo externo (deploy Vercel = um arquivo). */
+function refineStatementTransactionCategory(
+  description: string,
+  category: string,
+  allowed: readonly string[],
+): string {
+  let cat = normalizeStatementCategoryForStatementApi(category, allowed);
+  if (cat !== "Outros") return cat;
+  const d = foldAsciiStatementApi(description);
+  if (
+    /\b(iof|encargo|refinanc|juros\s*de\s*mora|multa|repasse\s*de\s*iof|tarifa|anuidade|seguro\s+cart|pagamento\s+via\s+conta)\b/.test(
+      d,
+    )
+  ) {
+    return "Outros";
+  }
+  const rules: Array<[RegExp, string]> = [
+    [
+      /carrefour|atacad|pao\s*de\s*acucar|extra\b|supermercado|ifood|rappi|ze\s*delivery|mcdonald|subway|padaria|restaurante|assai|sendas|bakery|lanchonete/,
+      "Alimentação",
+    ],
+    [
+      /youtube|netflix|spotify|disney|prime\s*video|streaming|totalpass|totpass|smartfit|academia|ingresso|steam|playstation|xbox|deezer|twitch/,
+      "Lazer",
+    ],
+    [/cursor|github|openai|google\s*cloud|aws|azure|digitalocean|hostinger|notion|slack|figma|adobe|jetbrains/, "Eletrônicos"],
+    [/uber|99pop|99\s*taxi|cabify|bolt|shell|ipiranga|petrobras|posto|combust|metro|onibus|bilhete/, "Transporte"],
+    [/latam|voegol|gol\s*linhas|azul\s*linhas|booking|airbnb|hotels|decolar|123milhas/, "Viagem"],
+    [/drogaria|farmacia|drogasil|pacheco|hospital|clinica|dentista|odont|saude|hemolab/, "Saúde"],
+    [/enel|cpfl|light|energia|esgoto|condominio|aluguel|iptu|virtua|oi\s*fibra/, "Moradia"],
+    [/rico\b|xp\s|clear\s*corretora|btg|nuinvest|investimento|cei\s*b3/, "Investimentos"],
+  ];
+  for (const [re, guess] of rules) {
+    if (re.test(d)) return normalizeStatementCategoryForStatementApi(guess, allowed);
+  }
+  return cat;
 }
 
 async function responsesCompletionJson(input: {

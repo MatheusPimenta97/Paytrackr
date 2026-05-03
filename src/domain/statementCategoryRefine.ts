@@ -1,7 +1,8 @@
 /**
- * Refino de categoria pós-IA — fica em `api/` para o bundle serverless (Vercel)
- * não importar de `src/` (não existe em `/var/task/src`).
+ * Refino de categoria pós-IA (cliente). Duplicado em `api/statement.ts` inline — a Vercel
+ * não empacota `src/` nem arquivos irmãos em `api/` com a rota; mantenha as regras iguais.
  */
+import { CATEGORY_OPTIONS } from "./categories";
 
 export function normalizeStatementCategory(raw: string, allowed: readonly string[]): string {
   const t = raw.trim();
@@ -19,13 +20,10 @@ function foldAscii(s: string): string {
     .trim();
 }
 
-/**
- * Se a categoria já for específica, mantém; se for "Outros", tenta deduzir pelo texto da descrição.
- */
 export function refineStatementTransactionCategory(
   description: string,
   category: string,
-  allowed: readonly string[],
+  allowed: readonly string[] = CATEGORY_OPTIONS,
 ): string {
   let cat = normalizeStatementCategory(category, allowed);
   if (cat !== "Outros") return cat;

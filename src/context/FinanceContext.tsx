@@ -318,6 +318,7 @@ type Action =
   | { type: "HYDRATE"; payload: FinanceState }
   | { type: "ADD_TRANSACTION"; payload: Omit<Transaction, "id"> & { id?: string } }
   | { type: "PATCH_TRANSACTION"; id: string; patch: { thirdPartyName?: string | null } }
+  | { type: "UPDATE_TRANSACTION"; id: string; patch: Partial<Omit<Transaction, "id">> }
   | { type: "DELETE_TRANSACTION"; id: string }
   | { type: "ADD_GOAL"; payload: Omit<Goal, "id" | "current"> & { current?: number } }
   | { type: "CONTRIBUTE_GOAL"; goalId: string; amount: number }
@@ -473,6 +474,13 @@ function financeReducer(state: FinanceState, action: Action): FinanceState {
           t.id === id ? { ...t, ...(thirdPartyName !== undefined ? { thirdPartyName } : {}) } : t
         ),
       };
+    }
+    case "UPDATE_TRANSACTION": {
+      const prev = state.transactions.find((t) => t.id === action.id);
+      if (!prev) return state;
+      const merged: Transaction = { ...prev, ...action.patch, id: prev.id };
+      const afterDelete = financeReducer(state, { type: "DELETE_TRANSACTION", id: prev.id });
+      return financeReducer(afterDelete, { type: "ADD_TRANSACTION", payload: merged });
     }
     case "DELETE_TRANSACTION": {
       const tx = state.transactions.find((t) => t.id === action.id);
@@ -1041,6 +1049,8 @@ type FinanceContextValue = {
   addTransaction: (t: Omit<Transaction, "id"> & { id?: string }) => void;
   /** Atualiza campos que não alteram saldo (ex.: terceiro no cartão). */
   patchTransaction: (id: string, patch: { thirdPartyName?: string | null }) => void;
+  /** Recalcula saldos/fatura/meta: remove o efeito do lançamento antigo e aplica o novo. */
+  updateTransaction: (id: string, patch: Partial<Omit<Transaction, "id">>) => void;
   deleteTransaction: (id: string) => void;
   addGoal: (g: Omit<Goal, "id" | "current"> & { current?: number }) => void;
   contributeGoal: (goalId: string, amount: number) => void;
@@ -1241,6 +1251,10 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     },
     []
   );
+
+  const updateTransaction = useCallback((id: string, patch: Partial<Omit<Transaction, "id">>) => {
+    dispatch({ type: "UPDATE_TRANSACTION", id, patch });
+  }, []);
 
   const addGoal = useCallback((g: Omit<Goal, "id" | "current"> & { current?: number }) => {
     dispatch({ type: "ADD_GOAL", payload: g });
@@ -1466,6 +1480,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       state,
       addTransaction,
       patchTransaction,
+      updateTransaction,
       deleteTransaction,
       addGoal,
       contributeGoal,
@@ -1514,6 +1529,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     state,
     addTransaction,
     patchTransaction,
+    updateTransaction,
     deleteTransaction,
     addGoal,
     contributeGoal,

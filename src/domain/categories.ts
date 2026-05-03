@@ -7,6 +7,7 @@ export const CATEGORY_OPTIONS = [
   "Moradia",
   "Transporte",
   "Saúde",
+  "Vestuário",
   "Outros",
 ] as const;
 

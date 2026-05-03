@@ -48,6 +48,10 @@ export function refineStatementTransactionCategory(
     [/uber|99pop|99\s*taxi|cabify|bolt|shell|ipiranga|petrobras|posto|combust|metro|onibus|bilhete/, "Transporte"],
     [/latam|voegol|gol\s*linhas|azul\s*linhas|booking|airbnb|hotels|decolar|123milhas/, "Viagem"],
     [/drogaria|farmacia|drogasil|pacheco|hospital|clinica|dentista|odont|saude|hemolab/, "Saúde"],
+    [
+      /zara|renner|cea\b|c&a|hering|riachuelo|dafiti|netshoes|nike\s*store|adidas|calvin|levis|magazine\s*luiza\s*moda|lojas?\s*americanas|vestuario|roupa|calcado|sapataria/,
+      "Vestuário",
+    ],
     [/enel|cpfl|light|energia|esgoto|condominio|aluguel|iptu|virtua|oi\s*fibra/, "Moradia"],
     [/rico\b|xp\s|clear\s*corretora|btg|nuinvest|investimento|cei\s*b3/, "Investimentos"],
   ];

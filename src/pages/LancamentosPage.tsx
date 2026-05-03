@@ -93,10 +93,12 @@ export function LancamentosPage() {
   const [page, setPage] = useState(1);
   const [formOpen, setFormOpen] = useState(false);
   const [formInitialCardId, setFormInitialCardId] = useState<string | null>(null);
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
 
   useEffect(() => {
     if (searchParams.get("novo") !== "1") return;
     const cartao = searchParams.get("cartao");
+    setEditingTransaction(null);
     setFormOpen(true);
     setFormInitialCardId(cartao);
     const next = new URLSearchParams(searchParams);
@@ -145,9 +147,11 @@ export function LancamentosPage() {
     <div className="mx-auto max-w-7xl px-6 pb-12 md:px-12">
       <TransactionFormModal
         open={formOpen}
+        editingTransaction={editingTransaction}
         onClose={() => {
           setFormOpen(false);
           setFormInitialCardId(null);
+          setEditingTransaction(null);
         }}
         initialCreditCardId={formInitialCardId}
       />
@@ -184,7 +188,10 @@ export function LancamentosPage() {
           </div>
           <button
             type="button"
-            onClick={() => setFormOpen(true)}
+            onClick={() => {
+              setEditingTransaction(null);
+              setFormOpen(true);
+            }}
             className="flex items-center gap-2 rounded-xl bg-gradient-to-br from-primary to-primary-container px-6 py-3 font-bold text-white shadow-xl transition-all hover:shadow-primary/20 active:scale-95"
           >
             <span className="material-symbols-outlined">add</span>
@@ -345,7 +352,7 @@ export function LancamentosPage() {
               <col style={{ width: "11rem" }} />
               <col style={{ width: "7.5rem" }} />
               <col style={{ width: "6.5rem" }} />
-              <col style={{ width: "2.75rem" }} />
+              <col style={{ width: "4.5rem" }} />
             </colgroup>
             <thead>
               <tr className="bg-surface-container-low/50">
@@ -370,7 +377,7 @@ export function LancamentosPage() {
                 <th className="px-4 py-4 text-right text-[10px] font-black uppercase tracking-[0.1em] text-on-surface-variant md:px-6">
                   Valor
                 </th>
-                <th className="w-12 px-1 py-4 md:px-2" />
+                <th className="w-[4.5rem] px-1 py-4 text-right md:px-2" />
               </tr>
             </thead>
             <tbody className="divide-y divide-surface-container-low">
@@ -444,14 +451,28 @@ export function LancamentosPage() {
                       {formatBRL(row.amount, { showSign: true })}
                     </td>
                     <td className="align-middle px-1 py-4 md:px-2">
-                      <button
-                        type="button"
-                        onClick={() => deleteTransaction(row.id)}
-                        className="rounded p-1 text-on-surface-variant opacity-0 transition-opacity hover:text-error group-hover:opacity-100"
-                        aria-label="Excluir"
-                      >
-                        <span className="material-symbols-outlined text-lg">delete</span>
-                      </button>
+                      <div className="flex items-center justify-end gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingTransaction(row);
+                            setFormInitialCardId(null);
+                            setFormOpen(true);
+                          }}
+                          className="rounded p-1 text-on-surface-variant hover:text-primary"
+                          aria-label="Editar"
+                        >
+                          <span className="material-symbols-outlined text-lg">edit</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => deleteTransaction(row.id)}
+                          className="rounded p-1 text-on-surface-variant hover:text-error"
+                          aria-label="Excluir"
+                        >
+                          <span className="material-symbols-outlined text-lg">delete</span>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );

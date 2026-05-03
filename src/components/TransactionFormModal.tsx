@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CATEGORY_OPTIONS } from "../domain/categories";
-import { BENEFIT_BUCKET_LABEL, BENEFIT_BUCKETS } from "../domain/cardWallet";
+import { BENEFIT_BUCKET_LABEL, BENEFIT_BUCKETS, isBenefitBucket } from "../domain/cardWallet";
 import { parseMoneyInput } from "../domain/money";
-import type { BenefitBucket, TxnPaymentMethod, TxnStatus } from "../domain/types";
+import type { BenefitBucket, Transaction, TxnPaymentMethod, TxnStatus } from "../domain/types";
 import { useFinance } from "../context/FinanceContext";
 
 const MAX_RECEIPT_FILE_BYTES = 900 * 1024;
@@ -24,17 +24,33 @@ const ICONS = [
   "savings",
   "potted_plant",
   "apartment",
+  "checkroom",
 ] as const;
+
+function moneyInputFromAbsAmount(n: number): string {
+  return Math.abs(n).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function categorySelectValue(cat: string): string {
+  return (CATEGORY_OPTIONS as readonly string[]).includes(cat) ? cat : "Outros";
+}
 
 type Props = {
   open: boolean;
   onClose: () => void;
   /** Pré-seleciona o cartão (ex.: `?novo=1&cartao=id` em Lançamentos) */
   initialCreditCardId?: string | null;
+  /** Se definido, o modal altera este lançamento em vez de criar um novo. */
+  editingTransaction?: Transaction | null;
 };
 
-export function TransactionFormModal({ open, onClose, initialCreditCardId = null }: Props) {
-  const { addTransaction, state } = useFinance();
+export function TransactionFormModal({
+  open,
+  onClose,
+  initialCreditCardId = null,
+  editingTransaction = null,
+}: Props) {
+  const { addTransaction, updateTransaction, state } = useFinance();
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState<string>(CATEGORY_OPTIONS[0]);
   const [amountRaw, setAmountRaw] = useState("");
@@ -59,23 +75,53 @@ export function TransactionFormModal({ open, onClose, initialCreditCardId = null
 
   useEffect(() => {
     if (!open) return;
+    if (editingTransaction) {
+      setDescription(editingTransaction.description);
+      setCategory(categorySelectValue(editingTransaction.category));
+      setAmountRaw(moneyInputFromAbsAmount(editingTransaction.amount));
+      setFlow(editingTransaction.amount < 0 ? "expense" : "income");
+      setStatus(editingTransaction.status);
+      setDate(editingTransaction.date.slice(0, 10));
+      setIcon(editingTransaction.icon || "shopping_bag");
+      setGoalId(editingTransaction.goalId ?? "");
+      const ccid =
+        editingTransaction.creditCardId &&
+        state.creditCards.some((c) => c.id === editingTransaction.creditCardId)
+          ? editingTransaction.creditCardId
+          : "";
+      setCreditCardId(ccid);
+      setBenefitBucket(
+        editingTransaction.benefitBucket != null && isBenefitBucket(editingTransaction.benefitBucket)
+          ? editingTransaction.benefitBucket
+          : "refeicao"
+      );
+      setPaymentMethod(editingTransaction.paymentMethod ?? "conta");
+      setPaymentAttachmentDataUrl(editingTransaction.paymentAttachmentDataUrl ?? null);
+      setPaymentAttachmentName(editingTransaction.paymentAttachmentName ?? null);
+      setThirdPartyName(editingTransaction.thirdPartyName ?? "");
+      if (receiptFileRef.current) receiptFileRef.current.value = "";
+      return;
+    }
+    setDescription("");
+    setCategory(CATEGORY_OPTIONS[0]);
+    setAmountRaw("");
+    setFlow("expense");
+    setStatus("confirmado");
+    setDate(new Date().toISOString().slice(0, 10));
+    setIcon("shopping_bag");
+    setGoalId("");
+    setBenefitBucket("refeicao");
     setPaymentMethod("conta");
     setPaymentAttachmentDataUrl(null);
     setPaymentAttachmentName(null);
     setThirdPartyName("");
     if (receiptFileRef.current) receiptFileRef.current.value = "";
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
     if (initialCreditCardId && state.creditCards.some((c) => c.id === initialCreditCardId)) {
       setCreditCardId(initialCreditCardId);
-    } else if (!initialCreditCardId) {
-      setCreditCardId("");
     } else {
       setCreditCardId("");
     }
-  }, [open, initialCreditCardId, state.creditCards]);
+  }, [open, editingTransaction, initialCreditCardId, state.creditCards]);
 
   if (!open) return null;
 
@@ -140,35 +186,57 @@ export function TransactionFormModal({ open, onClose, initialCreditCardId = null
       flow === "expense" && card?.kind === "credito" && thirdPartyName.trim()
         ? thirdPartyName.trim().slice(0, 120)
         : null;
-    addTransaction({
-      date,
-      description: description.trim(),
-      category,
-      amount: signed,
-      status: st,
-      icon,
-      accountId: state.defaultAccountId,
-      goalId: goalId && flow === "expense" && !ccid ? goalId : undefined,
-      creditCardId: ccid,
-      benefitBucket: card?.kind === "beneficios" ? benefitBucket : null,
-      thirdPartyName: tp,
-      paymentMethod: flow === "expense" && !ccid ? paymentMethod : null,
-      paymentAttachmentDataUrl:
-        flow === "expense" && !ccid && (paymentMethod === "boleto" || paymentMethod === "pix")
-          ? paymentAttachmentDataUrl
-          : null,
-      paymentAttachmentName:
-        flow === "expense" && !ccid && (paymentMethod === "boleto" || paymentMethod === "pix")
-          ? paymentAttachmentName
-          : null,
-    });
-    setDescription("");
-    setAmountRaw("");
-    setGoalId("");
-    setCreditCardId("");
-    setThirdPartyName("");
-    setPaymentMethod("conta");
-    clearReceiptAttachment();
+    const attachUrl =
+      flow === "expense" && !ccid && (paymentMethod === "boleto" || paymentMethod === "pix")
+        ? paymentAttachmentDataUrl
+        : null;
+    const attachName =
+      flow === "expense" && !ccid && (paymentMethod === "boleto" || paymentMethod === "pix")
+        ? paymentAttachmentName
+        : null;
+
+    if (editingTransaction) {
+      updateTransaction(editingTransaction.id, {
+        date,
+        description: description.trim(),
+        category,
+        amount: signed,
+        status: st,
+        icon,
+        accountId: editingTransaction.accountId,
+        goalId: goalId && flow === "expense" && !ccid ? goalId : undefined,
+        creditCardId: ccid,
+        benefitBucket: card?.kind === "beneficios" ? benefitBucket : null,
+        thirdPartyName: tp,
+        paymentMethod: flow === "expense" && !ccid ? paymentMethod : null,
+        paymentAttachmentDataUrl: attachUrl,
+        paymentAttachmentName: attachName,
+      });
+    } else {
+      addTransaction({
+        date,
+        description: description.trim(),
+        category,
+        amount: signed,
+        status: st,
+        icon,
+        accountId: state.defaultAccountId,
+        goalId: goalId && flow === "expense" && !ccid ? goalId : undefined,
+        creditCardId: ccid,
+        benefitBucket: card?.kind === "beneficios" ? benefitBucket : null,
+        thirdPartyName: tp,
+        paymentMethod: flow === "expense" && !ccid ? paymentMethod : null,
+        paymentAttachmentDataUrl: attachUrl,
+        paymentAttachmentName: attachName,
+      });
+      setDescription("");
+      setAmountRaw("");
+      setGoalId("");
+      setCreditCardId("");
+      setThirdPartyName("");
+      setPaymentMethod("conta");
+      clearReceiptAttachment();
+    }
     onClose();
   }
 
@@ -182,7 +250,7 @@ export function TransactionFormModal({ open, onClose, initialCreditCardId = null
         aria-labelledby="txn-form-title"
       >
         <h2 id="txn-form-title" className="mb-4 font-headline text-xl font-bold text-primary">
-          Novo lançamento
+          {editingTransaction ? "Editar lançamento" : "Novo lançamento"}
         </h2>
         <form onSubmit={submit} className="space-y-4">
           <div>
@@ -441,7 +509,7 @@ export function TransactionFormModal({ open, onClose, initialCreditCardId = null
               type="submit"
               className="rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white hover:bg-primary/90"
             >
-              Salvar
+              {editingTransaction ? "Salvar alterações" : "Salvar"}
             </button>
           </div>
         </form>

@@ -195,7 +195,7 @@ INTERNACIONAL E IOF:
 • IOF de financiamento, encargos do rotativo, juros de mora, multa: uma linha por valor com a data impressa ao lado.
 
 CATEGORIA (category):
-• Use o nome do estabelecimento E palavras da fatura (ex.: "supermercado", "lazer", "outros SAO PAULO", "restaurante") para escolher entre as opções. Ex.: supermercado/padaria → Alimentação; streaming/cinema/academia/pass → Lazer; farmácia/hospital → Saúde; Uber/combustível → Transporte; hotel/aéreo → Viagem; software/nuvem (Cursor, AWS, GitHub) → Eletrônicos; encargos/IOF/multa/tarifa bancária → Outros.
+• Use o nome do estabelecimento E palavras da fatura (ex.: "supermercado", "lazer", "outros SAO PAULO", "restaurante") para escolher entre as opções. Ex.: supermercado/padaria → Alimentação; streaming/cinema/academia/pass → Lazer; farmácia/hospital → Saúde; Uber/combustível → Transporte; hotel/aéreo → Viagem; software/nuvem (Cursor, AWS, GitHub) → Eletrônicos; loja de roupa/calçados (Zara, C&A, Renner…) → Vestuário; encargos/IOF/multa/tarifa bancária → Outros.
 
 entryKind "credit" apenas para pagamentos que abatem a fatura (ex. pagamento via conta). amount sempre > 0 (magnitude).
 
@@ -251,6 +251,10 @@ function refineStatementTransactionCategory(
     [/uber|99pop|99\s*taxi|cabify|bolt|shell|ipiranga|petrobras|posto|combust|metro|onibus|bilhete/, "Transporte"],
     [/latam|voegol|gol\s*linhas|azul\s*linhas|booking|airbnb|hotels|decolar|123milhas/, "Viagem"],
     [/drogaria|farmacia|drogasil|pacheco|hospital|clinica|dentista|odont|saude|hemolab/, "Saúde"],
+    [
+      /zara|renner|cea\b|c&a|hering|riachuelo|dafiti|netshoes|nike\s*store|adidas|calvin|levis|magazine\s*luiza\s*moda|lojas?\s*americanas|vestuario|roupa|calcado|sapataria/,
+      "Vestuário",
+    ],
     [/enel|cpfl|light|energia|esgoto|condominio|aluguel|iptu|virtua|oi\s*fibra/, "Moradia"],
     [/rico\b|xp\s|clear\s*corretora|btg|nuinvest|investimento|cei\s*b3/, "Investimentos"],
   ];
@@ -523,6 +527,7 @@ export const DEFAULT_STATEMENT_CATEGORIES = [
   "Moradia",
   "Transporte",
   "Saúde",
+  "Vestuário",
   "Outros",
 ] as const;
 

@@ -26,6 +26,8 @@ function iconForCategory(category: string): string {
       return "directions_car";
     case "Saúde":
       return "local_hospital";
+    case "Vestuário":
+      return "checkroom";
     default:
       return "shopping_bag";
   }

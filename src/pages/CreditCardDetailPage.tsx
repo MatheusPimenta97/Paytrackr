@@ -669,10 +669,10 @@ export function CreditCardDetailPage() {
                 </p>
                 {(() => {
                   const VB_W = 320;
-                  const VB_H = 118;
+                  const VB_H = 128;
                   const padL = 6;
                   const padR = 6;
-                  const padT = 8;
+                  const padT = 18;
                   const padB = 24;
                   const plotW = VB_W - padL - padR;
                   const plotH = VB_H - padT - padB;
@@ -693,11 +693,16 @@ export function CreditCardDetailPage() {
                   });
                   const linePoints = pts.map((p) => `${p.x},${p.y}`).join(" ");
                   const labelStep = Math.max(1, Math.ceil(series.length / 8));
+                  const valueStep = series.length > 12 ? labelStep : 1;
+                  const showValueAt = (idx: number) =>
+                    idx % valueStep === 0 ||
+                    idx === pts.length - 1 ||
+                    invoiceDetailYm === pts[idx]!.ym;
                   return (
                     <div className="w-full shrink-0 overflow-x-auto rounded-lg border border-slate-100/90 bg-slate-50/50 dark:border-slate-700/80 dark:bg-slate-800/30">
                       <svg
                         viewBox={`0 0 ${VB_W} ${VB_H}`}
-                        className="mx-auto block h-[7.5rem] min-w-[260px] w-full max-w-full"
+                        className="mx-auto block h-[8rem] min-w-[260px] w-full max-w-full"
                         preserveAspectRatio="xMidYMid meet"
                         role="img"
                         aria-label="Evolução do total por mês de referência do ciclo"
@@ -727,6 +732,22 @@ export function CreditCardDetailPage() {
                           className="stroke-primary dark:stroke-blue-400"
                           points={linePoints}
                         />
+                        {pts.map((p, idx) => {
+                          if (!showValueAt(idx)) return null;
+                          const vy = Math.max(10, p.y - (idx % 2 === 0 ? 10 : 14));
+                          return (
+                            <text
+                              key={`${p.ym}-val`}
+                              x={p.x}
+                              y={vy}
+                              textAnchor="middle"
+                              className="pointer-events-none fill-primary font-bold tabular-nums dark:fill-blue-300"
+                              style={{ fontSize: series.length > 16 ? 6.5 : 7.5 }}
+                            >
+                              {formatBRL(p.amount)}
+                            </text>
+                          );
+                        })}
                         {pts.map((p) => {
                           const isOpen = invoiceDetailYm === p.ym;
                           return (

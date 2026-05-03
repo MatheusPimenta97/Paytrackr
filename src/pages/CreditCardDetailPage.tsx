@@ -100,7 +100,7 @@ export function CreditCardDetailPage() {
 
   const invoiceBars = useMemo(() => {
     const now = new Date();
-    const rows: { ym: string; label: string; amount: number; isCurrent: boolean; fromStatements: boolean }[] = [];
+    const rows: { ym: string; label: string; amount: number; isCurrent: boolean }[] = [];
     for (let i = 3; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const ym = ymKey(d);
@@ -117,7 +117,6 @@ export function CreditCardDetailPage() {
         label,
         amount,
         isCurrent: i === 3,
-        fromStatements: st != null,
       });
     }
     const max = Math.max(...rows.map((r) => r.amount), 1);
@@ -496,13 +495,22 @@ export function CreditCardDetailPage() {
                   {invoiceBars.map((bar) => {
                     const barH = Math.max(Math.round((bar.heightPct / 100) * 96), 8);
                     return (
-                      <div key={bar.ym} className="flex min-w-0 flex-1 flex-col items-center justify-end gap-1">
+                      <div key={bar.ym} className="flex min-w-0 flex-1 flex-col items-center justify-end gap-0.5">
                         <div
                           className={`w-full rounded-t-md transition-all hover:opacity-90 ${
                             bar.isCurrent ? "bg-primary-container dark:bg-blue-900" : "bg-surface-container dark:bg-slate-800"
                           }`}
                           style={{ height: barH }}
                         />
+                        <span
+                          className={`shrink-0 font-label text-[10px] font-semibold tabular-nums leading-none ${
+                            bar.isCurrent
+                              ? "text-primary dark:text-blue-200"
+                              : "text-slate-700 dark:text-slate-300"
+                          }`}
+                        >
+                          {formatBRL(bar.amount)}
+                        </span>
                         <span
                           className={`shrink-0 font-label text-[9px] font-semibold uppercase tracking-wide ${
                             bar.isCurrent
@@ -522,11 +530,6 @@ export function CreditCardDetailPage() {
                   <strong className="font-semibold text-slate-600 dark:text-slate-300">soma das despesas</strong> no ciclo
                   (conforme dia de fechamento).
                 </p>
-                {invoiceBars.some((b) => !b.fromStatements && b.amount > 0) ? (
-                  <p className="mt-0.5 text-[9px] font-medium text-amber-800 dark:text-amber-300/90">
-                    * Pelo menos um mês está só com lançamentos — registrar a fatura substitui pela totalização oficial.
-                  </p>
-                ) : null}
                 <div className="mt-2 flex flex-wrap justify-end gap-1.5 border-t border-surface-container/80 pt-2 dark:border-slate-700/80">
                   <button
                     type="button"

@@ -6,12 +6,6 @@ import {
 } from "../../lib/statementAnalyzeRoute";
 import { readPostBodyUtf8 } from "../../lib/readPostBodyUtf8";
 
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
-
 function sendJson(res: VercelResponse, status: number, json: Record<string, unknown>) {
   res.statusCode = status;
   res.setHeader("Content-Type", "application/json; charset=utf-8");

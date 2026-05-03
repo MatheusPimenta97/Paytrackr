@@ -171,7 +171,16 @@ export async function analyzePaymentReceiptImage(imageDataUrl: string): Promise<
       typeof (raw as { error: unknown }).error === "string"
         ? (raw as { error: string }).error.trim()
         : "";
-    throw new Error(apiErr || (typeof raw === "string" ? raw : `HTTP ${res.status}`));
+    const rawStr = typeof raw === "string" ? raw : "";
+    const looksHtml = rawStr.trimStart().startsWith("<");
+    throw new Error(
+      apiErr ||
+        (looksHtml
+          ? `Resposta ${res.status}: o servidor devolveu HTML em vez de JSON (deploy pode não estar a incluir as funções em /api). No mesmo domínio do app, abra /api/health — deve responder JSON com ok:true.`
+          : rawStr
+            ? rawStr.slice(0, 280)
+            : `HTTP ${res.status}`),
+    );
   }
 
   const body = raw as AiAssistantImageResponseBody;

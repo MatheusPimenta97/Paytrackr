@@ -1,23 +1,14 @@
-import type { VercelRequest, VercelResponse } from "@vercel/node";
+import type { IncomingMessage, ServerResponse } from "node:http";
 
 import {
   ASSISTANT_IMAGE_BODY_MAX_BYTES,
   handleAssistantImagePost,
 } from "../../lib/assistantImageRoute";
+import type { NodeRequestWithBody } from "../../lib/readPostBodyUtf8";
 import { readPostBodyUtf8 } from "../../lib/readPostBodyUtf8";
+import { sendJson } from "../../lib/sendJson";
 
-function sendJson(res: VercelResponse, status: number, json: Record<string, unknown>) {
-  res.statusCode = status;
-  res.setHeader("Content-Type", "application/json; charset=utf-8");
-  try {
-    res.end(JSON.stringify(json));
-  } catch {
-    res.statusCode = 500;
-    res.end(JSON.stringify({ error: "Falha ao serializar resposta JSON." }));
-  }
-}
-
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: IncomingMessage, res: ServerResponse) {
   try {
     res.setHeader("Access-Control-Allow-Origin", "*");
     res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
@@ -35,7 +26,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     let bodyRaw: string;
     try {
-      bodyRaw = await readPostBodyUtf8(req, ASSISTANT_IMAGE_BODY_MAX_BYTES);
+      bodyRaw = await readPostBodyUtf8(req as NodeRequestWithBody, ASSISTANT_IMAGE_BODY_MAX_BYTES);
     } catch (e) {
       const m = e instanceof Error ? e.message : String(e);
       if (m.includes("too large") || m.includes("large")) {

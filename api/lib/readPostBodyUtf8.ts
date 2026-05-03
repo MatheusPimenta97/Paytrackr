@@ -1,5 +1,4 @@
 import type { IncomingMessage } from "node:http";
-import type { VercelRequest } from "@vercel/node";
 
 function readBodyStream(req: IncomingMessage, maxBytes: number): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -22,7 +21,9 @@ function readBodyStream(req: IncomingMessage, maxBytes: number): Promise<string>
  * Corpo UTF-8 do POST: usa req.body quando a runtime já entregou buffer/string,
  * objeto JSON já parseado, ou então lê o stream.
  */
-export function readPostBodyUtf8(req: VercelRequest, maxBytes: number): Promise<string> {
+export type NodeRequestWithBody = IncomingMessage & { body?: unknown };
+
+export function readPostBodyUtf8(req: NodeRequestWithBody, maxBytes: number): Promise<string> {
   const b = req.body as unknown;
   if (typeof b === "string") {
     if (Buffer.byteLength(b, "utf8") > maxBytes) return Promise.reject(new Error("body too large"));
@@ -37,5 +38,5 @@ export function readPostBodyUtf8(req: VercelRequest, maxBytes: number): Promise<
     if (Buffer.byteLength(s, "utf8") > maxBytes) return Promise.reject(new Error("body too large"));
     return Promise.resolve(s);
   }
-  return readBodyStream(req as IncomingMessage, maxBytes);
+  return readBodyStream(req, maxBytes);
 }

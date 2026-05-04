@@ -454,9 +454,9 @@ function normalizeAnalyzePayload(parsed: unknown): StatementAnalyzeResult {
   const rawList = root.suggestedTransactions;
   const suggestedTransactions: StatementSuggestedTxn[] = [];
   if (Array.isArray(rawList)) {
-    for (const row of rawList) {
-      if (!row || typeof row !== "object") continue;
-      const r = row as Record<string, unknown>;
+    for (const raw of rawList) {
+      if (!raw || typeof raw !== "object") continue;
+      const r = raw as Record<string, unknown>;
       const date = typeof r.date === "string" ? r.date.trim() : "";
       const description = typeof r.description === "string" ? r.description.trim() : "";
       const category = typeof r.category === "string" ? r.category.trim() : "";

@@ -1150,10 +1150,40 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
 
   const cloudSeedAttemptedRef = useRef(false);
   const cloudPushDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** Evita push redundante quando o JSON já está na nuvem (eco do listener ou flush duplo). */
+  const lastPushedFinanceJsonRef = useRef<string | null>(null);
 
   const [state, dispatch] = useReducer(financeReducer, storageScope, (scope) => loadStateForScope(scope));
   const stateRef = useRef(state);
   stateRef.current = state;
+
+  useEffect(() => {
+    lastPushedFinanceJsonRef.current = null;
+  }, [storageScope]);
+
+  /** Upload Firestore com TS otimista (evita snapshot da própria gravação disparar HYDRATE → segundo write). */
+  function enqueueFinanceCloudPush(skipIfPayloadUnchanged: boolean) {
+    const scope = storageScopeRef.current;
+    if (scope === FINANCE_STORAGE_SCOPE_DEMO) return;
+    const json = JSON.stringify(stateRef.current);
+    if (skipIfPayloadUnchanged && json === lastPushedFinanceJsonRef.current) return;
+    const prevTs = getLastRemoteFinanceTs(scope);
+    const t = Date.now();
+    setLastRemoteFinanceTs(scope, t);
+    void (async () => {
+      const ok = await pushFinanceEnvelopeToCloud(scope, t, json);
+      if (!ok) {
+        setLastRemoteFinanceTs(scope, prevTs);
+        return;
+      }
+      lastPushedFinanceJsonRef.current = json;
+      try {
+        localStorage.setItem(financeStorageKeys(scope).updatedAt, String(t));
+      } catch {
+        /* ignore */
+      }
+    })();
+  }
 
   useEffect(() => {
     dispatch({ type: "HYDRATE", payload: loadStateForScope(storageScope) });
@@ -1182,6 +1212,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         ...nextBase,
         loyaltyPrograms: mergeLoyaltyProgramsAfterRemotePull(nextBase.loyaltyPrograms, localLoyalty),
       };
+      lastPushedFinanceJsonRef.current = JSON.stringify(next);
       setLastRemoteFinanceTs(uid, updatedAt);
       dispatch({ type: "HYDRATE", payload: next });
       try {
@@ -1241,7 +1272,10 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         const json = JSON.stringify(s);
         void (async () => {
           const ok = await pushFinanceEnvelopeToCloud(uid, t, json);
-          if (ok && !cancelled) setLastRemoteFinanceTs(uid, t);
+          if (ok && !cancelled) {
+            setLastRemoteFinanceTs(uid, t);
+            lastPushedFinanceJsonRef.current = json;
+          }
         })();
       },
       (err) => {
@@ -1338,24 +1372,11 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   /** Firebase: envia estado ao Firestore (debounce) para outros aparelhos. */
   useEffect(() => {
     if (storageScope === FINANCE_STORAGE_SCOPE_DEMO) return;
-    const uid = storageScope;
     if (cloudPushDebounceRef.current) clearTimeout(cloudPushDebounceRef.current);
     cloudPushDebounceRef.current = setTimeout(() => {
       cloudPushDebounceRef.current = null;
-      const t = Date.now();
-      const json = JSON.stringify(stateRef.current);
-      void (async () => {
-        const ok = await pushFinanceEnvelopeToCloud(uid, t, json);
-        if (!ok) return;
-        setLastRemoteFinanceTs(uid, t);
-        try {
-          const keys = financeStorageKeys(uid);
-          localStorage.setItem(keys.updatedAt, String(t));
-        } catch {
-          /* ignore */
-        }
-      })();
-    }, 400);
+      enqueueFinanceCloudPush(true);
+    }, 1200);
     return () => {
       if (cloudPushDebounceRef.current) clearTimeout(cloudPushDebounceRef.current);
     };
@@ -1371,9 +1392,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         localStorage.setItem(keys.state, JSON.stringify(stateRef.current));
         localStorage.setItem(keys.updatedAt, String(t));
         if (scope !== FINANCE_STORAGE_SCOPE_DEMO) {
-          void pushFinanceEnvelopeToCloud(scope, t, JSON.stringify(stateRef.current)).then((ok) => {
-            if (ok) setLastRemoteFinanceTs(scope, t);
-          });
+          enqueueFinanceCloudPush(true);
         }
       } catch {
         /* ignore */

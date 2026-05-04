@@ -1,6 +1,40 @@
 import { newId } from "./id";
+import { isSalaryIncomeCategory } from "./incomeCategories";
 import { roundMoney } from "./money";
 import type { Receivable, ReceivablePayment } from "./types";
+
+/** Mesmo limite prático dos comprovantes em lançamentos (payload JSON). */
+export const RECEIVABLE_PAYSLIP_DATA_URL_MAX_LEN = 2_500_000;
+
+export function isAllowedReceivablePayslipDataUrl(url: string): boolean {
+  return (
+    url.startsWith("data:application/pdf") ||
+    url.startsWith("data:image/png") ||
+    url.startsWith("data:image/jpeg") ||
+    url.startsWith("data:image/jpg") ||
+    url.startsWith("data:image/webp")
+  );
+}
+
+export function sanitizeReceivablePayslipFields(raw: {
+  payslipAttachmentDataUrl?: unknown;
+  payslipAttachmentName?: unknown;
+}): { payslipAttachmentDataUrl: string | null; payslipAttachmentName: string | null } {
+  const url = typeof raw.payslipAttachmentDataUrl === "string" ? raw.payslipAttachmentDataUrl : "";
+  const name =
+    typeof raw.payslipAttachmentName === "string" ? raw.payslipAttachmentName.trim().slice(0, 240) : "";
+  if (
+    !url ||
+    url.length > RECEIVABLE_PAYSLIP_DATA_URL_MAX_LEN ||
+    !isAllowedReceivablePayslipDataUrl(url)
+  ) {
+    return { payslipAttachmentDataUrl: null, payslipAttachmentName: null };
+  }
+  return {
+    payslipAttachmentDataUrl: url,
+    payslipAttachmentName: name || "holerite",
+  };
+}
 
 export function startOfDay(d: Date): Date {
   const x = new Date(d);
@@ -157,6 +191,17 @@ export function normalizeReceivables(raw: unknown): Receivable[] {
         ? r.incomeCategory.trim().slice(0, 80)
         : undefined;
 
+    const payslipSanitized = sanitizeReceivablePayslipFields({
+      payslipAttachmentDataUrl: r.payslipAttachmentDataUrl,
+      payslipAttachmentName: r.payslipAttachmentName,
+    });
+    const payslip =
+      incomeCategory &&
+      isSalaryIncomeCategory(incomeCategory) &&
+      payslipSanitized.payslipAttachmentDataUrl
+        ? payslipSanitized
+        : { payslipAttachmentDataUrl: null as string | null, payslipAttachmentName: null as string | null };
+
     out.push({
       id,
       debtorName: r.debtorName.trim(),
@@ -170,6 +215,12 @@ export function normalizeReceivables(raw: unknown): Receivable[] {
       status: effectiveStatus,
       paidAt: effectivePaidAt,
       createdAt,
+      ...(payslip.payslipAttachmentDataUrl
+        ? {
+            payslipAttachmentDataUrl: payslip.payslipAttachmentDataUrl,
+            payslipAttachmentName: payslip.payslipAttachmentName,
+          }
+        : {}),
     });
   }
   return out;

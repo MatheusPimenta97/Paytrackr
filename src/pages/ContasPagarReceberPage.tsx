@@ -4,6 +4,7 @@ import { ReceivableFormModal } from "../components/ReceivableFormModal";
 import { ReceivablePartialModal } from "../components/ReceivablePartialModal";
 import { useFinance, formatBRL } from "../context/FinanceContext";
 import { formatDateShort, roundMoney } from "../domain/money";
+import { isSalaryIncomeCategory } from "../domain/incomeCategories";
 import {
   currentMonthKey,
   daysUntilDue,
@@ -438,6 +439,18 @@ export function ContasPagarReceberPage() {
                         </div>
                       </div>
                       <div className="flex flex-wrap items-center gap-2 border-t border-outline-variant/10 pt-4">
+                        {isSalaryIncomeCategory(r.incomeCategory ?? "") &&
+                        r.payslipAttachmentDataUrl ? (
+                          <a
+                            href={r.payslipAttachmentDataUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex flex-1 items-center justify-center gap-1 rounded-lg border border-outline-variant/40 bg-surface-container-high px-4 py-2.5 text-xs font-bold text-primary hover:bg-surface-container-high/80 sm:max-w-[170px]"
+                          >
+                            <span className="material-symbols-outlined text-sm">description</span>
+                            Ver holerite
+                          </a>
+                        ) : null}
                         <button
                           type="button"
                           onClick={() => cobrarWhatsApp(r)}

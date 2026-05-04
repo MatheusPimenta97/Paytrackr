@@ -167,6 +167,9 @@ export type Receivable = {
   /** Data da quitação total (YYYY-MM-DD); null se ainda em aberto ou só parciais */
   paidAt: string | null;
   createdAt: string;
+  /** Holerite (PDF/imagem), opcional — uso típico com categoria Salário */
+  payslipAttachmentDataUrl?: string | null;
+  payslipAttachmentName?: string | null;
 };
 
 export type LoyaltyProgramAccent =

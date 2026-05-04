@@ -29,6 +29,17 @@ export function normalizeCustomIncomeCategoriesForProfile(raw: unknown): string[
   return out;
 }
 
+/** Reconhece a categoria padrão “Salário” (acentos / espaços). */
+export function isSalaryIncomeCategory(category: string): boolean {
+  const f = category
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .replace(/\s+/g, "");
+  return f === "salario";
+}
+
 /** Lista para `<select>`: padrões na ordem fixa + categorias extras do usuário (sem repetir as padrão). */
 export function mergedIncomeCategorySelectOptions(custom: string[]): string[] {
   const norm = normalizeCustomIncomeCategoriesForProfile(custom);

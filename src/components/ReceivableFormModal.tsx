@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   DEFAULT_INCOME_CATEGORIES,
+  isSalaryIncomeCategory,
   mergedIncomeCategorySelectOptions,
   normalizeCustomIncomeCategoriesForProfile,
 } from "../domain/incomeCategories";
@@ -8,6 +9,7 @@ import { parseMoneyInput } from "../domain/money";
 import { useFinance } from "../context/FinanceContext";
 
 const ADD_CATEGORY_VALUE = "__paytrackr_add_income_category__";
+const MAX_HOLERITE_FILE_BYTES = 900 * 1024;
 
 type Props = {
   open: boolean;
@@ -23,7 +25,10 @@ export function ReceivableFormModal({ open, onClose }: Props) {
   const [category, setCategory] = useState<string>(DEFAULT_INCOME_CATEGORIES[0]);
   const [installmentMode, setInstallmentMode] = useState(false);
   const [installmentCountRaw, setInstallmentCountRaw] = useState("");
+  const [payslipAttachmentDataUrl, setPayslipAttachmentDataUrl] = useState<string | null>(null);
+  const [payslipAttachmentName, setPayslipAttachmentName] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const holeriteFileRef = useRef<HTMLInputElement>(null);
 
   const incomeOptions = useMemo(() => {
     const merged = mergedIncomeCategorySelectOptions(state.profile.customIncomeCategories);
@@ -42,9 +47,51 @@ export function ReceivableFormModal({ open, onClose }: Props) {
     setCategory(DEFAULT_INCOME_CATEGORIES[0]);
     setInstallmentMode(false);
     setInstallmentCountRaw("");
+    setPayslipAttachmentDataUrl(null);
+    setPayslipAttachmentName(null);
+    if (holeriteFileRef.current) holeriteFileRef.current.value = "";
   }, [open]);
 
+  useEffect(() => {
+    if (!isSalaryIncomeCategory(category)) {
+      setPayslipAttachmentDataUrl(null);
+      setPayslipAttachmentName(null);
+      if (holeriteFileRef.current) holeriteFileRef.current.value = "";
+    }
+  }, [category]);
+
   if (!open) return null;
+
+  function onHoleriteFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    setError(null);
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > MAX_HOLERITE_FILE_BYTES) {
+      setError("Holerite muito grande. Use até ~900 KB (PDF ou imagem).");
+      e.target.value = "";
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const r = reader.result;
+      if (typeof r !== "string") return;
+      if (r.length > 2_500_000) {
+        setError("Arquivo muito grande após leitura. Tente outro PDF ou imagem menor.");
+        setPayslipAttachmentDataUrl(null);
+        setPayslipAttachmentName(null);
+        return;
+      }
+      setPayslipAttachmentDataUrl(r);
+      setPayslipAttachmentName(file.name);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function clearHoleriteAttachment() {
+    setPayslipAttachmentDataUrl(null);
+    setPayslipAttachmentName(null);
+    if (holeriteFileRef.current) holeriteFileRef.current.value = "";
+  }
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -76,6 +123,12 @@ export function ReceivableFormModal({ open, onClose }: Props) {
       installmentCount,
       dueDate,
       note: note.trim(),
+      ...(isSalaryIncomeCategory(category) && payslipAttachmentDataUrl
+        ? {
+            payslipAttachmentDataUrl,
+            payslipAttachmentName: payslipAttachmentName ?? "holerite",
+          }
+        : {}),
     });
     onClose();
   }
@@ -167,6 +220,50 @@ export function ReceivableFormModal({ open, onClose }: Props) {
               className="w-full rounded-lg bg-surface-container-high px-3 py-2 text-sm"
             />
           </div>
+          {isSalaryIncomeCategory(category) && (
+            <div className="rounded-lg border border-outline-variant/25 bg-surface-container-high/40 p-3">
+              <label className="mb-1.5 block text-xs font-bold text-on-surface-variant">
+                Holerite <span className="font-normal text-on-surface-variant/80">(opcional)</span>
+              </label>
+              <p className="mb-2 text-[11px] leading-snug text-on-surface-variant">
+                PDF ou imagem. Fica salvo só neste aparelho com a receita (até ~900 KB).
+              </p>
+              <input
+                ref={holeriteFileRef}
+                id="recv-holerite-file"
+                type="file"
+                accept="application/pdf,image/png,image/jpeg,image/webp,.pdf"
+                className="sr-only"
+                onChange={onHoleriteFileChange}
+              />
+              <div className="flex flex-wrap items-center gap-2">
+                <label
+                  htmlFor="recv-holerite-file"
+                  className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-bold text-white hover:bg-primary/90"
+                >
+                  <span className="material-symbols-outlined text-base">attach_file</span>
+                  Anexar holerite
+                </label>
+                {payslipAttachmentName && (
+                  <>
+                    <span
+                      className="max-w-[180px] truncate text-xs font-medium text-primary"
+                      title={payslipAttachmentName}
+                    >
+                      {payslipAttachmentName}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={clearHoleriteAttachment}
+                      className="text-xs font-bold text-error hover:underline"
+                    >
+                      Remover
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
           <div className="rounded-lg border border-outline-variant/20 bg-surface-container-high/50 p-3">
             <label className="flex cursor-pointer items-start gap-2 text-sm">
               <input

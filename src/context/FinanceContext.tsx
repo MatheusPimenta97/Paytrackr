@@ -20,8 +20,11 @@ import {
   normalizeLoyaltyPrograms,
 } from "../domain/loyaltyPoints";
 import { normalizeCreditCardStatements } from "../domain/creditCardStatements";
-import { normalizeCustomIncomeCategoriesForProfile } from "../domain/incomeCategories";
-import { normalizeReceivables, receivedTotal } from "../domain/receivables";
+import {
+  isSalaryIncomeCategory,
+  normalizeCustomIncomeCategoriesForProfile,
+} from "../domain/incomeCategories";
+import { normalizeReceivables, receivedTotal, sanitizeReceivablePayslipFields } from "../domain/receivables";
 import {
   isTxnPaymentMethod,
   type Account,
@@ -912,6 +915,9 @@ function financeReducer(state: FinanceState, action: Action): FinanceState {
           ? Math.min(999, Math.floor(action.payload.installmentCount))
           : null;
       const icRaw = action.payload.incomeCategory?.trim();
+      const payslip = icRaw && isSalaryIncomeCategory(icRaw)
+        ? sanitizeReceivablePayslipFields(action.payload as Record<string, unknown>)
+        : { payslipAttachmentDataUrl: null as string | null, payslipAttachmentName: null as string | null };
       const row: Receivable = {
         id,
         debtorName: action.payload.debtorName.trim(),
@@ -925,6 +931,12 @@ function financeReducer(state: FinanceState, action: Action): FinanceState {
         status: "aberto",
         paidAt: null,
         createdAt: new Date().toISOString(),
+        ...(payslip.payslipAttachmentDataUrl
+          ? {
+              payslipAttachmentDataUrl: payslip.payslipAttachmentDataUrl,
+              payslipAttachmentName: payslip.payslipAttachmentName,
+            }
+          : {}),
       };
       return { ...state, receivables: [row, ...state.receivables] };
     }

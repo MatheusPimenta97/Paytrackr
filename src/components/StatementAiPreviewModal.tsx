@@ -26,6 +26,10 @@ function iconForCategory(category: string): string {
       return "apartment";
     case "Transporte":
       return "directions_car";
+    case "Mobilidade":
+      return "electric_scooter";
+    case "Material de construção":
+      return "construction";
     case "Saúde":
       return "local_hospital";
     case "Vestuário":

@@ -205,7 +205,7 @@ INTERNACIONAL E IOF:
 • IOF de financiamento, encargos do rotativo, juros de mora, multa: uma linha por valor com a data impressa ao lado.
 
 CATEGORIA (category):
-• Use o nome do estabelecimento E palavras da fatura (ex.: "supermercado", "lazer", "outros SAO PAULO", "restaurante") para escolher entre as opções. Ex.: supermercado/padaria → Alimentação; streaming/cinema/academia/pass → Lazer; farmácia/hospital → Saúde; Uber/combustível → Transporte; hotel/aéreo → Viagem; software/nuvem (Cursor, AWS, GitHub) → Eletrônicos; loja de roupa/calçados (Zara, C&A, Renner…) → Vestuário; juros de mora, encargos de refinanciamento/rotativo, multa, IOF, tarifa, anuidade → **Juros e encargos** (string exata); pagamento que abate a fatura continua credit + descrição clara, não use "Juros e encargos" para isso.
+• Use o nome do estabelecimento E palavras da fatura (ex.: "supermercado", "lazer", "outros SAO PAULO", "restaurante") para escolher entre as opções. Ex.: supermercado/padaria → Alimentação; streaming/cinema/academia/pass → Lazer; farmácia/hospital → Saúde; Uber/trem/ônibus/combustível/posto → Transporte; patinete/bike compartilhada/Lime/Tembici → **Mobilidade**; Leroy/Telhanorte/madeireira/tintas/cimento → **Material de construção**; hotel/aéreo → Viagem; software/nuvem (Cursor, AWS, GitHub) → Eletrônicos; loja de roupa/calçados (Zara, C&A, Renner…) → Vestuário; juros de mora, encargos de refinanciamento/rotativo, multa, IOF, tarifa, anuidade → **Juros e encargos** (string exata); pagamento que abate a fatura continua credit + descrição clara, não use "Juros e encargos" para isso.
 
 entryKind "credit" para pagamentos que abatem a fatura E para estornos/valores negativos impressos (alinhe com o bloco "LAYOUT ITAÚ" acima). amount sempre magnitude > 0.
 
@@ -261,6 +261,14 @@ function refineStatementTransactionCategory(
       "Lazer",
     ],
     [/cursor|github|openai|google\s*cloud|aws|azure|digitalocean|hostinger|notion|slack|figma|adobe|jetbrains/, "Eletrônicos"],
+    [
+      /leroy|telhanorte|madeireira|cimento|tintas|sodimac|material\s*de\s*construc|construcao|ferragens|hidraulica|telha|revestimento|depot|home\s*center|casas?\s*da\s*agua|tigre\s*revest/,
+      "Material de construção",
+    ],
+    [
+      /patinete|lime\*|bird\*|tier\*|yego|mobilidade|bike\s*sampa|itau\s*bike|yellow\s*bike|tembici|bike\s*itau|bicicleta\s*compartilhada|scooter|patinete\s*eletr/,
+      "Mobilidade",
+    ],
     [/uber|99pop|99\s*taxi|cabify|bolt|shell|ipiranga|petrobras|posto|combust|metro|onibus|bilhete/, "Transporte"],
     [/latam|voegol|gol\s*linhas|azul\s*linhas|booking|airbnb|hotels|decolar|123milhas/, "Viagem"],
     [/drogaria|farmacia|drogasil|pacheco|hospital|clinica|dentista|odont|saude|hemolab/, "Saúde"],
@@ -556,7 +564,9 @@ export const DEFAULT_STATEMENT_CATEGORIES = [
   "Viagem",
   "Alimentação",
   "Moradia",
+  "Material de construção",
   "Transporte",
+  "Mobilidade",
   "Saúde",
   "Vestuário",
   "Juros e encargos",
@@ -594,7 +604,7 @@ function shouldPreferNativePdfOverExtractedText(text: string): boolean {
     .toLowerCase()
     .normalize("NFD")
     .replace(/\p{M}/gu, "");
-  const itauLike = /\bitau\b/.test(folded);
+  const itauLike = /\bitau\b/.test(folded) && /cart/.test(folded);
   const hasPurchaseGrid =
     /lancamentos.*compras|compras e saques/.test(folded) || /valor\s+em\s+r\$/.test(folded);
   return itauLike && hasPurchaseGrid;

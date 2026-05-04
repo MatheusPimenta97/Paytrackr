@@ -21,6 +21,8 @@ function monthLabel(ym: string): string {
 function categoryMaterialIcon(category: string): string {
   const c = category.toLowerCase();
   if (c.includes("aliment")) return "restaurant";
+  if (c.includes("material de constru")) return "construction";
+  if (c.includes("mobilidade")) return "electric_scooter";
   if (c.includes("transport")) return "local_gas_station";
   if (c.includes("saúde") || c.includes("saude")) return "medical_services";
   if (c.includes("lazer")) return "confirmation_number";

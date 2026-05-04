@@ -23,8 +23,8 @@ const ProfilePage = lazy(() =>
 const SettingsPage = lazy(() =>
   import("./pages/SettingsPage").then((m) => ({ default: m.SettingsPage }))
 );
-const ValoresAReceberPage = lazy(() =>
-  import("./pages/ValoresAReceberPage").then((m) => ({ default: m.ValoresAReceberPage }))
+const ContasPagarReceberPage = lazy(() =>
+  import("./pages/ContasPagarReceberPage").then((m) => ({ default: m.ContasPagarReceberPage }))
 );
 const PontosPage = lazy(() => import("./pages/PontosPage").then((m) => ({ default: m.PontosPage })));
 const CreditCardDetailPage = lazy(() =>
@@ -82,7 +82,8 @@ export default function App() {
           <Route path="/lancamentos" element={<LancamentosPage />} />
           <Route path="/cartao/:cardId" element={<CreditCardDetailPage />} />
           <Route path="/cartao/:cardId/fatura/:referenceMonth" element={<CreditCardStatementMonthPage />} />
-          <Route path="/valores-a-receber" element={<ValoresAReceberPage />} />
+          <Route path="/contas-pagar-receber" element={<ContasPagarReceberPage />} />
+          <Route path="/valores-a-receber" element={<Navigate to="/contas-pagar-receber" replace />} />
           <Route path="/pontos" element={<PontosPage />} />
           <Route path="/payments" element={<LancamentosPage />} />
           <Route path="/perfil" element={<ProfilePage />} />

@@ -39,7 +39,7 @@ export function ReceivableFormModal({ open, onClose }: Props) {
       return;
     }
     if (!debtorName.trim()) {
-      setError("Informe quem deve.");
+      setError("Informe uma descrição (origem da entrada).");
       return;
     }
     if (!dueDate) {
@@ -73,15 +73,17 @@ export function ReceivableFormModal({ open, onClose }: Props) {
         aria-labelledby="recv-form-title"
       >
         <h2 id="recv-form-title" className="mb-4 font-headline text-xl font-bold text-primary">
-          Novo valor a receber
+          Nova conta a receber
         </h2>
         <form onSubmit={submit} className="space-y-4">
           <div>
-            <label className="mb-1 block text-xs font-bold text-on-surface-variant">Quem deve</label>
+            <label className="mb-1 block text-xs font-bold text-on-surface-variant">
+              Descrição / origem
+            </label>
             <input
               value={debtorName}
               onChange={(e) => setDebtorName(e.target.value)}
-              placeholder="Nome ou empresa"
+              placeholder="Ex.: Salário CLT, Aluguel recebido, Dividendos ITUB4, João Silva…"
               className="w-full rounded-lg bg-surface-container-high px-3 py-2 text-sm"
             />
           </div>

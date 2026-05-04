@@ -684,7 +684,7 @@ export function DashboardPage() {
                   Transações
                 </NavLink>
                 <NavLink
-                  to="/valores-a-receber"
+                  to="/contas-pagar-receber"
                   className={({ isActive }) =>
                     [
                       "pb-1 text-sm transition-colors",
@@ -694,7 +694,7 @@ export function DashboardPage() {
                     ].join(" ")
                   }
                 >
-                  Recebíveis
+                  Pagar / receber
                 </NavLink>
               </nav>
             </div>

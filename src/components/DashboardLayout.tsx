@@ -22,7 +22,7 @@ const sidebarNav = [
   { to: "/", label: "Dashboard", icon: "dashboard" },
   { to: "/gastos-recorrentes", label: "Resumo mensal", icon: "schedule" },
   { to: "/lancamentos", label: "Transações", icon: "receipt_long" },
-  { to: "/valores-a-receber", label: "Recebíveis", icon: "request_quote" },
+  { to: "/contas-pagar-receber", label: "Pagar / receber", icon: "swap_vert" },
   { to: "/pontos", label: "Pontos", icon: "stars" },
   { to: "/metas", label: "Metas", icon: "flag" },
   { to: "/assistente", label: "Comprovantes IA", icon: "document_scanner" },

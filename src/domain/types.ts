@@ -136,7 +136,7 @@ export type RecurringExpense = {
   creditCardId: string | null;
 };
 
-/** Valores que outras pessoas devem a você */
+/** Entradas esperadas (salário, aluguel, dividendos ou cobrança de terceiros); campo principal é `debtorName` como descrição */
 export type ReceivableStatus = "aberto" | "pago";
 
 /** Cada entrada (parcial ou quitação) registrada na cobrança */

@@ -72,6 +72,9 @@ export type StatementSuggestedTxn = {
   amount: number;
   category: string;
   installmentNote?: string | null;
+  /** Parcela N de M quando a fatura deixa explícito (ex.: 3/12). Opcional; ajuda projeção no app. */
+  installmentCurrent?: number | null;
+  installmentTotal?: number | null;
   /** "credit" = pagamento/crédito que reduz o saldo da fatura (ex.: pagamento via conta). Demais = despesa. */
   entryKind?: "expense" | "credit";
 };
@@ -189,8 +192,15 @@ function buildStatementExtractionGuide(categoriesLine: string): string {
 LAYOUT ITAÚ / SIMILARES (MUITO COMUM — siga à risca):
 • A seção "Lançamentos: compras e saques" (e títulos parecidos) costuma vir em DUAS COLUNAS na mesma página. Percorra a COLUNA ESQUERDA inteira (todas as linhas DATA + estabelecimento + valor) e depois a COLUNA DIREITA inteira — ou linha a linha se estiverem intercaladas. Não importe só a metade esquerda da página.
 • "Pagamentos efetuados" é bloco separado; cada linha com valor deve virar transação (em geral entryKind "credit" se for pagamento que reduz o saldo da fatura).
-• Coluna ESTABELECIMENTO em duas linhas: junte na description (ex.: linha1 "AIRBNB * HMQPQ 01/04" + linha2 "viagem SAO PAULO" → uma string coerente). Se houver padrão de parcela "NN/MM" (ex.: 01/04), repita em installmentNote.
-• Datas só como DD/MM: use o mês de referência YYYY-MM enviado pelo usuário e o cabeçalho da fatura ("fechamento", "vencimento", "previsão") para inferir o ANO; lançamentos 15/12 vs 08/01 podem cair em anos diferentes na virada.
+• Coluna ESTABELECIMENTO em duas linhas: junte na description (ex.: linha1 "AIRBNB * HMQPQ 01/04" + linha2 "viagem SAO PAULO" → uma string coerente). Se houver padrão de parcela "NN/MM" (ex.: 03/12), copie também para installmentNote.
+
+PARCELAS / COMPRA PARCELADA (OBRIGATÓRIO — NÃO OMITA):
+• Toda linha de "compra parcelada", "parcelas", "NN/MM", "N de M" ou equivalente na fatura é UM LANÇAMENTO DESTA FATURA — extraia sempre, mesmo que a data impressa seja de MESES OU ANOS ANTERIORES à competência do fechamento (ex.: parcela 5/12 de uma compra feita em maio do ano passado aparecendo na fatura de janeiro).
+• O campo "date" deve refletir a DATA REAL impressa na linha (compra original ou data da parcela, o que a fatura mostrar). Construa YYYY-MM-DD usando o ANO correto (cabeçalho, rodapé, "compra em DD/MM/AAAA", ou contexto da linha). NUNCA reescreva a data só para cair dentro do mês de referência YYYY-MM do usuário — isso apaga informação e faz o app perder linhas na conciliação.
+• Quando houver "NN/MM" (parcela atual / total), preencha installmentCurrent=NN e installmentTotal=MM (inteiros). Se só existir texto, preencha installmentNote com esse trecho.
+• Nunca descarte uma linha sob o argumento de que a data "não pertence" ao mês da fatura: se o valor está na fatura, ela entra em suggestedTransactions.
+
+• Datas só como DD/MM (sem ano): use cabeçalho/rodapé da fatura e o mês de referência informado para inferir o ANO; na virada do ano, lançamentos 15/12 vs 08/01 podem cair em anos diferentes.
 • Valores negativos na coluna "Valor em R$" (ex.: -0,01, -6.008,56) são créditos/estornos na fatura: entryKind "credit" e amount = valor absoluto. Não omita valores pequenos.
 • Se o PDF veio como texto e a ordem das colunas ficou embaralhada, reconstrua cada lançamento casando DATA + descrição + VALOR EM R$.
 
@@ -335,15 +345,15 @@ async function analyzeCreditCardStatementFromPdfNative(input: {
   categoriesLine: string;
 }): Promise<StatementAnalyzeResult> {
   const monthHint = input.referenceMonth
-    ? `Mês de referência informado pelo usuário: ${input.referenceMonth}. Prefira datas nesse mês quando o ano estiver implícito na fatura.`
-    : "Inferir o mês de referência a partir do documento quando possível.";
+    ? `Competência / mês de referência DESTA FATURA (usuário): ${input.referenceMonth}. Use para DD/MM sem ano e viradas. NÃO force todas as datas para esse mês: parcelas mostram muitas vezes a data ORIGINAL da compra (anos anteriores) — copie fielmente. Não omita linhas por data fora do ciclo.`
+    : "Inferir mês de referência e anos completos a partir do documento quando possível.";
 
   const system = `Você interpreta FATURAS DE CARTÃO DE CRÉDITO brasileiras a partir do PDF anexo (inclui faturas escaneadas ou só imagem).
 
 ${buildStatementExtractionGuide(input.categoriesLine)}
 
 Responda APENAS um objeto JSON válido (sem markdown ao redor):
-{"markdown":"...","suggestedTransactions":[{"date":"YYYY-MM-DD","description":"","amount":0,"category":"","installmentNote":null,"entryKind":"expense"}],"statementTotalGuess":null}
+{"markdown":"...","suggestedTransactions":[{${SUGGESTED_TXN_JSON_KEYS}}],"statementTotalGuess":null}
 
 ${monthHint}`;
 
@@ -397,6 +407,36 @@ function parseStatementAmountField(raw: unknown): number {
   return Math.abs(n);
 }
 
+function parseInstallmentIndicesFromRaw(r: Record<string, unknown>): { cur: number; tot: number } | null {
+  const c = r.installmentCurrent;
+  const t = r.installmentTotal;
+  if (typeof c === "number" && typeof t === "number" && Number.isFinite(c) && Number.isFinite(t)) {
+    const cur = Math.floor(c);
+    const tot = Math.floor(t);
+    if (cur >= 1 && tot >= 2 && cur <= tot && tot <= 48) return { cur, tot };
+  }
+  return null;
+}
+
+function parseInstallmentFromNoteAndDesc(
+  installmentNote: string | null,
+  description: string,
+): { cur: number; tot: number } | null {
+  for (const src of [installmentNote, description]) {
+    if (typeof src !== "string" || !src.trim()) continue;
+    const m = /\b(\d{1,2})\s*\/\s*(\d{1,2})\b/i.exec(src);
+    if (!m) continue;
+    const a = parseInt(m[1], 10);
+    const b = parseInt(m[2], 10);
+    if (!Number.isFinite(a) || !Number.isFinite(b)) continue;
+    if (a < 1 || b < 2 || a > b || b > 48) continue;
+    return { cur: a, tot: b };
+  }
+  return null;
+}
+
+const SUGGESTED_TXN_JSON_KEYS = `"date":"YYYY-MM-DD","description":"","amount":0,"category":"","installmentNote":null,"installmentCurrent":null,"installmentTotal":null,"entryKind":"expense"`;
+
 function normalizeAnalyzePayload(parsed: unknown): StatementAnalyzeResult {
   const root =
     typeof parsed === "object" && parsed !== null ? (parsed as Record<string, unknown>) : {};
@@ -426,18 +466,26 @@ function normalizeAnalyzePayload(parsed: unknown): StatementAnalyzeResult {
         typeof r.installmentNote === "string" && r.installmentNote.trim()
           ? r.installmentNote.trim().slice(0, 80)
           : null;
+      const pairAi = parseInstallmentIndicesFromRaw(r);
+      const pairTxt = !pairAi ? parseInstallmentFromNoteAndDesc(installmentNote, description) : null;
+      const pair = pairAi ?? pairTxt;
       const ekRaw = typeof r.entryKind === "string" ? r.entryKind.trim().toLowerCase() : "";
       const ekNorm = ekRaw.normalize("NFD").replace(/\p{M}/gu, "");
       const entryKind: "expense" | "credit" =
         ekRaw === "credit" || ekNorm === "credito" ? "credit" : "expense";
-      suggestedTransactions.push({
+      const row: StatementSuggestedTxn = {
         date,
         description: description.slice(0, 240),
         amount: Math.round(amt * 100) / 100,
         category: category.slice(0, 80),
         installmentNote,
         ...(entryKind === "credit" ? { entryKind: "credit" as const } : {}),
-      });
+      };
+      if (pair) {
+        row.installmentCurrent = pair.cur;
+        row.installmentTotal = pair.tot;
+      }
+      suggestedTransactions.push(row);
     }
   }
 
@@ -454,15 +502,15 @@ async function analyzeCreditCardStatementVision(input: {
 }): Promise<StatementAnalyzeResult> {
   const imageUrl = `data:${input.mimeType};base64,${input.imageBase64}`;
   const monthHint = input.referenceMonth
-    ? `Mês de referência informado pelo usuário: ${input.referenceMonth}. Prefira datas nesse mês quando o ano estiver implícito na fatura.`
-    : "Inferir o mês de referência a partir do documento quando possível.";
+    ? `Competência / mês de referência DESTA FATURA (usuário): ${input.referenceMonth}. Use para DD/MM sem ano e viradas. NÃO force todas as datas para esse mês: parcelas costumam trazer a data ORIGINAL da compra — copie fielmente. Não omita linhas por data fora do ciclo.`
+    : "Inferir mês de referência e anos completos a partir do documento quando possível.";
 
   const system = `Você interpreta FATURAS DE CARTÃO DE CRÉDITO brasileiras (PDF renderizado como imagem ou captura de tela).
 
 ${buildStatementExtractionGuide(input.categoriesLine)}
 
 Responda APENAS JSON válido:
-{"markdown":"...","suggestedTransactions":[{"date":"YYYY-MM-DD","description":"","amount":0,"category":"","installmentNote":null,"entryKind":"expense"}],"statementTotalGuess":null}
+{"markdown":"...","suggestedTransactions":[{${SUGGESTED_TXN_JSON_KEYS}}],"statementTotalGuess":null}
 
 ${monthHint}`;
 
@@ -501,7 +549,7 @@ async function analyzeCreditCardStatementFromText(input: {
   categoriesLine: string;
 }): Promise<StatementAnalyzeResult> {
   const monthHint = input.referenceMonth
-    ? `Mês de referência: ${input.referenceMonth}.`
+    ? `Competência / mês de referência DESTA FATURA (usuário): ${input.referenceMonth}. Use para DD/MM sem ano. NÃO force todas as datas para esse mês: parcelas costumam trazer a data ORIGINAL da compra — copie fielmente. Não omita linhas por data fora do ciclo.`
     : "Inferir datas completas quando possível.";
 
   const system = `Você interpreta TEXTO EXTRAÍDO de uma fatura de cartão de crédito brasileiro.
@@ -509,7 +557,7 @@ async function analyzeCreditCardStatementFromText(input: {
 ${buildStatementExtractionGuide(input.categoriesLine)}
 
 Responda APENAS JSON:
-{"markdown":"...","suggestedTransactions":[{"date":"YYYY-MM-DD","description":"","amount":0,"category":"","installmentNote":null,"entryKind":"expense"}],"statementTotalGuess":null}
+{"markdown":"...","suggestedTransactions":[{${SUGGESTED_TXN_JSON_KEYS}}],"statementTotalGuess":null}
 
 ${monthHint}`;
 

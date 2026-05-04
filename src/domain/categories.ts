@@ -14,6 +14,38 @@ export const CATEGORY_OPTIONS = [
   "Outros",
 ] as const;
 
+/** Material Symbols name aligned with `CATEGORY_OPTIONS`. */
+export function iconForCategory(category: string): string {
+  switch (category) {
+    case "Eletrônicos":
+      return "shopping_cart";
+    case "Investimentos":
+      return "savings";
+    case "Lazer":
+      return "restaurant";
+    case "Viagem":
+      return "flight";
+    case "Alimentação":
+      return "restaurant";
+    case "Moradia":
+      return "apartment";
+    case "Transporte":
+      return "directions_car";
+    case "Mobilidade":
+      return "electric_scooter";
+    case "Material de construção":
+      return "construction";
+    case "Saúde":
+      return "local_hospital";
+    case "Vestuário":
+      return "checkroom";
+    case "Juros e encargos":
+      return "percent";
+    default:
+      return "shopping_bag";
+  }
+}
+
 export function categoryPillClass(category: string): string {
   if (category === "Investimentos") {
     return "rounded-[9999px] bg-secondary-container/30 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-on-secondary-container";

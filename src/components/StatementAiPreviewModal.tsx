@@ -1,45 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { formatBRL, useFinance } from "../context/FinanceContext";
-import { CATEGORY_OPTIONS } from "../domain/categories";
+import { CATEGORY_OPTIONS, iconForCategory } from "../domain/categories";
 import { newId } from "../domain/id";
 import {
+  addCalendarMonthsToReferenceYm,
   coerceStatementReferenceMonthYm,
   formatStatementInvoiceCyclePt,
+  isoDateInReferenceMonth,
+  parseInstallmentFractionFromText,
   parseMoneyInput,
   statementInvoiceCycleIsoRange,
 } from "../domain/money";
 import type { StatementAiSuggestedTxn } from "../services/statementAi";
-
-function iconForCategory(category: string): string {
-  switch (category) {
-    case "Eletrônicos":
-      return "shopping_cart";
-    case "Investimentos":
-      return "savings";
-    case "Lazer":
-      return "restaurant";
-    case "Viagem":
-      return "flight";
-    case "Alimentação":
-      return "restaurant";
-    case "Moradia":
-      return "apartment";
-    case "Transporte":
-      return "directions_car";
-    case "Mobilidade":
-      return "electric_scooter";
-    case "Material de construção":
-      return "construction";
-    case "Saúde":
-      return "local_hospital";
-    case "Vestuário":
-      return "checkroom";
-    case "Juros e encargos":
-      return "percent";
-    default:
-      return "shopping_bag";
-  }
-}
 
 type RowState = StatementAiSuggestedTxn & {
   rowKey: string;
@@ -48,6 +20,23 @@ type RowState = StatementAiSuggestedTxn & {
   /** Linha criada pelo usuário (não veio da IA). */
   isManual?: boolean;
 };
+
+function stripTrailingInstallmentMarker(description: string): string {
+  return description
+    .replace(/\s*\(?\s*\d{1,2}\s*\/\s*\d{1,2}\s*\)?\s*$/u, "")
+    .trim();
+}
+
+function resolveInstallmentParts(r: StatementAiSuggestedTxn): { current: number; total: number } | null {
+  const ic = r.installmentCurrent;
+  const it = r.installmentTotal;
+  if (typeof ic === "number" && typeof it === "number" && Number.isFinite(ic) && Number.isFinite(it)) {
+    const cur = Math.floor(ic);
+    const tot = Math.floor(it);
+    if (cur >= 1 && tot >= 2 && cur <= tot && tot <= 48) return { current: cur, total: tot };
+  }
+  return parseInstallmentFractionFromText(r.installmentNote, r.description);
+}
 
 type Props = {
   open: boolean;
@@ -79,6 +68,7 @@ export function StatementAiPreviewModal({
 }: Props) {
   const { addTransaction, state } = useFinance();
   const [rows, setRows] = useState<RowState[]>([]);
+  const [projectFutureInstallments, setProjectFutureInstallments] = useState(false);
 
   const cycle = useMemo(
     () => statementInvoiceCycleIsoRange(statementReferenceMonth, invoiceClosingDay),
@@ -89,6 +79,7 @@ export function StatementAiPreviewModal({
 
   useEffect(() => {
     if (!open) return;
+    setProjectFutureInstallments(false);
     setRows(
       suggestedTransactions.map((t) => ({
         ...t,
@@ -156,7 +147,11 @@ export function StatementAiPreviewModal({
           : r.description;
       const day = r.date.slice(0, 10);
       const inCycle = !!(cycle && day >= cycle.startIso && day <= cycle.endIso);
-      const skipCardInvoiceDelta = !inCycle || cycleIsPast;
+      const inst = resolveInstallmentParts(r);
+      const skipCardInvoiceDelta =
+        r.entryKind === "credit"
+          ? cycleIsPast || !inCycle
+          : cycleIsPast || (!inCycle && !inst);
       const mag = Math.round(r.amount * 100) / 100;
       const signed = r.entryKind === "credit" ? mag : -mag;
       addTransaction({
@@ -175,11 +170,49 @@ export function StatementAiPreviewModal({
         thirdPartyName: null,
         ...(refYm ? { statementReferenceMonth: refYm } : {}),
         /**
-         * Fora do período do mês escolhido, ou fatura já fechada (fim do ciclo antes de hoje) → só histórico.
-         * Dentro do período do mês atual em aberto → entra na fatura aberta e no gráfico.
+         * Parcelas com data da compra original fora do ciclo ainda entram na fatura deste mês
+         * (statementReferenceMonth). Fatura encerrada → só histórico. Créditos: fora do ciclo → histórico.
          */
         skipCardInvoiceDelta,
       });
+
+      if (
+        !projectFutureInstallments ||
+        r.entryKind === "credit" ||
+        !refYm ||
+        !inst ||
+        inst.current >= inst.total
+      ) {
+        continue;
+      }
+      const baseDesc = stripTrailingInstallmentMarker(r.description.trim()) || r.description.trim();
+      const dayNum = parseInt(r.date.slice(8, 10), 10);
+      const dow = Number.isFinite(dayNum) && dayNum >= 1 && dayNum <= 31 ? dayNum : 15;
+      for (let k = inst.current + 1; k <= inst.total; k++) {
+        const ahead = k - inst.current;
+        const futureYm = addCalendarMonthsToReferenceYm(refYm, ahead);
+        if (!futureYm) continue;
+        const futureIso = isoDateInReferenceMonth(futureYm, dow) ?? `${futureYm}-15`;
+        const futureDesc = `${baseDesc} (${k}/${inst.total})`.slice(0, 240);
+        addTransaction({
+          date: futureIso,
+          description: futureDesc,
+          category: cat,
+          amount: signed,
+          status: "confirmado",
+          icon: iconForCategory(cat),
+          accountId: state.defaultAccountId,
+          creditCardId,
+          benefitBucket: null,
+          paymentMethod: null,
+          paymentAttachmentDataUrl: null,
+          paymentAttachmentName: null,
+          thirdPartyName: null,
+          statementReferenceMonth: futureYm,
+          /** Projeção: não altera a fatura em aberto até o mês chegar; aparece no mês da fatura no app. */
+          skipCardInvoiceDelta: true,
+        });
+      }
     }
     onClose();
   }
@@ -207,11 +240,10 @@ export function StatementAiPreviewModal({
             ) : null}
           </p>
           <p className="mt-2 text-xs text-on-surface-variant dark:text-slate-400">
-            Confira cada linha. Datas <strong className="text-on-surface dark:text-slate-200">dentro</strong> desse
-            período e fatura ainda em aberto entram na <strong className="text-on-surface dark:text-slate-200">fatura
-            atual</strong>. Fora do período, ou se o ciclo já terminou, ficam como{" "}
-            <strong className="text-on-surface dark:text-slate-200">só histórico</strong> (no gráfico da fatura,
-            tudo fica no mês que você escolheu para esta importação).
+            Confira cada linha. Compras <strong className="text-on-surface dark:text-slate-200">parceladas</strong>{" "}
+            podem trazer a <strong className="text-on-surface dark:text-slate-200">data original</strong> da compra
+            (fora do ciclo desta fatura): elas continuam neste mês no app. Se o ciclo já terminou, tudo fica como{" "}
+            <strong className="text-on-surface dark:text-slate-200">só histórico</strong> na fatura aberta do cartão.
           </p>
         </div>
 
@@ -277,7 +309,11 @@ export function StatementAiPreviewModal({
                 {rows.map((r, i) => {
                   const d = r.date.slice(0, 10);
                   const inC = !!(cycle && d >= cycle.startIso && d <= cycle.endIso);
-                  const willSkip = !inC || cycleIsPast;
+                  const instParts = resolveInstallmentParts(r);
+                  const willSkip =
+                    r.entryKind === "credit"
+                      ? cycleIsPast || !inC
+                      : cycleIsPast || (!inC && !instParts);
                   return (
                   <tr key={r.rowKey} className="border-b border-outline-variant/15 dark:border-slate-700">
                     <td className="p-1 align-top">
@@ -373,22 +409,39 @@ export function StatementAiPreviewModal({
           )}
         </div>
 
-        <div className="flex flex-wrap justify-end gap-2 border-t border-outline-variant/20 px-5 py-4 dark:border-slate-700">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg px-4 py-2 text-sm font-bold text-on-surface-variant hover:bg-surface-container-high dark:text-slate-300"
-          >
-            Cancelar
-          </button>
-          <button
-            type="button"
-            disabled={!canImport}
-            onClick={() => importSelected()}
-            className="rounded-lg bg-secondary px-4 py-2 text-sm font-bold text-white shadow-sm disabled:opacity-40 dark:bg-emerald-700"
-          >
-            Importar selecionados ({rows.filter((r) => r.selected).length})
-          </button>
+        <div className="space-y-3 border-t border-outline-variant/20 px-5 py-4 dark:border-slate-700">
+          <label className="flex cursor-pointer items-start gap-2 text-left text-xs text-on-surface-variant dark:text-slate-400">
+            <input
+              type="checkbox"
+              checked={projectFutureInstallments}
+              onChange={(e) => setProjectFutureInstallments(e.target.checked)}
+              className="mt-0.5 shrink-0"
+            />
+            <span>
+              <strong className="text-on-surface dark:text-slate-200">Gerar parcelas futuras (estimativa)</strong> —
+              para linhas com parcela N/M (ex.: 3/12), cria lançamentos iguais nos{" "}
+              <strong className="text-on-surface dark:text-slate-200">meses de fatura seguintes</strong> até a última
+              parcela. Valores iguais à parcela atual; revise quando a fatura real chegar. Não altera o saldo da fatura
+              em aberto até você chegar nesses meses (marcados como projeção).
+            </span>
+          </label>
+          <div className="flex flex-wrap justify-end gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-lg px-4 py-2 text-sm font-bold text-on-surface-variant hover:bg-surface-container-high dark:text-slate-300"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              disabled={!canImport}
+              onClick={() => importSelected()}
+              className="rounded-lg bg-secondary px-4 py-2 text-sm font-bold text-white shadow-sm disabled:opacity-40 dark:bg-emerald-700"
+            >
+              Importar selecionados ({rows.filter((r) => r.selected).length})
+            </button>
+          </div>
         </div>
       </div>
     </div>

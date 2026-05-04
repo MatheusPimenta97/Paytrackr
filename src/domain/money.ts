@@ -195,6 +195,52 @@ export function coerceStatementReferenceMonthYm(v: unknown): string | null {
   return /^\d{4}-\d{2}$/.test(s) ? s : null;
 }
 
+/** Soma meses de calendário a `YYYY-MM` (ex.: `2026-01` + 2 → `2026-03`). */
+export function addCalendarMonthsToReferenceYm(referenceMonth: string, deltaMonths: number): string | null {
+  const ym = coerceStatementReferenceMonthYm(referenceMonth);
+  if (!ym || !Number.isFinite(deltaMonths)) return null;
+  const [yS, mS] = ym.split("-");
+  const y = Number(yS);
+  const mo = Number(mS);
+  if (!Number.isFinite(y) || !Number.isFinite(mo) || mo < 1 || mo > 12) return null;
+  const d = new Date(y, mo - 1 + Math.floor(deltaMonths), 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+/**
+ * Data `YYYY-MM-DD` no mês de referência, com dia limitado ao último dia do mês.
+ */
+export function isoDateInReferenceMonth(referenceMonth: string, dayOfMonth: number): string | null {
+  const ym = coerceStatementReferenceMonthYm(referenceMonth);
+  if (!ym) return null;
+  const [yS, mS] = ym.split("-");
+  const y = Number(yS);
+  const mo = Number(mS);
+  if (!Number.isFinite(y) || !Number.isFinite(mo)) return null;
+  const cal = calendarDateForBillingDayInMonth(y, mo - 1, clampBillingDay(dayOfMonth));
+  return `${cal.getFullYear()}-${String(cal.getMonth() + 1).padStart(2, "0")}-${String(cal.getDate()).padStart(2, "0")}`;
+}
+
+/**
+ * Detecta parcela de cartão no formato "N/M" (ex.: 3/12) em textos da fatura.
+ * Ignora padrões inválidos (ex.: dia > mês quando N>M). `installmentNote` deve vir antes de `description`.
+ */
+export function parseInstallmentFractionFromText(
+  ...sources: (string | null | undefined)[]
+): { current: number; total: number } | null {
+  for (const src of sources) {
+    if (typeof src !== "string" || !src.trim()) continue;
+    const m = /\b(\d{1,2})\s*\/\s*(\d{1,2})\b/i.exec(src);
+    if (!m) continue;
+    const a = parseInt(m[1], 10);
+    const b = parseInt(m[2], 10);
+    if (!Number.isFinite(a) || !Number.isFinite(b)) continue;
+    if (a < 1 || b < 2 || a > b || b > 48) continue;
+    return { current: a, total: b };
+  }
+  return null;
+}
+
 /**
  * Mês de referência para gráfico / agrupamento por fatura: se o lançamento veio da importação
  * por IA com `statementReferenceMonth` (YYYY-MM), usa esse mês; senão, deduz pela data + fechamento.

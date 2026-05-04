@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CATEGORY_OPTIONS } from "../domain/categories";
+import { CATEGORY_OPTIONS, iconForCategory } from "../domain/categories";
 import { BENEFIT_BUCKET_LABEL, BENEFIT_BUCKETS, isBenefitBucket } from "../domain/cardWallet";
 import { coerceStatementReferenceMonthYm, parseMoneyInput } from "../domain/money";
 import type { BenefitBucket, Transaction, TxnPaymentMethod, TxnStatus } from "../domain/types";
@@ -19,22 +19,6 @@ const PAYMENT_OPTIONS: { value: TxnPaymentMethod; label: string }[] = [
   { value: "pix", label: "PIX" },
   { value: "boleto", label: "Boleto" },
 ];
-
-const ICONS = [
-  "shopping_bag",
-  "payments",
-  "restaurant",
-  "flight",
-  "shopping_cart",
-  "home",
-  "directions_car",
-  "local_hospital",
-  "savings",
-  "potted_plant",
-  "apartment",
-  "checkroom",
-  "percent",
-] as const;
 
 function moneyInputFromAbsAmount(n: number): string {
   return Math.abs(n).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -92,7 +76,6 @@ export function TransactionFormModal({
   const [flow, setFlow] = useState<"expense" | "income">("expense");
   const [status, setStatus] = useState<TxnStatus>("confirmado");
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [icon, setIcon] = useState<string>("shopping_bag");
   const [goalId, setGoalId] = useState<string>("");
   const [creditCardId, setCreditCardId] = useState<string>("");
   const [benefitBucket, setBenefitBucket] = useState<BenefitBucket>("refeicao");
@@ -147,7 +130,6 @@ export function TransactionFormModal({
       setFlow(t.amount < 0 ? "expense" : "income");
       setStatus(t.status);
       setDate(t.date.slice(0, 10));
-      setIcon(t.icon || "shopping_bag");
       setGoalId(t.goalId ?? "");
       const ccid =
         t.creditCardId && state.creditCards.some((c) => c.id === t.creditCardId) ? t.creditCardId : "";
@@ -175,7 +157,6 @@ export function TransactionFormModal({
     setFlow("expense");
     setStatus("confirmado");
     setDate(new Date().toISOString().slice(0, 10));
-    setIcon("shopping_bag");
     setGoalId("");
     setBenefitBucket("refeicao");
     setPaymentMethod("conta");
@@ -265,6 +246,7 @@ export function TransactionFormModal({
         : null;
 
     const justificationPayload = justTrim ? justTrim : null;
+    const icon = iconForCategory(category);
 
     const statementRefPatch =
       pinYm && pinCardId
@@ -608,20 +590,6 @@ export function TransactionFormModal({
               </select>
             </div>
           )}
-          <div>
-            <label className="mb-1 block text-xs font-bold text-on-surface-variant">Ícone</label>
-            <select
-              value={icon}
-              onChange={(e) => setIcon(e.target.value)}
-              className="w-full rounded-lg bg-surface-container-high px-3 py-2 text-sm"
-            >
-              {ICONS.map((ic) => (
-                <option key={ic} value={ic}>
-                  {ic}
-                </option>
-              ))}
-            </select>
-          </div>
           {error && <p className="text-sm font-semibold text-error">{error}</p>}
           <div className="flex justify-end gap-2 pt-2">
             <button

@@ -152,9 +152,15 @@ export function normalizeReceivables(raw: unknown): Receivable[] {
           : paidAt ?? dueDate
         : null;
 
+    const incomeCategory =
+      typeof r.incomeCategory === "string" && r.incomeCategory.trim()
+        ? r.incomeCategory.trim().slice(0, 80)
+        : undefined;
+
     out.push({
       id,
       debtorName: r.debtorName.trim(),
+      ...(incomeCategory ? { incomeCategory } : {}),
       amount,
       payments,
       installmentMode,

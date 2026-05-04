@@ -1,6 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  DEFAULT_INCOME_CATEGORIES,
+  mergedIncomeCategorySelectOptions,
+  normalizeCustomIncomeCategoriesForProfile,
+} from "../domain/incomeCategories";
 import { parseMoneyInput } from "../domain/money";
 import { useFinance } from "../context/FinanceContext";
+
+const ADD_CATEGORY_VALUE = "__paytrackr_add_income_category__";
 
 type Props = {
   open: boolean;
@@ -8,14 +15,22 @@ type Props = {
 };
 
 export function ReceivableFormModal({ open, onClose }: Props) {
-  const { addReceivable } = useFinance();
+  const { addReceivable, state, updateProfile } = useFinance();
   const [debtorName, setDebtorName] = useState("");
   const [amountRaw, setAmountRaw] = useState("");
   const [dueDate, setDueDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [note, setNote] = useState("");
+  const [category, setCategory] = useState<string>(DEFAULT_INCOME_CATEGORIES[0]);
   const [installmentMode, setInstallmentMode] = useState(false);
   const [installmentCountRaw, setInstallmentCountRaw] = useState("");
   const [error, setError] = useState<string | null>(null);
+
+  const incomeOptions = useMemo(() => {
+    const merged = mergedIncomeCategorySelectOptions(state.profile.customIncomeCategories);
+    const c = category.trim();
+    if (c && !merged.includes(c)) return [...merged, c];
+    return merged;
+  }, [state.profile.customIncomeCategories, category]);
 
   useEffect(() => {
     if (!open) return;
@@ -24,6 +39,7 @@ export function ReceivableFormModal({ open, onClose }: Props) {
     setAmountRaw("");
     setDueDate(new Date().toISOString().slice(0, 10));
     setNote("");
+    setCategory(DEFAULT_INCOME_CATEGORIES[0]);
     setInstallmentMode(false);
     setInstallmentCountRaw("");
   }, [open]);
@@ -53,6 +69,7 @@ export function ReceivableFormModal({ open, onClose }: Props) {
     }
     addReceivable({
       debtorName: debtorName.trim(),
+      incomeCategory: category.trim(),
       amount: n,
       payments: [],
       installmentMode,
@@ -72,10 +89,44 @@ export function ReceivableFormModal({ open, onClose }: Props) {
         aria-modal
         aria-labelledby="recv-form-title"
       >
-        <h2 id="recv-form-title" className="mb-4 font-headline text-xl font-bold text-primary">
-          Nova conta a receber
+        <h2 id="recv-form-title" className="mb-1 font-headline text-xl font-bold text-primary">
+          Nova receita
         </h2>
+        <p className="mb-4 text-xs text-on-surface-variant">
+          Entradas esperadas (salário, aluguel, dividendos ou valores de terceiros). Ao receber, o lançamento usa a
+          categoria escolhida.
+        </p>
         <form onSubmit={submit} className="space-y-4">
+          <div>
+            <label className="mb-1 block text-xs font-bold text-on-surface-variant">Categoria</label>
+            <select
+              value={category}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v === ADD_CATEGORY_VALUE) {
+                  const raw = window.prompt("Nome da nova categoria");
+                  const name = raw?.trim().slice(0, 60);
+                  if (!name) return;
+                  const next = normalizeCustomIncomeCategoriesForProfile([
+                    ...state.profile.customIncomeCategories,
+                    name,
+                  ]);
+                  updateProfile({ customIncomeCategories: next });
+                  setCategory(name);
+                  return;
+                }
+                setCategory(v);
+              }}
+              className="w-full rounded-lg bg-surface-container-high px-3 py-2 text-sm"
+            >
+              {incomeOptions.map((opt) => (
+                <option key={opt} value={opt}>
+                  {opt}
+                </option>
+              ))}
+              <option value={ADD_CATEGORY_VALUE}>+ Adicionar categoria</option>
+            </select>
+          </div>
           <div>
             <label className="mb-1 block text-xs font-bold text-on-surface-variant">
               Descrição / origem

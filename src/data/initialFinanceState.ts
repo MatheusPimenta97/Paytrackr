@@ -2,7 +2,7 @@ import { newId } from "../domain/id";
 import type { CreditCard, FinanceState, RecurringExpense, Transaction, UserProfile } from "../domain/types";
 
 export function defaultProfile(): UserProfile {
-  return { displayName: "", monthlySalary: 0, photoDataUrl: null };
+  return { displayName: "", monthlySalary: 0, photoDataUrl: null, customIncomeCategories: [] };
 }
 
 /** Estado inicial para conta Firebase nova — sem lançamentos/cartões de exemplo. */
@@ -213,7 +213,7 @@ export function createInitialFinanceState(): FinanceState {
     version: 2,
     recurringExpenses: defaultRecurringExpenses(),
     creditCards: defaultCreditCards(),
-    profile: { displayName: "Marcus", monthlySalary: 0, photoDataUrl: null },
+    profile: { displayName: "Marcus", monthlySalary: 0, photoDataUrl: null, customIncomeCategories: [] },
     defaultAccountId,
     receivables: [],
     creditCardStatements: [],

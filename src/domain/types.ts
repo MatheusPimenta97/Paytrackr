@@ -119,6 +119,8 @@ export type UserProfile = {
   monthlySalary: number;
   /** Foto em data URL (JPEG comprimido) ou null */
   photoDataUrl: string | null;
+  /** Categorias extras criadas em “Nova conta a receber” (+ Adicionar categoria) */
+  customIncomeCategories: string[];
 };
 
 /** paidForMonth: "YYYY-MM" quando quitado no mês */
@@ -148,6 +150,8 @@ export type ReceivablePayment = {
 export type Receivable = {
   id: string;
   debtorName: string;
+  /** Ex.: Salário, Aluguel, Dividendos — usada ao registrar receita na conta */
+  incomeCategory?: string;
   /** Valor total combinado (ex.: compra no cartão parcelado) */
   amount: number;
   /** Entradas já registradas (parcelas / valores parciais) */

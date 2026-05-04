@@ -20,6 +20,7 @@ import {
   normalizeLoyaltyPrograms,
 } from "../domain/loyaltyPoints";
 import { normalizeCreditCardStatements } from "../domain/creditCardStatements";
+import { normalizeCustomIncomeCategoriesForProfile } from "../domain/incomeCategories";
 import { normalizeReceivables, receivedTotal } from "../domain/receivables";
 import {
   isTxnPaymentMethod,
@@ -263,21 +264,23 @@ function normalizeRecurringExpenses(raw: unknown[]): RecurringExpense[] {
 }
 
 function migrateProfile(parsed: Record<string, unknown>, base: UserProfile): UserProfile {
+  const b: UserProfile = { ...defaultProfile(), ...base };
   const legacyName =
     typeof parsed.userFirstName === "string" ? parsed.userFirstName.trim() : "";
   const raw = parsed.profile;
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
     return {
-      displayName: legacyName || base.displayName,
-      monthlySalary: base.monthlySalary,
-      photoDataUrl: null,
+      displayName: legacyName || b.displayName,
+      monthlySalary: b.monthlySalary,
+      photoDataUrl: b.photoDataUrl ?? null,
+      customIncomeCategories: b.customIncomeCategories,
     };
   }
   const p = raw as Record<string, unknown>;
   const fromProfile =
     typeof p.displayName === "string" ? p.displayName.trim() : "";
-  const displayName = fromProfile || legacyName || base.displayName;
-  let monthlySalary = base.monthlySalary;
+  const displayName = fromProfile || legacyName || b.displayName;
+  let monthlySalary = b.monthlySalary;
   if (typeof p.monthlySalary === "number" && Number.isFinite(p.monthlySalary)) {
     monthlySalary = roundMoney(Math.max(0, p.monthlySalary));
   }
@@ -289,8 +292,14 @@ function migrateProfile(parsed: Record<string, unknown>, base: UserProfile): Use
     p.photoDataUrl.length <= 2_500_000
   ) {
     photoDataUrl = p.photoDataUrl;
+  } else {
+    photoDataUrl = b.photoDataUrl ?? null;
   }
-  return { displayName, monthlySalary, photoDataUrl };
+  let customIncomeCategories = b.customIncomeCategories;
+  if (Array.isArray(p.customIncomeCategories)) {
+    customIncomeCategories = normalizeCustomIncomeCategoriesForProfile(p.customIncomeCategories);
+  }
+  return { displayName, monthlySalary, photoDataUrl, customIncomeCategories };
 }
 
 export const FINANCE_STORAGE_SCOPE_DEMO = "local-demo";
@@ -879,12 +888,17 @@ function financeReducer(state: FinanceState, action: Action): FinanceState {
           : state.profile.monthlySalary;
       const nextPhoto =
         patch.photoDataUrl !== undefined ? patch.photoDataUrl : state.profile.photoDataUrl;
+      const nextCustomCats =
+        patch.customIncomeCategories !== undefined
+          ? normalizeCustomIncomeCategoriesForProfile(patch.customIncomeCategories)
+          : state.profile.customIncomeCategories;
       return {
         ...state,
         profile: {
           displayName: nextName || state.profile.displayName,
           monthlySalary: nextSalary,
           photoDataUrl: nextPhoto,
+          customIncomeCategories: nextCustomCats,
         },
       };
     }
@@ -897,9 +911,11 @@ function financeReducer(state: FinanceState, action: Action): FinanceState {
         action.payload.installmentCount > 0
           ? Math.min(999, Math.floor(action.payload.installmentCount))
           : null;
+      const icRaw = action.payload.incomeCategory?.trim();
       const row: Receivable = {
         id,
         debtorName: action.payload.debtorName.trim(),
+        ...(icRaw ? { incomeCategory: icRaw.slice(0, 80) } : {}),
         amount,
         payments: [],
         installmentMode: Boolean(action.payload.installmentMode),
@@ -940,11 +956,15 @@ function financeReducer(state: FinanceState, action: Action): FinanceState {
         return { ...state, receivables };
       }
       const txId = newId();
+      const txCat =
+        typeof rec.incomeCategory === "string" && rec.incomeCategory.trim()
+          ? rec.incomeCategory.trim().slice(0, 80)
+          : "Outros";
       const tx: Transaction = {
         id: txId,
         date: paidAt,
         description: done ? `Recebimento — ${rec.debtorName}` : `Recebimento parcial — ${rec.debtorName}`,
-        category: "Outros",
+        category: txCat,
         amount: pay,
         status: "recebido",
         icon: "payments",

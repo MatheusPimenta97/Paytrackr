@@ -178,7 +178,7 @@ export function ContasPagarReceberPage() {
             className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-primary to-primary-container px-6 py-3 font-bold text-white shadow-xl transition-all hover:shadow-primary/20 active:scale-95"
           >
             <span className="material-symbols-outlined">add</span>
-            Nova conta a receber
+            Nova receita
           </button>
         </div>
       </div>
@@ -366,7 +366,7 @@ export function ContasPagarReceberPage() {
                   onClick={() => setFormOpen(true)}
                   className="rounded-lg bg-primary px-5 py-2.5 text-sm font-bold text-white"
                 >
-                  Nova conta a receber
+                  Nova receita
                 </button>
               </div>
             ) : (
@@ -390,6 +390,11 @@ export function ContasPagarReceberPage() {
                           <div>
                             <div className="flex flex-wrap items-center gap-2">
                               <h3 className="font-bold text-primary">{r.debtorName}</h3>
+                              {r.incomeCategory ? (
+                                <span className="rounded-full bg-secondary-container/35 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-on-secondary-container">
+                                  {r.incomeCategory}
+                                </span>
+                              ) : null}
                               {r.installmentMode && (
                                 <span className="rounded-full bg-primary-container/30 px-2 py-0.5 text-[10px] font-bold uppercase text-primary">
                                   Parcelas no cartão

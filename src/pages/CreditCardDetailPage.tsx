@@ -3,6 +3,7 @@ import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import { AttachmentPreviewModal } from "../components/AttachmentPreviewModal";
 import { CardBrandLogo } from "../components/CardBrandLogo";
 import { CreditCardStatementModal } from "../components/CreditCardStatementModal";
+import { TransactionFormModal } from "../components/TransactionFormModal";
 import { CreditCardThirdPartyModal } from "../components/CreditCardThirdPartyModal";
 import { useFinance, formatBRL } from "../context/FinanceContext";
 import { BENEFIT_BUCKET_LABEL } from "../domain/cardWallet";
@@ -89,6 +90,8 @@ export function CreditCardDetailPage() {
     amount: number;
   } | null>(null);
   const [attachmentPreview, setAttachmentPreview] = useState<{ dataUrl: string; name: string } | null>(null);
+  const [cardTxnFormOpen, setCardTxnFormOpen] = useState(false);
+  const [cardEditingTxn, setCardEditingTxn] = useState<Transaction | null>(null);
   const [invoiceHistoryHorizonStr, setInvoiceHistoryHorizonStr] = useState<string>("4");
 
   const cardTxns = useMemo(() => {
@@ -288,6 +291,15 @@ export function CreditCardDetailPage() {
         dataUrl={attachmentPreview?.dataUrl ?? null}
         fileName={attachmentPreview?.name ?? null}
       />
+      <TransactionFormModal
+        open={cardTxnFormOpen}
+        editingTransaction={cardEditingTxn}
+        initialCreditCardId={cardEditingTxn ? null : card.id}
+        onClose={() => {
+          setCardTxnFormOpen(false);
+          setCardEditingTxn(null);
+        }}
+      />
       <CreditCardStatementModal
         open={statementOpen}
         creditCardId={card.id}
@@ -358,7 +370,10 @@ export function CreditCardDetailPage() {
           {isCredito && (
             <button
               type="button"
-              onClick={() => navigate(`/lancamentos?novo=1&cartao=${card.id}`)}
+              onClick={() => {
+                setCardEditingTxn(null);
+                setCardTxnFormOpen(true);
+              }}
               className="flex items-center gap-1.5 rounded-lg bg-surface-container-highest px-3 py-1.5 font-label text-xs font-semibold text-primary transition-colors hover:bg-surface-container-high dark:bg-slate-800 dark:hover:bg-slate-700"
             >
               <span className="material-symbols-outlined text-[18px]">payments</span>
@@ -367,7 +382,10 @@ export function CreditCardDetailPage() {
           )}
           <button
             type="button"
-            onClick={() => navigate(`/lancamentos?novo=1&cartao=${card.id}`)}
+            onClick={() => {
+              setCardEditingTxn(null);
+              setCardTxnFormOpen(true);
+            }}
             className="flex items-center gap-1.5 rounded-lg bg-primary-container px-3 py-1.5 font-label text-xs font-semibold text-on-primary transition-opacity hover:opacity-90"
           >
             <span className="material-symbols-outlined text-[18px]">add_card</span>

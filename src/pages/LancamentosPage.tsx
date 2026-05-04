@@ -89,7 +89,7 @@ export function LancamentosPage() {
   const primaryAccount = state.accounts.find((a) => a.id === state.defaultAccountId);
   const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState("");
-  const [dateFilter, setDateFilter] = useState<DateFilter>("30");
+  const [dateFilter, setDateFilter] = useState<DateFilter>("all");
   const [categoryFilter, setCategoryFilter] = useState<string | "">("");
   const [showFilters, setShowFilters] = useState(false);
   const [page, setPage] = useState(1);

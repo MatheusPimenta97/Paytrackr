@@ -187,6 +187,7 @@ export function CreditCardStatementMonthPage() {
       <TransactionFormModal
         open={invoiceTxnFormOpen}
         editingTransaction={invoiceEditingTxn}
+        initialCreditCardId={invoiceEditingTxn ? null : card.id}
         stackOnTop
         onClose={() => {
           setInvoiceTxnFormOpen(false);
@@ -286,13 +287,17 @@ export function CreditCardStatementMonthPage() {
             Registrar esta fatura
           </button>
         )}
-        <Link
-          to={`/lancamentos?novo=1&cartao=${card.id}`}
+        <button
+          type="button"
+          onClick={() => {
+            setInvoiceEditingTxn(null);
+            setInvoiceTxnFormOpen(true);
+          }}
           className="inline-flex items-center gap-1.5 rounded-lg bg-primary-container px-3 py-2 text-xs font-semibold text-on-primary transition-opacity hover:opacity-90"
         >
           <span className="material-symbols-outlined text-[18px]">add_card</span>
           Novo lançamento
-        </Link>
+        </button>
       </div>
 
       {categoryTotals.length > 0 ? (

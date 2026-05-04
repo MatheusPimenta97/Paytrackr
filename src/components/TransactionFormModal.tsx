@@ -41,7 +41,21 @@ function moneyInputFromAbsAmount(n: number): string {
 }
 
 function categorySelectValue(cat: string): string {
-  return (CATEGORY_OPTIONS as readonly string[]).includes(cat) ? cat : "Outros";
+  const allowed = CATEGORY_OPTIONS as readonly string[];
+  if ((allowed as readonly string[]).includes(cat)) return cat;
+  const fold = (s: string) =>
+    s
+      .trim()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/\p{M}/gu, "")
+      .replace(/\s+/g, " ");
+  const foldedHit = allowed.find((a) => fold(a) === fold(cat));
+  if (foldedHit) return foldedHit;
+  /** Typo comum: "Material de contrução" (falta o "s"). */
+  const typoFixed = cat.replace(/(material\s+de\s+)contru/gi, "$1constru").trim();
+  if (typoFixed !== cat && (allowed as readonly string[]).includes(typoFixed)) return typoFixed;
+  return "Outros";
 }
 
 type Props = {
@@ -80,6 +94,9 @@ export function TransactionFormModal({
   const [justification, setJustification] = useState("");
   const [error, setError] = useState<string | null>(null);
   const receiptFileRef = useRef<HTMLInputElement>(null);
+  /** Evita re-hidratar o formulário a cada mudança de `state` (ex.: sync) — isso resetava a categoria no meio da edição. */
+  const wasOpenRef = useRef(false);
+  const lastHydratedEditIdRef = useRef<string | null>(null);
 
   const selectedCard = useMemo(
     () => (creditCardId ? state.creditCards.find((c) => c.id === creditCardId) : null),
@@ -87,35 +104,49 @@ export function TransactionFormModal({
   );
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      wasOpenRef.current = false;
+      lastHydratedEditIdRef.current = null;
+      return;
+    }
+
     if (editingTransaction) {
-      setDescription(editingTransaction.description);
-      setCategory(categorySelectValue(editingTransaction.category));
-      setAmountRaw(moneyInputFromAbsAmount(editingTransaction.amount));
-      setFlow(editingTransaction.amount < 0 ? "expense" : "income");
-      setStatus(editingTransaction.status);
-      setDate(editingTransaction.date.slice(0, 10));
-      setIcon(editingTransaction.icon || "shopping_bag");
-      setGoalId(editingTransaction.goalId ?? "");
+      const id = editingTransaction.id;
+      const justOpened = !wasOpenRef.current;
+      const switchedEdit = lastHydratedEditIdRef.current !== id;
+      wasOpenRef.current = true;
+      if (!justOpened && !switchedEdit) return;
+
+      lastHydratedEditIdRef.current = id;
+      const t = state.transactions.find((x) => x.id === id) ?? editingTransaction;
+      setDescription(t.description);
+      setCategory(categorySelectValue(t.category));
+      setAmountRaw(moneyInputFromAbsAmount(t.amount));
+      setFlow(t.amount < 0 ? "expense" : "income");
+      setStatus(t.status);
+      setDate(t.date.slice(0, 10));
+      setIcon(t.icon || "shopping_bag");
+      setGoalId(t.goalId ?? "");
       const ccid =
-        editingTransaction.creditCardId &&
-        state.creditCards.some((c) => c.id === editingTransaction.creditCardId)
-          ? editingTransaction.creditCardId
-          : "";
+        t.creditCardId && state.creditCards.some((c) => c.id === t.creditCardId) ? t.creditCardId : "";
       setCreditCardId(ccid);
       setBenefitBucket(
-        editingTransaction.benefitBucket != null && isBenefitBucket(editingTransaction.benefitBucket)
-          ? editingTransaction.benefitBucket
-          : "refeicao"
+        t.benefitBucket != null && isBenefitBucket(t.benefitBucket) ? t.benefitBucket : "refeicao"
       );
-      setPaymentMethod(editingTransaction.paymentMethod ?? "conta");
-      setPaymentAttachmentDataUrl(editingTransaction.paymentAttachmentDataUrl ?? null);
-      setPaymentAttachmentName(editingTransaction.paymentAttachmentName ?? null);
-      setThirdPartyName(editingTransaction.thirdPartyName ?? "");
-      setJustification(editingTransaction.justification ?? "");
+      setPaymentMethod(t.paymentMethod ?? "conta");
+      setPaymentAttachmentDataUrl(t.paymentAttachmentDataUrl ?? null);
+      setPaymentAttachmentName(t.paymentAttachmentName ?? null);
+      setThirdPartyName(t.thirdPartyName ?? "");
+      setJustification(t.justification ?? "");
       if (receiptFileRef.current) receiptFileRef.current.value = "";
       return;
     }
+
+    const justOpenedNew = !wasOpenRef.current;
+    wasOpenRef.current = true;
+    lastHydratedEditIdRef.current = null;
+    if (!justOpenedNew) return;
+
     setDescription("");
     setCategory(CATEGORY_OPTIONS[0]);
     setAmountRaw("");
@@ -136,7 +167,7 @@ export function TransactionFormModal({
     } else {
       setCreditCardId("");
     }
-  }, [open, editingTransaction, initialCreditCardId, state.creditCards]);
+  }, [open, editingTransaction, initialCreditCardId, state.creditCards, state.transactions]);
 
   if (!open) return null;
 

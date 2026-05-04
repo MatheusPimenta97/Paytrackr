@@ -130,17 +130,24 @@ export function ContasPagarReceberPage() {
     setTableFilter("todos");
   }, [mainTab]);
 
+  /** Só não pagas no mês — usada nos filtros Pendentes/Agendados e nos totais “pendente”. */
   const unpaidRecurring = useMemo(() => {
     return state.recurringExpenses
       .filter((r) => !isPaidThisMonth(r, mk))
       .sort((a, b) => a.dueDay - b.dueDay);
   }, [state.recurringExpenses, mk]);
 
+  const paidRecurringThisMonth = useMemo(() => {
+    return state.recurringExpenses
+      .filter((r) => isPaidThisMonth(r, mk))
+      .sort((a, b) => a.dueDay - b.dueDay);
+  }, [state.recurringExpenses, mk]);
+
   const filteredRecurring = useMemo(() => {
     if (tableFilter === "liquidados") return [];
-    if (tableFilter === "todos") return unpaidRecurring;
+    if (tableFilter === "todos") return [...unpaidRecurring, ...paidRecurringThisMonth];
     return unpaidRecurring.filter((r) => recurringFilterSlot(r, mk) === tableFilter);
-  }, [unpaidRecurring, tableFilter, mk]);
+  }, [unpaidRecurring, paidRecurringThisMonth, tableFilter, mk]);
 
   const openSorted = useMemo(() => {
     const open = list.filter((r) => r.status === "aberto");
@@ -451,13 +458,13 @@ export function ContasPagarReceberPage() {
             {/* Tabela + empty */}
             <div className="p-3 sm:p-4">
               {mainTab === "pagar" ? (
-                filteredRecurring.length === 0 ? (
+                state.recurringExpenses.length === 0 ? (
                   <div className="flex flex-col items-center justify-center px-4 py-16 text-center">
                     <span className="material-symbols-outlined mb-4 text-6xl text-outline-variant/50">thumb_up</span>
-                    <p className="font-headline text-lg font-bold text-primary">Nenhuma conta a pagar.</p>
+                    <p className="font-headline text-lg font-bold text-primary">Nenhuma despesa fixa cadastrada.</p>
                     <p className="mt-2 max-w-md text-sm text-on-surface-variant">
-                      Contas a pagar são despesas fixas do mês ainda não marcadas como pagas. Cadastre em gastos
-                      recorrentes ou ajuste o filtro acima.
+                      Cadastre em gastos recorrentes (TIM, luz, etc.). Depois elas aparecem aqui; pode marcar como paga no
+                      mês sem sumir da lista em “Todos”.
                     </p>
                     <Link
                       to="/gastos-recorrentes?novo=1"
@@ -465,6 +472,22 @@ export function ContasPagarReceberPage() {
                     >
                       Incluir despesa
                     </Link>
+                  </div>
+                ) : filteredRecurring.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center px-4 py-16 text-center">
+                    <span className="material-symbols-outlined mb-4 text-6xl text-outline-variant/50">filter_alt</span>
+                    <p className="font-headline text-lg font-bold text-primary">Nada neste filtro.</p>
+                    <p className="mt-2 max-w-md text-sm text-on-surface-variant">
+                      Troque para <strong className="text-on-surface">Todos</strong> para ver todas as fixas do mês
+                      (pagas e não pagas), ou ajuste Pendentes / Agendados.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setTableFilter("todos")}
+                      className="mt-6 text-sm font-bold text-primary underline-offset-4 hover:underline"
+                    >
+                      Ver todos
+                    </button>
                   </div>
                 ) : (
                   <div className="overflow-x-auto rounded-lg border border-outline-variant/10">
@@ -497,19 +520,20 @@ export function ContasPagarReceberPage() {
                       <tbody>
                         {filteredRecurring.map((r) => {
                           const st = displayStatus(r);
+                          const paidMonth = isPaidThisMonth(r, mk);
                           const cardHint = recurringPaymentShort(state.creditCards, r.creditCardId);
                           const dueSoon = daysUntilDue(r.dueDay);
                           const stLabel = st === "pago" ? "Pago" : st === "vencendo" ? "Vencendo" : "Pendente";
                           return (
                             <tr
                               key={r.id}
-                              className="border-b border-outline-variant/10 transition-colors hover:bg-surface-container-low/70"
+                              className={`border-b border-outline-variant/10 transition-colors hover:bg-surface-container-low/70 ${paidMonth ? "bg-surface-container-high/25" : ""}`}
                             >
                               <td className="max-w-[140px] truncate px-2 py-1.5 font-semibold text-primary">{r.name}</td>
                               <td className="max-w-[72px] truncate px-2 py-1.5 text-on-surface-variant">{r.category}</td>
                               <td className="whitespace-nowrap px-2 py-1.5 text-on-surface-variant">
                                 <span className="block leading-tight">{dueLabel(r)}</span>
-                                {dueSoon <= 7 ? (
+                                {!paidMonth && dueSoon <= 7 ? (
                                   <span className="text-[10px] font-semibold leading-tight text-primary">
                                     {dueSoon === 0 ? "hoje" : `${dueSoon}d`}
                                   </span>
@@ -541,9 +565,13 @@ export function ContasPagarReceberPage() {
                                 <button
                                   type="button"
                                   onClick={() => toggleRecurringPaid(r.id, mk)}
-                                  className="rounded-md bg-secondary px-2 py-1 text-[10px] font-bold text-on-secondary-container hover:bg-secondary/90"
+                                  className={`rounded-md px-2 py-1 text-[10px] font-bold transition-colors ${
+                                    paidMonth
+                                      ? "border border-outline-variant/40 bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high"
+                                      : "bg-secondary text-on-secondary-container hover:bg-secondary/90"
+                                  }`}
                                 >
-                                  Pago
+                                  {paidMonth ? "Desmarcar" : "Marcar pago"}
                                 </button>
                               </td>
                             </tr>

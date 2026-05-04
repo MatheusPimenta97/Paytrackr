@@ -192,24 +192,61 @@ export function ContasPagarReceberPage() {
   );
   const countReceberLiquid = paidSorted.length;
 
-  const recentPayments = useMemo(() => {
-    const rows: { key: string; debtorName: string; amount: number; date: string }[] = [];
+  /** Cobranças quitadas + receitas lançadas direto na conta (histórico mais completo na lateral). */
+  const recentIncomingFeed = useMemo(() => {
+    type Row = {
+      key: string;
+      title: string;
+      amount: number;
+      date: string;
+      source: "cobrança" | "conta";
+    };
+    const rows: Row[] = [];
+    const seenRecv = new Set<string>();
+
+    function recvDedupeKey(date: string, amount: number, name: string): string {
+      return `${date}|${roundMoney(amount)}|${name.trim().toLowerCase()}`;
+    }
+
     for (const r of list) {
       if (!Array.isArray(r.payments)) continue;
       for (let i = 0; i < r.payments.length; i++) {
         const p = r.payments[i];
+        seenRecv.add(recvDedupeKey(p.date, p.amount, r.debtorName));
         rows.push({
-          key: `${r.id}-${p.date}-${i}-${p.amount}`,
-          debtorName: r.debtorName,
+          key: `rec-${r.id}-${p.date}-${i}-${p.amount}`,
+          title: r.debtorName,
           amount: p.amount,
           date: p.date,
+          source: "cobrança",
         });
       }
     }
+
+    for (const t of state.transactions) {
+      if (t.amount <= 0) continue;
+      if (t.creditCardId) continue;
+      if (t.status !== "recebido" && t.status !== "confirmado") continue;
+      const amt = roundMoney(t.amount);
+      const desc = (t.description ?? "").trim();
+      if (/^Recebimento\b/i.test(desc)) {
+        const nome = desc.replace(/^Recebimento\s*[—\-]\s*/i, "").trim();
+        const k = recvDedupeKey(t.date, amt, nome || desc);
+        if (seenRecv.has(k)) continue;
+      }
+      rows.push({
+        key: `tx-${t.id}`,
+        title: desc || t.category,
+        amount: amt,
+        date: t.date,
+        source: "conta",
+      });
+    }
+
     return rows
       .sort((a, b) => b.date.localeCompare(a.date) || b.amount - a.amount)
-      .slice(0, 10);
-  }, [list]);
+      .slice(0, 12);
+  }, [list, state.transactions]);
 
   const totalRecorrentePendente = useMemo(
     () => pendingRecurringMonthTotal(state.recurringExpenses, mk),
@@ -819,14 +856,21 @@ export function ContasPagarReceberPage() {
             <h3 className="font-headline font-bold text-primary">Últimas entradas</h3>
             <span className="material-symbols-outlined text-on-surface-variant">history</span>
           </div>
-          {recentPayments.length === 0 ? (
-            <p className="text-sm text-on-surface-variant">Nenhum recebimento registrado ainda.</p>
+          {recentIncomingFeed.length === 0 ? (
+            <p className="text-sm text-on-surface-variant">
+              Nada aqui ainda: aparece ao liquidar uma{" "}
+              <strong className="text-on-surface">conta a receber</strong> ou ao incluir uma{" "}
+              <strong className="text-on-surface">receita nos lançamentos</strong>.
+            </p>
           ) : (
             <div className="space-y-5">
-              {recentPayments.map((row) => (
+              {recentIncomingFeed.map((row) => (
                 <div key={row.key} className="relative border-l-2 border-secondary/25 pl-5">
                   <div className="absolute -left-[7px] top-0 h-3 w-3 rounded-full bg-secondary ring-2 ring-white dark:ring-slate-800" />
-                  <p className="text-xs font-bold text-primary">{row.debtorName}</p>
+                  <p className="text-[9px] font-bold uppercase tracking-wide text-on-surface-variant">
+                    {row.source === "cobrança" ? "Cobrança" : "Conta corrente"}
+                  </p>
+                  <p className="text-xs font-bold text-primary">{row.title}</p>
                   <p className="font-headline text-base font-bold text-secondary">{formatBRL(row.amount)}</p>
                   <p className="text-[10px] font-bold uppercase text-on-surface-variant">{formatRelativePaid(row.date)}</p>
                 </div>

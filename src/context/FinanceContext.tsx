@@ -445,9 +445,9 @@ function financeReducer(state: FinanceState, action: Action): FinanceState {
         transactions: Array.isArray(p.transactions)
           ? normalizeTransactions(p.transactions as unknown[])
           : p.transactions,
-        receivables: normalizeReceivables(
-          Array.isArray(p.receivables) ? p.receivables : []
-        ),
+        receivables: Array.isArray(p.receivables)
+          ? normalizeReceivables(p.receivables as unknown[])
+          : state.receivables,
         loyaltyPrograms: normalizeLoyaltyPrograms(
           Array.isArray(p.loyaltyPrograms) ? p.loyaltyPrograms : []
         ),
@@ -1143,9 +1143,11 @@ export function migrateFinanceState(parsed: Record<string, unknown>, base?: Fina
     creditCards: Array.isArray(parsed.creditCards)
       ? normalizeCreditCards(parsed.creditCards)
       : b.creditCards,
-    receivables: normalizeReceivables(
-      Array.isArray(parsed.receivables) ? parsed.receivables : []
-    ),
+    receivables: Array.isArray(parsed.receivables)
+      ? normalizeReceivables(parsed.receivables)
+      : !("receivables" in parsed)
+        ? normalizeReceivables((b.receivables ?? []) as unknown[])
+        : normalizeReceivables([]),
     loyaltyPrograms: normalizeLoyaltyPrograms(
       Array.isArray(parsed.loyaltyPrograms) ? parsed.loyaltyPrograms : []
     ),

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
 import { AttachmentPreviewModal } from "../components/AttachmentPreviewModal";
 import { CreditCardStatementModal } from "../components/CreditCardStatementModal";
@@ -42,6 +42,7 @@ export function CreditCardStatementMonthPage() {
   const [attachmentPreview, setAttachmentPreview] = useState<{ dataUrl: string; name: string } | null>(null);
   const [invoiceTxnFormOpen, setInvoiceTxnFormOpen] = useState(false);
   const [invoiceEditingTxn, setInvoiceEditingTxn] = useState<Transaction | null>(null);
+  const [txnSearch, setTxnSearch] = useState("");
 
   const ymOk = referenceMonth && /^\d{4}-\d{2}$/.test(referenceMonth);
   const card = cardId ? state.creditCards.find((c) => c.id === cardId) : undefined;
@@ -117,6 +118,36 @@ export function CreditCardStatementMonthPage() {
     if (!cycleRange) return true;
     return cycleRange.endIso < new Date().toISOString().slice(0, 10);
   }, [cycleRange]);
+
+  const filteredCycleTxns = useMemo(() => {
+    const raw = txnSearch.trim();
+    if (!raw) return cycleTxns;
+    const q = raw
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/\p{M}/gu, "");
+    return cycleTxns.filter((t) => {
+      const hay = [
+        t.description,
+        t.category,
+        t.date,
+        formatDateShort(t.date),
+        t.justification ?? "",
+        t.thirdPartyName ?? "",
+        String(t.amount),
+        formatBRL(t.amount),
+      ]
+        .join(" ")
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/\p{M}/gu, "");
+      return hay.includes(q);
+    });
+  }, [cycleTxns, txnSearch]);
+
+  useEffect(() => {
+    setTxnSearch("");
+  }, [cardId, referenceMonth]);
 
   if (!cardId || !card) {
     return <Navigate to="/" replace />;
@@ -279,19 +310,55 @@ export function CreditCardStatementMonthPage() {
 
       <section className="overflow-hidden rounded-xl border border-surface-container bg-white shadow-[0px_4px_12px_rgba(0,40,85,0.05)] dark:border-slate-700 dark:bg-slate-900">
         <div className="border-b border-surface-container px-4 py-3 dark:border-slate-700">
-          <h2 className="font-headline text-base font-semibold text-primary">Lançamentos do período</h2>
-          <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
-            Datas <strong className="text-slate-700 dark:text-slate-300">fora</strong> do ciclo ou fatura já encerrada
-            aparecem como <strong className="text-slate-700 dark:text-slate-300">só histórico</strong> (não somam na
-            fatura aberta).
-          </p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0 flex-1">
+              <h2 className="font-headline text-base font-semibold text-primary">Lançamentos do período</h2>
+              <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                Datas <strong className="text-slate-700 dark:text-slate-300">fora</strong> do ciclo ou fatura já
+                encerrada aparecem como <strong className="text-slate-700 dark:text-slate-300">só histórico</strong>{" "}
+                (não somam na fatura aberta).
+              </p>
+            </div>
+            {cycleTxns.length > 0 ? (
+              <label className="relative w-full shrink-0 sm:max-w-xs">
+                <span className="sr-only">Buscar lançamentos</span>
+                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                  <span className="material-symbols-outlined text-[20px]">search</span>
+                </span>
+                <input
+                  type="search"
+                  value={txnSearch}
+                  onChange={(e) => setTxnSearch(e.target.value)}
+                  placeholder="Buscar por descrição, categoria, data…"
+                  className="w-full rounded-lg border border-outline-variant/30 bg-surface-container-high py-2 pl-10 pr-3 text-sm text-primary placeholder:text-slate-400 focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/30 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                  autoComplete="off"
+                />
+              </label>
+            ) : null}
+          </div>
         </div>
         {cycleTxns.length === 0 ? (
           <p className="px-4 py-10 text-center text-sm text-slate-500 dark:text-slate-400">
             Nenhum lançamento neste período.
           </p>
+        ) : filteredCycleTxns.length === 0 ? (
+          <p className="px-4 py-10 text-center text-sm text-slate-500 dark:text-slate-400">
+            Nenhum lançamento corresponde à busca.{" "}
+            <button
+              type="button"
+              onClick={() => setTxnSearch("")}
+              className="font-semibold text-primary underline-offset-2 hover:underline dark:text-blue-300"
+            >
+              Limpar filtro
+            </button>
+          </p>
         ) : (
           <div className="overflow-x-auto">
+            <p className="border-b border-slate-100 px-4 py-2 text-[11px] text-slate-500 dark:border-slate-800 dark:text-slate-400">
+              {txnSearch.trim()
+                ? `Mostrando ${filteredCycleTxns.length} de ${cycleTxns.length} lançamentos`
+                : `${cycleTxns.length} lançamento${cycleTxns.length === 1 ? "" : "s"}`}
+            </p>
             <table className="w-full min-w-[560px] text-left text-sm">
               <thead className="bg-slate-50 font-label text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:bg-slate-800/80 dark:text-slate-400">
                 <tr>
@@ -303,7 +370,7 @@ export function CreditCardStatementMonthPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {cycleTxns.map((t) => {
+                {filteredCycleTxns.map((t) => {
                   const d = t.date.slice(0, 10);
                   const inC = !!(cycleRange && d >= cycleRange.startIso && d <= cycleRange.endIso);
                   const willSkip = !inC || cycleIsPast;

@@ -24,6 +24,7 @@ import {
   isSalaryIncomeCategory,
   normalizeCustomIncomeCategoriesForProfile,
 } from "../domain/incomeCategories";
+import { applyFinanceDataFixes } from "../domain/financeDataFixes";
 import { normalizeReceivables, receivedTotal, sanitizeReceivablePayslipFields } from "../domain/receivables";
 import {
   isTxnPaymentMethod,
@@ -395,7 +396,7 @@ function financeReducer(state: FinanceState, action: Action): FinanceState {
   switch (action.type) {
     case "HYDRATE": {
       const p = action.payload as FinanceState & { userFirstName?: string };
-      return {
+      return applyFinanceDataFixes({
         ...p,
         profile: migrateProfile(
           {
@@ -432,7 +433,7 @@ function financeReducer(state: FinanceState, action: Action): FinanceState {
         creditCardStatements: normalizeCreditCardStatements(
           Array.isArray(p.creditCardStatements) ? p.creditCardStatements : []
         ),
-      };
+      });
     }
     case "ADD_TRANSACTION": {
       const id = action.payload.id ?? newId();
@@ -1064,7 +1065,7 @@ function financeReducer(state: FinanceState, action: Action): FinanceState {
 export function migrateFinanceState(parsed: Record<string, unknown>, base?: FinanceState): FinanceState {
   const b = base ?? createInitialFinanceState();
   if (!Array.isArray(parsed.transactions)) return b;
-  return {
+  return applyFinanceDataFixes({
     version: 2,
     profile: migrateProfile(parsed, b.profile),
     defaultAccountId:
@@ -1102,7 +1103,7 @@ export function migrateFinanceState(parsed: Record<string, unknown>, base?: Fina
     creditCardStatements: normalizeCreditCardStatements(
       Array.isArray(parsed.creditCardStatements) ? parsed.creditCardStatements : []
     ),
-  };
+  });
 }
 
 type FinanceContextValue = {

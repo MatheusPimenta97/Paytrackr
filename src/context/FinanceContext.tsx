@@ -15,6 +15,7 @@ import {
 } from "../data/initialFinanceState";
 import { useAuth } from "./AuthContext";
 import {
+  mergeLoyaltyProgramsAfterRemotePull,
   normalizeExpirationBuckets,
   normalizeLoyaltyPrograms,
 } from "../domain/loyaltyPoints";
@@ -1175,7 +1176,12 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         return;
       }
       if (!Array.isArray(parsed.transactions)) return;
-      const next = migrateFinanceState(parsed, createEmptyFinanceState());
+      const localLoyalty = stateRef.current.loyaltyPrograms;
+      const nextBase = migrateFinanceState(parsed, createEmptyFinanceState());
+      const next = {
+        ...nextBase,
+        loyaltyPrograms: mergeLoyaltyProgramsAfterRemotePull(nextBase.loyaltyPrograms, localLoyalty),
+      };
       setLastRemoteFinanceTs(uid, updatedAt);
       dispatch({ type: "HYDRATE", payload: next });
       try {

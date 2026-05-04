@@ -31,6 +31,19 @@ export function defaultIconForAccent(accent: LoyaltyProgramAccent): string {
   return LOYALTY_PRESET[accent].defaultIcon;
 }
 
+/**
+ * Ao aplicar snapshot da nuvem, mantém programas que só existem no aparelho (ex.: upload falhou antes de um pull).
+ * Ordem: primeiro os do remoto, depois os locais órfãos.
+ */
+export function mergeLoyaltyProgramsAfterRemotePull(
+  remote: LoyaltyProgram[],
+  local: LoyaltyProgram[],
+): LoyaltyProgram[] {
+  const remoteIds = new Set(remote.map((p) => p.id));
+  const extras = local.filter((p) => !remoteIds.has(p.id));
+  return extras.length === 0 ? remote : [...remote, ...extras];
+}
+
 export function normalizeLoyaltyPrograms(raw: unknown): LoyaltyProgram[] {
   if (!Array.isArray(raw)) return [];
   const accents: LoyaltyProgramAccent[] = [

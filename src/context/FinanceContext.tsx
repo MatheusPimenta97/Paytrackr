@@ -278,8 +278,14 @@ function normalizeRecurringExpenses(raw: unknown[]): RecurringExpense[] {
         typeof r.creditCardId === "string" && r.creditCardId.length > 0 ? r.creditCardId : null;
       const cadence: RecurringExpense["cadence"] = r.cadence === "anual" ? "anual" : "mensal";
       const dueRaw = typeof r.dueDay === "number" && Number.isFinite(r.dueDay) ? Math.floor(r.dueDay) : 1;
+      const idRaw =
+        typeof r.id === "string"
+          ? r.id.trim()
+          : r.id != null && (typeof r.id === "number" || typeof r.id === "boolean")
+            ? String(r.id)
+            : "";
       return {
-        id: typeof r.id === "string" ? r.id : "",
+        id: idRaw,
         name: typeof r.name === "string" ? r.name : "",
         subtitle: typeof r.subtitle === "string" ? r.subtitle : "",
         category: typeof r.category === "string" ? r.category : "Outros",
@@ -463,7 +469,7 @@ function financeReducer(state: FinanceState, action: Action): FinanceState {
         ),
         recurringExpenses: Array.isArray(p.recurringExpenses)
           ? normalizeRecurringExpenses(p.recurringExpenses as unknown[])
-          : [],
+          : state.recurringExpenses,
       });
     }
     case "ADD_TRANSACTION": {
@@ -1307,10 +1313,15 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         return;
       }
       if (!Array.isArray(parsed.transactions)) return;
-      const localLoyalty = stateRef.current.loyaltyPrograms;
+      const prevSnap = stateRef.current;
+      const localLoyalty = prevSnap.loyaltyPrograms;
       const nextBase = migrateFinanceState(parsed, createEmptyFinanceState());
+      /** Pacotes antigos / gravadores incompletos podem omitir chaves; não sobrescrever com vazio do base. */
       const next = {
         ...nextBase,
+        ...(!("recurringExpenses" in parsed) ? { recurringExpenses: prevSnap.recurringExpenses } : {}),
+        ...(!("receivables" in parsed) ? { receivables: prevSnap.receivables } : {}),
+        ...(!("goals" in parsed) ? { goals: prevSnap.goals } : {}),
         loyaltyPrograms: mergeLoyaltyProgramsAfterRemotePull(nextBase.loyaltyPrograms, localLoyalty),
       };
       lastPushedFinanceJsonRef.current = JSON.stringify(next);

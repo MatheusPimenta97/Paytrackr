@@ -10,6 +10,31 @@ export function currentMonthKey(d = new Date()): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
+/** Últimos `count` meses até o mês de `now`, em ordem cronológica (mais antigo primeiro). */
+export function recentMonthKeys(count: number, now = new Date()): string[] {
+  const keys: string[] = [];
+  let y = now.getFullYear();
+  let m = now.getMonth();
+  for (let i = 0; i < count; i++) {
+    keys.push(`${y}-${String(m + 1).padStart(2, "0")}`);
+    m--;
+    if (m < 0) {
+      m = 11;
+      y--;
+    }
+  }
+  return keys.reverse();
+}
+
+export function formatYearMonthShortPt(isoYm: string): string {
+  const [ys, ms] = isoYm.split("-");
+  const y = Number(ys);
+  const mo = Number(ms);
+  if (!Number.isFinite(y) || !Number.isFinite(mo) || mo < 1 || mo > 12) return isoYm;
+  const raw = new Date(y, mo - 1, 1).toLocaleDateString("pt-BR", { month: "short", year: "numeric" });
+  return raw.charAt(0).toUpperCase() + raw.slice(1);
+}
+
 /** Dias até o vencimento no mês corrente ou próximo mês */
 export function daysUntilDue(dueDay: number, now = new Date()): number {
   const y = now.getFullYear();
@@ -29,7 +54,7 @@ export function daysUntilDue(dueDay: number, now = new Date()): number {
 }
 
 export function isPaidThisMonth(r: RecurringExpense, monthKey = currentMonthKey()): boolean {
-  return r.paidForMonth === monthKey;
+  return Array.isArray(r.paidMonths) && r.paidMonths.includes(monthKey);
 }
 
 export type RecurringDisplayStatus = "vencendo" | "pago" | "pendente";
@@ -39,7 +64,7 @@ export function displayStatus(
   now = new Date()
 ): RecurringDisplayStatus {
   const mk = currentMonthKey(now);
-  if (r.paidForMonth === mk) return "pago";
+  if (isPaidThisMonth(r, mk)) return "pago";
   const d = daysUntilDue(r.dueDay, now);
   if (d <= 3) return "vencendo";
   return "pendente";

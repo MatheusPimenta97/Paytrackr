@@ -278,7 +278,10 @@ export function ContasPagarReceberPage() {
           </h1>
           <p className="font-medium text-on-surface-variant">
             {greeting}, {state.profile.displayName}! Visualize compromissos fixos e entradas esperadas em formato de
-            tabela.
+            tabela. Para marcar{" "}
+            <span className="text-on-surface">meses anteriores</span> de uma conta fixa (ex.: luz), abra{" "}
+            <span className="font-semibold text-primary">Gastos recorrentes</span> → menu (⋮) →{" "}
+            <span className="font-semibold text-primary">Histórico por mês</span>.
           </p>
         </div>
         <div className="flex shrink-0 flex-nowrap items-center gap-1.5 overflow-x-auto pb-0.5 [-webkit-overflow-scrolling:touch] sm:gap-2 sm:justify-end sm:pb-0">

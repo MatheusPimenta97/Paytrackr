@@ -48,7 +48,7 @@ export function defaultRecurringExpenses(): RecurringExpense[] {
       dueDay: 10,
       cadence: "mensal",
       icon: "home",
-      paidForMonth: null,
+      paidMonths: [],
       creditCardId: null,
     },
     {
@@ -60,7 +60,7 @@ export function defaultRecurringExpenses(): RecurringExpense[] {
       dueDay: 15,
       cadence: "mensal",
       icon: "movie",
-      paidForMonth: "2026-04",
+      paidMonths: ["2026-04"],
       creditCardId: null,
     },
     {
@@ -72,7 +72,7 @@ export function defaultRecurringExpenses(): RecurringExpense[] {
       dueDay: 5,
       cadence: "mensal",
       icon: "wifi",
-      paidForMonth: "2026-04",
+      paidMonths: ["2026-04"],
       creditCardId: null,
     },
     {
@@ -84,7 +84,7 @@ export function defaultRecurringExpenses(): RecurringExpense[] {
       dueDay: 22,
       cadence: "mensal",
       icon: "shopping_bag",
-      paidForMonth: null,
+      paidMonths: [],
       creditCardId: null,
     },
   ];

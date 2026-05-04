@@ -61,6 +61,19 @@ import {
 } from "../domain/money";
 import { openInvoiceTotalFromCardTransactions } from "../domain/creditCardInvoice";
 import { currentMonthKey, recurringChargeForCreditCard } from "../domain/recurring";
+
+function mergePaidMonthsFromRaw(raw: { paidMonths?: unknown; paidForMonth?: unknown }): string[] {
+  const out = new Set<string>();
+  if (Array.isArray(raw.paidMonths)) {
+    for (const m of raw.paidMonths) {
+      if (typeof m === "string" && /^\d{4}-\d{2}$/.test(m)) out.add(m);
+    }
+  }
+  if (typeof raw.paidForMonth === "string" && /^\d{4}-\d{2}$/.test(raw.paidForMonth)) {
+    out.add(raw.paidForMonth);
+  }
+  return [...out].sort();
+}
 import {
   fetchFinanceEnvelopeFromCloud,
   getLastRemoteFinanceTs,
@@ -257,14 +270,29 @@ function normalizeTransactions(raw: unknown[]): Transaction[] {
 }
 
 function normalizeRecurringExpenses(raw: unknown[]): RecurringExpense[] {
-  return raw.map((x) => {
-    const r = x as RecurringExpense & { creditCardId?: unknown };
-    return {
-      ...r,
-      creditCardId:
-        typeof r.creditCardId === "string" && r.creditCardId.length > 0 ? r.creditCardId : null,
-    };
-  });
+  return raw
+    .map((x) => {
+      const r = x as Partial<RecurringExpense> & { paidForMonth?: unknown; paidMonths?: unknown };
+      const paidMonths = mergePaidMonthsFromRaw({ paidMonths: r.paidMonths, paidForMonth: r.paidForMonth });
+      const creditCardId =
+        typeof r.creditCardId === "string" && r.creditCardId.length > 0 ? r.creditCardId : null;
+      const cadence: RecurringExpense["cadence"] = r.cadence === "anual" ? "anual" : "mensal";
+      const dueRaw = typeof r.dueDay === "number" && Number.isFinite(r.dueDay) ? Math.floor(r.dueDay) : 1;
+      return {
+        id: typeof r.id === "string" ? r.id : "",
+        name: typeof r.name === "string" ? r.name : "",
+        subtitle: typeof r.subtitle === "string" ? r.subtitle : "",
+        category: typeof r.category === "string" ? r.category : "Outros",
+        amount:
+          typeof r.amount === "number" && Number.isFinite(r.amount) ? roundMoney(Math.max(0, r.amount)) : 0,
+        dueDay: Math.min(31, Math.max(1, dueRaw)),
+        cadence,
+        icon: typeof r.icon === "string" && r.icon ? r.icon : "home",
+        paidMonths,
+        creditCardId,
+      };
+    })
+    .filter((row) => row.id.length > 0);
 }
 
 function migrateProfile(parsed: Record<string, unknown>, base: UserProfile): UserProfile {
@@ -433,6 +461,9 @@ function financeReducer(state: FinanceState, action: Action): FinanceState {
         creditCardStatements: normalizeCreditCardStatements(
           Array.isArray(p.creditCardStatements) ? p.creditCardStatements : []
         ),
+        recurringExpenses: Array.isArray(p.recurringExpenses)
+          ? normalizeRecurringExpenses(p.recurringExpenses as unknown[])
+          : [],
       });
     }
     case "ADD_TRANSACTION": {
@@ -588,20 +619,29 @@ function financeReducer(state: FinanceState, action: Action): FinanceState {
     }
     case "ADD_RECURRING": {
       const id = action.payload.id ?? newId();
+      const p = action.payload;
       const ccid =
-        typeof action.payload.creditCardId === "string" && action.payload.creditCardId
-          ? action.payload.creditCardId
-          : null;
+        typeof p.creditCardId === "string" && p.creditCardId ? p.creditCardId : null;
+      const paidMonths = mergePaidMonthsFromRaw({
+        paidMonths: p.paidMonths,
+        paidForMonth: (p as { paidForMonth?: unknown }).paidForMonth,
+      });
       const row: RecurringExpense = {
-        ...action.payload,
         id,
-        paidForMonth: action.payload.paidForMonth ?? null,
+        name: p.name.trim(),
+        subtitle: p.subtitle.trim(),
+        category: p.category,
+        amount: roundMoney(Math.max(0, p.amount)),
+        dueDay: p.dueDay,
+        cadence: p.cadence,
+        icon: p.icon,
+        paidMonths,
         creditCardId: ccid,
       };
       let creditCards = state.creditCards;
       const mk = currentMonthKey();
       if (
-        row.paidForMonth === mk &&
+        paidMonths.includes(mk) &&
         row.creditCardId &&
         getCreditoCardById(creditCards, row.creditCardId)
       ) {
@@ -613,13 +653,18 @@ function financeReducer(state: FinanceState, action: Action): FinanceState {
       const prev = state.recurringExpenses.find((r) => r.id === action.id);
       if (!prev) return state;
       const mk = currentMonthKey();
-      const wasPaid = prev.paidForMonth === mk;
+      const wasPaid = Array.isArray(prev.paidMonths) && prev.paidMonths.includes(mk);
       const patch = { ...action.patch };
       if (patch.creditCardId !== undefined) {
         patch.creditCardId =
           typeof patch.creditCardId === "string" && patch.creditCardId ? patch.creditCardId : null;
       }
       const merged: RecurringExpense = { ...prev, ...patch };
+      if (patch.paidMonths === undefined) {
+        merged.paidMonths = Array.isArray(prev.paidMonths) ? prev.paidMonths : [];
+      } else {
+        merged.paidMonths = mergePaidMonthsFromRaw({ paidMonths: patch.paidMonths });
+      }
       let creditCards = state.creditCards;
       if (wasPaid) {
         if (prev.creditCardId && getCreditoCardById(creditCards, prev.creditCardId)) {
@@ -648,7 +693,8 @@ function financeReducer(state: FinanceState, action: Action): FinanceState {
       let creditCards = state.creditCards;
       if (
         del &&
-        del.paidForMonth === currentMonthKey() &&
+        Array.isArray(del.paidMonths) &&
+        del.paidMonths.includes(currentMonthKey()) &&
         del.creditCardId &&
         getCreditoCardById(creditCards, del.creditCardId)
       ) {
@@ -666,12 +712,22 @@ function financeReducer(state: FinanceState, action: Action): FinanceState {
     }
     case "TOGGLE_RECURRING_PAID": {
       const { id, monthKey } = action;
+      if (!/^\d{4}-\d{2}$/.test(monthKey)) return state;
       const row = state.recurringExpenses.find((r) => r.id === id);
       if (!row) return state;
-      const wasPaid = row.paidForMonth === monthKey;
+      const paid = new Set(Array.isArray(row.paidMonths) ? row.paidMonths : []);
+      const wasPaid = paid.has(monthKey);
       const willPay = !wasPaid;
+      if (willPay) paid.add(monthKey);
+      else paid.delete(monthKey);
+      const nextMonths = [...paid].sort();
       let creditCards = state.creditCards;
-      if (row.creditCardId && getCreditoCardById(creditCards, row.creditCardId)) {
+      const mkNow = currentMonthKey();
+      if (
+        monthKey === mkNow &&
+        row.creditCardId &&
+        getCreditoCardById(creditCards, row.creditCardId)
+      ) {
         const amt = recurringChargeForCreditCard(row);
         creditCards = adjustCardInvoice(creditCards, row.creditCardId, willPay ? amt : -amt);
       }
@@ -679,7 +735,7 @@ function financeReducer(state: FinanceState, action: Action): FinanceState {
         ...state,
         creditCards,
         recurringExpenses: state.recurringExpenses.map((r) =>
-          r.id === id ? { ...r, paidForMonth: willPay ? monthKey : null } : r
+          r.id === id ? { ...r, paidMonths: nextMonths } : r
         ),
       };
     }

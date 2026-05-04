@@ -84,7 +84,7 @@ export function RecurringFormModal({ open, editingId, onClose }: Props) {
     dueDay: 1,
     cadence,
     icon: "home",
-    paidForMonth: null,
+    paidMonths: [],
     creditCardId: null,
   } satisfies RecurringExpense;
   const chargeHint =
@@ -137,7 +137,7 @@ export function RecurringFormModal({ open, editingId, onClose }: Props) {
         dueDay,
         cadence,
         icon,
-        paidForMonth: null,
+        paidMonths: [],
         creditCardId: ccFinal,
       });
     }

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { GreetingTimeIcon } from "../components/GreetingTimeIcon";
 import { RecurringFormModal } from "../components/RecurringFormModal";
+import { RecurringPaidHistoryModal } from "../components/RecurringPaidHistoryModal";
 import { useFinance, formatBRL } from "../context/FinanceContext";
 import type { CreditCard } from "../domain/types";
 import {
@@ -57,6 +58,7 @@ function GastosRecorrentesPage() {
   const [showFilter, setShowFilter] = useState(false);
   const [page, setPage] = useState(1);
   const [menuId, setMenuId] = useState<string | null>(null);
+  const [historyId, setHistoryId] = useState<string | null>(null);
 
   const mk = currentMonthKey();
   const totalMonthly = monthlyEquivalentTotal(state.recurringExpenses);
@@ -159,7 +161,8 @@ function GastosRecorrentesPage() {
       : 38;
 
   function downloadRecurringCsv() {
-    const header = "Nome,Detalhe,Categoria,Valor,Dia,Cadência,Pago no mês,Cartão\n";
+    const header =
+      "Nome,Detalhe,Categoria,Valor,Dia,Cadência,Pago no mês atual,Meses pagos (YYYY-MM),Cartão\n";
     const body = filtered
       .map((r) =>
         [
@@ -169,7 +172,8 @@ function GastosRecorrentesPage() {
           r.amount,
           r.dueDay,
           r.cadence,
-          r.paidForMonth === mk ? "sim" : "não",
+          isPaidThisMonth(r, mk) ? "sim" : "não",
+          `"${Array.isArray(r.paidMonths) ? r.paidMonths.join(";") : ""}"`,
           `"${recurringPaymentLabel(state.creditCards, r.creditCardId)}"`,
         ].join(",")
       )
@@ -185,6 +189,9 @@ function GastosRecorrentesPage() {
 
   const categories = [...new Set(state.recurringExpenses.map((r) => r.category))].sort();
 
+  const historyRecurring =
+    historyId !== null ? state.recurringExpenses.find((x) => x.id === historyId) ?? null : null;
+
   return (
     <div className="mx-auto max-w-7xl px-6 pb-28 pt-6 text-on-background md:pb-12 md:pt-8">
       <RecurringFormModal
@@ -194,6 +201,11 @@ function GastosRecorrentesPage() {
           setFormOpen(false);
           setEditingId(null);
         }}
+      />
+      <RecurringPaidHistoryModal
+        open={historyId !== null && historyRecurring !== null}
+        recurring={historyRecurring}
+        onClose={() => setHistoryId(null)}
       />
 
       <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -528,6 +540,16 @@ function GastosRecorrentesPage() {
                             }}
                           >
                             {isPaidThisMonth(r, mk) ? "Desmarcar pago" : "Marcar pago"}
+                          </button>
+                          <button
+                            type="button"
+                            className="block w-full px-4 py-2 text-left text-xs font-bold text-primary hover:bg-surface-container-low"
+                            onClick={() => {
+                              setHistoryId(r.id);
+                              setMenuId(null);
+                            }}
+                          >
+                            Histórico por mês
                           </button>
                           <button
                             type="button"

@@ -123,7 +123,7 @@ export type UserProfile = {
   customIncomeCategories: string[];
 };
 
-/** paidForMonth: "YYYY-MM" quando quitado no mês */
+/** Meses YYYY-MM em que a parcela foi marcada como paga (histórico completo). */
 export type RecurringExpense = {
   id: string;
   name: string;
@@ -133,8 +133,8 @@ export type RecurringExpense = {
   dueDay: number;
   cadence: RecurringCadence;
   icon: string;
-  paidForMonth: string | null;
-  /** Se definido, ao marcar pago no mês o valor entra em currentInvoice do cartão */
+  paidMonths: string[];
+  /** Se definido, ao marcar pago **no mês corrente** o valor entra em currentInvoice do cartão */
   creditCardId: string | null;
 };
 

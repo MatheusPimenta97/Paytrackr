@@ -9,3 +9,6 @@ dist
 *.local
 *.tsbuildinfo
 .DS_Store
+
+# PDFs / dados reais só para teste local (ex.: fatura Itaú de referência)
+private/

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
 import { AttachmentPreviewModal } from "../components/AttachmentPreviewModal";
 import { CreditCardStatementModal } from "../components/CreditCardStatementModal";
+import { CreditCardThirdPartyModal } from "../components/CreditCardThirdPartyModal";
 import { TransactionFormModal } from "../components/TransactionFormModal";
 import { formatBRL, useFinance } from "../context/FinanceContext";
 import {
@@ -38,6 +39,7 @@ export function CreditCardStatementMonthPage() {
     updateCreditCardStatement,
     deleteCreditCardStatement,
     deleteTransaction,
+    patchTransaction,
   } = useFinance();
 
   const [statementOpen, setStatementOpen] = useState(false);
@@ -49,6 +51,7 @@ export function CreditCardStatementMonthPage() {
   const [attachmentPreview, setAttachmentPreview] = useState<{ dataUrl: string; name: string } | null>(null);
   const [invoiceTxnFormOpen, setInvoiceTxnFormOpen] = useState(false);
   const [invoiceEditingTxn, setInvoiceEditingTxn] = useState<Transaction | null>(null);
+  const [thirdPartyTxn, setThirdPartyTxn] = useState<Transaction | null>(null);
   const [txnSearch, setTxnSearch] = useState("");
 
   const ymOk = referenceMonth && /^\d{4}-\d{2}$/.test(referenceMonth);
@@ -190,6 +193,14 @@ export function CreditCardStatementMonthPage() {
         onClose={() => setAttachmentPreview(null)}
         dataUrl={attachmentPreview?.dataUrl ?? null}
         fileName={attachmentPreview?.name ?? null}
+      />
+      <CreditCardThirdPartyModal
+        open={thirdPartyTxn !== null}
+        transaction={thirdPartyTxn}
+        onClose={() => setThirdPartyTxn(null)}
+        onSave={(name) => {
+          if (thirdPartyTxn) patchTransaction(thirdPartyTxn.id, { thirdPartyName: name });
+        }}
       />
       <TransactionFormModal
         open={invoiceTxnFormOpen}
@@ -373,11 +384,12 @@ export function CreditCardStatementMonthPage() {
                 ? `Mostrando ${filteredCycleTxns.length} de ${cycleTxns.length} lançamentos`
                 : `${cycleTxns.length} lançamento${cycleTxns.length === 1 ? "" : "s"}`}
             </p>
-            <table className="w-full min-w-[560px] text-left text-sm">
+            <table className="w-full min-w-[640px] text-left text-sm">
               <thead className="bg-slate-50 font-label text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:bg-slate-800/80 dark:text-slate-400">
                 <tr>
                   <th className="px-4 py-2">Data</th>
                   <th className="px-4 py-2">Descrição</th>
+                  <th className="min-w-[7rem] max-w-[10rem] px-4 py-2">Pessoa</th>
                   <th className="px-4 py-2">Categoria</th>
                   <th className="px-4 py-2 text-right">Valor</th>
                   <th className="w-24 px-2 py-2 text-center" aria-label="Ações" />
@@ -418,6 +430,20 @@ export function CreditCardStatementMonthPage() {
                           </div>
                         </div>
                       </td>
+                      <td className="max-w-[10rem] px-4 py-2.5 align-top">
+                        <button
+                          type="button"
+                          onClick={() => setThirdPartyTxn(t)}
+                          className={`block w-full truncate text-left text-xs font-semibold transition-colors hover:underline ${
+                            t.thirdPartyName?.trim()
+                              ? "text-slate-700 hover:text-primary dark:text-slate-200 dark:hover:text-blue-300"
+                              : "text-slate-500 hover:text-primary dark:text-slate-400 dark:hover:text-blue-300"
+                          }`}
+                          title={t.thirdPartyName?.trim() ? "Editar vínculo" : "Vincular gasto a alguém"}
+                        >
+                          {t.thirdPartyName?.trim() ? t.thirdPartyName.trim() : "Vincular…"}
+                        </button>
+                      </td>
                       <td className="px-4 py-2.5 text-xs text-slate-600 dark:text-slate-400">{t.category}</td>
                       <td className="px-4 py-2.5 text-right font-semibold tabular-nums text-primary dark:text-slate-100">
                         {formatBRL(t.amount)}
@@ -445,6 +471,7 @@ export function CreditCardStatementMonthPage() {
                                 setInvoiceTxnFormOpen(false);
                                 setInvoiceEditingTxn(null);
                               }
+                              if (thirdPartyTxn?.id === t.id) setThirdPartyTxn(null);
                               deleteTransaction(t.id);
                             }}
                           >

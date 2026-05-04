@@ -400,9 +400,13 @@ export function DashboardPage() {
   }, [yearNetCur, yearNetPrev]);
 
   const chartBars = balancePeriod === "month" ? monthlyBars : yearlyBars;
+  /** No modo Mês o número deve refletir só lançamentos do mês corrente (não o saldo acumulado das contas). */
   const balanceHeadline =
-    balancePeriod === "month" ? "Saldo total consolidado" : "Patrimônio total";
-  const balanceAmount = balancePeriod === "month" ? primaryBalance : totalWealth;
+    balancePeriod === "month" ? "Fluxo líquido no mês" : "Patrimônio total";
+  const balanceAmountLabel =
+    balancePeriod === "month"
+      ? formatBRL(netMonthlyFlow, { showSign: true })
+      : formatBRL(totalWealth);
 
   const goalTargetAmt = nextMilestoneGoal?.target ?? targetTotal;
   const goalCurrentAmt = nextMilestoneGoal?.current ?? vestedTotal;
@@ -749,7 +753,7 @@ export function DashboardPage() {
                     {balanceHeadline}
                   </p>
                   <h2 className="font-headline text-2xl font-bold tabular-nums tracking-tight text-primary dark:text-slate-100 sm:text-3xl">
-                    {formatBRL(balanceAmount)}
+                    {balanceAmountLabel}
                   </h2>
                   {(balancePeriod === "month"
                     ? balanceTrendVsPrevMonthPct !== null && Number.isFinite(balanceTrendVsPrevMonthPct)

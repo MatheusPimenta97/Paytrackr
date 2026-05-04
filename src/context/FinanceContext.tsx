@@ -55,6 +55,13 @@ import {
 } from "../domain/money";
 import { openInvoiceTotalFromCardTransactions } from "../domain/creditCardInvoice";
 import { currentMonthKey, recurringChargeForCreditCard } from "../domain/recurring";
+import {
+  fetchFinanceEnvelopeFromCloud,
+  getLastRemoteFinanceTs,
+  pushFinanceEnvelopeToCloud,
+  setLastRemoteFinanceTs,
+  subscribeFinanceCloud,
+} from "../sync/firestoreFinanceSync";
 import { pullLanDevSync, pushLanDevSync } from "../sync/lanDevSync";
 
 function adjustCardInvoice(cards: CreditCard[], cardId: string, delta: number): CreditCard[] {
@@ -1140,12 +1147,108 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   const storageScopeRef = useRef(storageScope);
   storageScopeRef.current = storageScope;
 
+  const cloudSeedAttemptedRef = useRef(false);
+  const cloudPushDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const [state, dispatch] = useReducer(financeReducer, storageScope, (scope) => loadStateForScope(scope));
   const stateRef = useRef(state);
   stateRef.current = state;
 
   useEffect(() => {
     dispatch({ type: "HYDRATE", payload: loadStateForScope(storageScope) });
+  }, [storageScope]);
+
+  /** Firebase: puxa Firestore na entrada e mantém listener; último `updatedAt` vence (LWW). */
+  useEffect(() => {
+    if (storageScope === FINANCE_STORAGE_SCOPE_DEMO) return;
+    const uid = storageScope;
+    cloudSeedAttemptedRef.current = false;
+    let cancelled = false;
+
+    const applyRemoteIfNewer = (updatedAt: number, raw: string) => {
+      if (cancelled) return;
+      if (updatedAt <= getLastRemoteFinanceTs(uid)) return;
+      let parsed: Record<string, unknown>;
+      try {
+        parsed = JSON.parse(raw) as Record<string, unknown>;
+      } catch {
+        return;
+      }
+      if (!Array.isArray(parsed.transactions)) return;
+      const next = migrateFinanceState(parsed, createEmptyFinanceState());
+      setLastRemoteFinanceTs(uid, updatedAt);
+      dispatch({ type: "HYDRATE", payload: next });
+      try {
+        const keys = financeStorageKeys(uid);
+        localStorage.setItem(keys.state, JSON.stringify(next));
+        localStorage.setItem(keys.updatedAt, String(updatedAt));
+      } catch {
+        /* ignore */
+      }
+    };
+
+    const pullRemote = () => {
+      void (async () => {
+        const env = await fetchFinanceEnvelopeFromCloud(uid);
+        if (cancelled || !env) return;
+        if (env.updatedAt > getLastRemoteFinanceTs(uid)) {
+          applyRemoteIfNewer(env.updatedAt, env.raw);
+        }
+      })();
+    };
+
+    pullRemote();
+
+    /** Volta à aba / outro PC pode ter gravado depois do primeiro getDoc. */
+    function onVisibilityPull() {
+      if (document.visibilityState !== "visible" || cancelled) return;
+      pullRemote();
+    }
+    document.addEventListener("visibilitychange", onVisibilityPull);
+
+    /** Segundo pull após o debounce de upload no outro aparelho (~1s + margem). */
+    const delayedResync = window.setTimeout(() => pullRemote(), 2500);
+
+    const unsub = subscribeFinanceCloud(
+      uid,
+      (env) => {
+        if (cancelled) return;
+        if (env) {
+          if (env.updatedAt > getLastRemoteFinanceTs(uid)) {
+            applyRemoteIfNewer(env.updatedAt, env.raw);
+          }
+          return;
+        }
+        if (cloudSeedAttemptedRef.current) return;
+        const s = stateRef.current;
+        const hasData =
+          s.transactions.length > 0 ||
+          s.creditCards.length > 0 ||
+          s.goals.length > 0 ||
+          s.recurringExpenses.length > 0 ||
+          s.creditCardStatements.length > 0 ||
+          s.receivables.length > 0 ||
+          s.loyaltyPrograms.length > 0;
+        if (!hasData) return;
+        cloudSeedAttemptedRef.current = true;
+        const t = Date.now();
+        const json = JSON.stringify(s);
+        void (async () => {
+          const ok = await pushFinanceEnvelopeToCloud(uid, t, json);
+          if (ok && !cancelled) setLastRemoteFinanceTs(uid, t);
+        })();
+      },
+      (err) => {
+        console.warn("paytrackr: listener Firestore (finanças). Publique regras em firestore.rules.", err);
+      },
+    );
+
+    return () => {
+      cancelled = true;
+      document.removeEventListener("visibilitychange", onVisibilityPull);
+      window.clearTimeout(delayedResync);
+      unsub();
+    };
   }, [storageScope]);
 
   useEffect(() => {
@@ -1226,14 +1329,46 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     };
   }, [state, storageScope]);
 
+  /** Firebase: envia estado ao Firestore (debounce) para outros aparelhos. */
+  useEffect(() => {
+    if (storageScope === FINANCE_STORAGE_SCOPE_DEMO) return;
+    const uid = storageScope;
+    if (cloudPushDebounceRef.current) clearTimeout(cloudPushDebounceRef.current);
+    cloudPushDebounceRef.current = setTimeout(() => {
+      cloudPushDebounceRef.current = null;
+      const t = Date.now();
+      const json = JSON.stringify(stateRef.current);
+      void (async () => {
+        const ok = await pushFinanceEnvelopeToCloud(uid, t, json);
+        if (!ok) return;
+        setLastRemoteFinanceTs(uid, t);
+        try {
+          const keys = financeStorageKeys(uid);
+          localStorage.setItem(keys.updatedAt, String(t));
+        } catch {
+          /* ignore */
+        }
+      })();
+    }, 400);
+    return () => {
+      if (cloudPushDebounceRef.current) clearTimeout(cloudPushDebounceRef.current);
+    };
+  }, [state, storageScope]);
+
   /** Grava de novo ao trocar de aba/fechar (celular costuma “congelar” antes do efeito rodar). */
   useEffect(() => {
     function flush() {
       try {
         const t = Date.now();
-        const keys = financeStorageKeys(storageScopeRef.current);
+        const scope = storageScopeRef.current;
+        const keys = financeStorageKeys(scope);
         localStorage.setItem(keys.state, JSON.stringify(stateRef.current));
         localStorage.setItem(keys.updatedAt, String(t));
+        if (scope !== FINANCE_STORAGE_SCOPE_DEMO) {
+          void pushFinanceEnvelopeToCloud(scope, t, JSON.stringify(stateRef.current)).then((ok) => {
+            if (ok) setLastRemoteFinanceTs(scope, t);
+          });
+        }
       } catch {
         /* ignore */
       }

@@ -46,9 +46,19 @@ export function SettingsPage() {
         </p>
       )}
       <p className="mb-4 text-on-surface-variant">
-        Dados salvos localmente neste navegador ({state.transactions.length} lançamentos,{" "}
-        {state.goals.length} metas, {state.recurringExpenses.length} recorrentes). Sincronização na nuvem com Firestore
-        vem no próximo passo.
+        {mode === "firebase" ? (
+          <>
+            Dados neste aparelho: {state.transactions.length} lançamentos, {state.goals.length} metas,{" "}
+            {state.recurringExpenses.length} recorrentes. Com a conta Firebase e o Firestore configurados, o app
+            sincroniza automaticamente entre navegadores (última gravação vence). Publique as regras em{" "}
+            <code className="rounded bg-surface-container-high px-1">firestore.rules</code> no Console do Firebase.
+          </>
+        ) : (
+          <>
+            Modo demo: tudo fica só neste navegador ({state.transactions.length} lançamentos, {state.goals.length}{" "}
+            metas, {state.recurringExpenses.length} recorrentes). Use o backup abaixo para copiar para outro aparelho.
+          </>
+        )}
       </p>
       <p className="mb-8 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:gap-x-6">
         <Link

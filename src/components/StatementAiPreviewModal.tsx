@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { formatBRL, useFinance } from "../context/FinanceContext";
 import { CATEGORY_OPTIONS } from "../domain/categories";
+import { newId } from "../domain/id";
 import {
   coerceStatementReferenceMonthYm,
   formatStatementInvoiceCyclePt,
+  parseMoneyInput,
   statementInvoiceCycleIsoRange,
 } from "../domain/money";
 import type { StatementAiSuggestedTxn } from "../services/statementAi";
@@ -35,7 +37,13 @@ function iconForCategory(category: string): string {
   }
 }
 
-type RowState = StatementAiSuggestedTxn & { selected: boolean; entryKind: "expense" | "credit" };
+type RowState = StatementAiSuggestedTxn & {
+  rowKey: string;
+  selected: boolean;
+  entryKind: "expense" | "credit";
+  /** Linha criada pelo usuário (não veio da IA). */
+  isManual?: boolean;
+};
 
 type Props = {
   open: boolean;
@@ -80,6 +88,7 @@ export function StatementAiPreviewModal({
     setRows(
       suggestedTransactions.map((t) => ({
         ...t,
+        rowKey: newId(),
         entryKind: t.entryKind === "credit" ? "credit" : "expense",
         selected: true,
       })),
@@ -99,6 +108,36 @@ export function StatementAiPreviewModal({
   function updateRow(i: number, patch: Partial<RowState>) {
     setRows((prev) => prev.map((r, j) => (j === i ? { ...r, ...patch } : r)));
   }
+
+  function addManualRow() {
+    const defaultDate = /^\d{4}-\d{2}$/.test(statementReferenceMonth)
+      ? `${statementReferenceMonth}-15`
+      : new Date().toISOString().slice(0, 10);
+    setRows((prev) => [
+      ...prev,
+      {
+        rowKey: newId(),
+        date: defaultDate,
+        description: "",
+        amount: 0,
+        category: "Outros",
+        installmentNote: null,
+        entryKind: "expense",
+        selected: true,
+        isManual: true,
+      },
+    ]);
+  }
+
+  function removeRow(i: number) {
+    setRows((prev) => prev.filter((_, j) => j !== i));
+  }
+
+  const canImport = rows.some((r) => r.selected && r.amount > 0 && r.description.trim());
+  const totalDiff =
+    statementTotalGuess != null && statementTotalGuess > 0
+      ? Math.round((statementTotalGuess - selectedNet) * 100) / 100
+      : null;
 
   function importSelected() {
     const refYm = coerceStatementReferenceMonthYm(statementReferenceMonth);
@@ -179,20 +218,48 @@ export function StatementAiPreviewModal({
             </pre>
           </div>
           {statementTotalGuess != null && statementTotalGuess > 0 && (
-            <p className="mt-2 text-xs font-semibold text-primary dark:text-emerald-300">
-              Total indicado na fatura (IA): {formatBRL(statementTotalGuess)} · Soma líquida das linhas selecionadas
-              (despesas − créditos): {formatBRL(selectedNet)}
-            </p>
+            <div className="mt-2 space-y-1 text-xs">
+              <p className="font-semibold text-primary dark:text-emerald-300">
+                Total indicado na fatura (IA): {formatBRL(statementTotalGuess)} · Soma líquida das linhas selecionadas
+                (despesas − créditos): {formatBRL(selectedNet)}
+              </p>
+              {totalDiff != null && Math.abs(totalDiff) >= 0.02 ? (
+                <p className="rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 font-medium text-amber-950 dark:border-amber-400/35 dark:bg-amber-500/15 dark:text-amber-100">
+                  Diferença em relação ao total da fatura:{" "}
+                  <strong>{totalDiff > 0 ? `+${formatBRL(totalDiff)}` : formatBRL(totalDiff)}</strong>
+                  {totalDiff > 0
+                    ? " — a soma das linhas está abaixo do total (faltam lançamentos ou valores). Use “Incluir linha manual” abaixo."
+                    : " — a soma está acima do total (revise valores, duplicatas ou marque créditos como “Crédito (abate)”)."}
+                </p>
+              ) : null}
+            </div>
           )}
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-outline-variant/15 px-3 py-2 dark:border-slate-700">
+          <button
+            type="button"
+            onClick={addManualRow}
+            className="inline-flex items-center gap-1 rounded-lg border border-secondary/50 bg-secondary/10 px-3 py-1.5 text-xs font-bold text-secondary hover:bg-secondary/20 dark:border-emerald-500/40 dark:bg-emerald-950/40 dark:text-emerald-200 dark:hover:bg-emerald-900/50"
+          >
+            <span className="material-symbols-outlined text-[16px]">add</span>
+            Incluir linha manual
+          </button>
+          <span className="text-[10px] text-on-surface-variant dark:text-slate-500">
+            Para o que a IA não leu, preencha data, descrição e valor (use vírgula nos centavos).
+          </span>
         </div>
 
         <div className="max-h-[38vh] overflow-x-auto overflow-y-auto px-3 py-2">
           {rows.length === 0 ? (
-            <p className="px-2 py-6 text-center text-sm text-on-surface-variant">Nenhum lançamento retornado.</p>
+            <p className="px-2 py-6 text-center text-sm text-on-surface-variant">
+              Nenhum lançamento retornado. Use o botão acima para incluir linhas manualmente.
+            </p>
           ) : (
-            <table className="w-full min-w-[640px] border-collapse text-left text-xs">
+            <table className="w-full min-w-[680px] border-collapse text-left text-xs">
               <thead>
                 <tr className="border-b border-outline-variant/30 text-[10px] uppercase text-on-surface-variant dark:border-slate-600">
+                  <th className="p-2 w-8" aria-label="Remover" />
                   <th className="p-2">✓</th>
                   <th className="p-2">Data</th>
                   <th className="p-2">Período</th>
@@ -208,7 +275,18 @@ export function StatementAiPreviewModal({
                   const inC = !!(cycle && d >= cycle.startIso && d <= cycle.endIso);
                   const willSkip = !inC || cycleIsPast;
                   return (
-                  <tr key={`${i}-${r.date}-${r.description.slice(0, 24)}`} className="border-b border-outline-variant/15 dark:border-slate-700">
+                  <tr key={r.rowKey} className="border-b border-outline-variant/15 dark:border-slate-700">
+                    <td className="p-1 align-top">
+                      <button
+                        type="button"
+                        onClick={() => removeRow(i)}
+                        className="mt-1.5 rounded p-0.5 text-on-surface-variant hover:bg-error/15 hover:text-error dark:hover:bg-red-950/50 dark:hover:text-red-300"
+                        title="Remover linha"
+                        aria-label="Remover linha"
+                      >
+                        <span className="material-symbols-outlined text-[18px]">delete</span>
+                      </button>
+                    </td>
                     <td className="p-1 align-top">
                       <input
                         type="checkbox"
@@ -257,11 +335,11 @@ export function StatementAiPreviewModal({
                       <input
                         type="text"
                         inputMode="decimal"
-                        value={String(r.amount).replace(".", ",")}
+                        placeholder="0,00"
+                        value={r.amount === 0 ? "" : String(r.amount).replace(".", ",")}
                         onChange={(e) => {
-                          const v = e.target.value.replace(",", ".").replace(/[^\d.]/g, "");
-                          const n = Number.parseFloat(v);
-                          updateRow(i, { amount: Number.isFinite(n) ? Math.abs(n) : 0 });
+                          const n = parseMoneyInput(e.target.value);
+                          updateRow(i, { amount: n != null && n >= 0 ? n : 0 });
                         }}
                         className="w-full rounded bg-surface-container-high px-2 py-1 dark:bg-slate-800"
                       />
@@ -301,7 +379,7 @@ export function StatementAiPreviewModal({
           </button>
           <button
             type="button"
-            disabled={rows.filter((r) => r.selected).length === 0}
+            disabled={!canImport}
             onClick={() => importSelected()}
             className="rounded-lg bg-secondary px-4 py-2 text-sm font-bold text-white shadow-sm disabled:opacity-40 dark:bg-emerald-700"
           >

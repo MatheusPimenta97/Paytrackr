@@ -1,10 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import { AttachmentPreviewModal } from "../components/AttachmentPreviewModal";
 import { CardBrandLogo } from "../components/CardBrandLogo";
 import { CreditCardStatementModal } from "../components/CreditCardStatementModal";
 import { CreditCardThirdPartyModal } from "../components/CreditCardThirdPartyModal";
-import { TransactionFormModal } from "../components/TransactionFormModal";
 import { useFinance, formatBRL } from "../context/FinanceContext";
 import { BENEFIT_BUCKET_LABEL } from "../domain/cardWallet";
 import type { BenefitBucket } from "../domain/types";
@@ -88,10 +87,6 @@ export function CreditCardDetailPage() {
     amount: number;
   } | null>(null);
   const [attachmentPreview, setAttachmentPreview] = useState<{ dataUrl: string; name: string } | null>(null);
-  /** Mês YYYY-MM do ponto clicado — detalhe da fatura / ciclo */
-  const [invoiceDetailYm, setInvoiceDetailYm] = useState<string | null>(null);
-  const [invoiceTxnFormOpen, setInvoiceTxnFormOpen] = useState(false);
-  const [invoiceEditingTxn, setInvoiceEditingTxn] = useState<Transaction | null>(null);
   const [invoiceHistoryHorizonStr, setInvoiceHistoryHorizonStr] = useState<string>("4");
 
   const cardTxns = useMemo(() => {
@@ -181,28 +176,6 @@ export function CreditCardDetailPage() {
       return { ym, label, amount, isCurrent };
     });
   }, [card, statements, rawAmountSumByReferenceMonth, invoiceHistoryHorizon]);
-
-  const invoiceDetailCycleTxns = useMemo(() => {
-    if (!invoiceDetailYm || !card || card.kind !== "credito") return [];
-    return cardTxns
-      .filter((t) => chartReferenceMonthForCardTransaction(t, card.closingDay) === invoiceDetailYm)
-      .sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
-  }, [invoiceDetailYm, card, cardTxns]);
-
-  useEffect(() => {
-    if (!invoiceDetailYm) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
-      if (invoiceTxnFormOpen) {
-        setInvoiceTxnFormOpen(false);
-        setInvoiceEditingTxn(null);
-        return;
-      }
-      setInvoiceDetailYm(null);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [invoiceDetailYm, invoiceTxnFormOpen]);
 
   const categoryRows = useMemo(() => {
     const map = new Map<string, number>();
@@ -297,15 +270,6 @@ export function CreditCardDetailPage() {
 
   const recentTxns = cardTxns.slice(0, 5);
 
-  const cycleModalStatement = invoiceDetailYm ? statements.find((s) => s.referenceMonth === invoiceDetailYm) : undefined;
-  const cycleModalRange =
-    invoiceDetailYm && isCredito ? statementInvoiceCycleIsoRange(invoiceDetailYm, card.closingDay) : null;
-  const cycleModalRawSum =
-    invoiceDetailYm && isCredito ? (rawAmountSumByReferenceMonth.get(invoiceDetailYm) ?? 0) : 0;
-  const cycleModalNetFromTxns = Math.max(0, -cycleModalRawSum);
-  const cycleModalTotal =
-    cycleModalStatement != null ? cycleModalStatement.amount : cycleModalNetFromTxns;
-
   return (
     <div className="mx-auto max-w-7xl space-y-3 px-3 pb-24 md:space-y-4 md:px-6 md:pb-8">
       <CreditCardThirdPartyModal
@@ -322,171 +286,6 @@ export function CreditCardDetailPage() {
         dataUrl={attachmentPreview?.dataUrl ?? null}
         fileName={attachmentPreview?.name ?? null}
       />
-      <TransactionFormModal
-        open={invoiceTxnFormOpen}
-        editingTransaction={invoiceEditingTxn}
-        stackOnTop
-        onClose={() => {
-          setInvoiceTxnFormOpen(false);
-          setInvoiceEditingTxn(null);
-        }}
-      />
-      {invoiceDetailYm && isCredito ? (
-        <div
-          className="fixed inset-0 z-[125] flex items-center justify-center bg-black/50 p-3"
-          role="dialog"
-          aria-modal
-          aria-labelledby="inv-cycle-title"
-          onClick={() => setInvoiceDetailYm(null)}
-        >
-          <div
-            className="flex max-h-[88vh] w-full max-w-lg flex-col overflow-hidden rounded-xl border border-outline-variant/20 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex shrink-0 items-start justify-between gap-2 border-b border-outline-variant/25 px-4 py-3 dark:border-slate-700">
-              <div className="min-w-0">
-                <h2 id="inv-cycle-title" className="font-headline text-lg font-bold text-primary dark:text-slate-100">
-                  {monthLabel(invoiceDetailYm)}
-                </h2>
-                {cycleModalRange ? (
-                  <p className="mt-0.5 text-xs text-slate-600 dark:text-slate-400">
-                    Período: {formatStatementInvoiceCyclePt(cycleModalRange)}
-                  </p>
-                ) : null}
-                <p className="mt-2 text-sm font-semibold text-primary dark:text-slate-100">
-                  Total (gráfico): {formatBRL(cycleModalTotal)}
-                  {cycleModalStatement ? (
-                    <span className="ml-1 font-normal text-slate-500 dark:text-slate-400">· fatura salva</span>
-                  ) : (
-                    <span className="ml-1 font-normal text-slate-500 dark:text-slate-400">· líquido dos lançamentos</span>
-                  )}
-                </p>
-              </div>
-              <button
-                type="button"
-                className="shrink-0 rounded-full p-1 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
-                onClick={() => setInvoiceDetailYm(null)}
-                aria-label="Fechar"
-              >
-                <span className="material-symbols-outlined text-[22px]">close</span>
-              </button>
-            </div>
-            <div className="flex shrink-0 flex-col gap-2 border-b border-outline-variant/15 px-4 py-3 dark:border-slate-700 sm:flex-row sm:flex-wrap sm:items-center">
-              {cycleModalStatement ? (
-                <>
-                  {cycleModalStatement.attachmentDataUrl ? (
-                    <button
-                      type="button"
-                      className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-primary/40 bg-primary-container/30 px-3 py-2 text-xs font-semibold text-primary shadow-sm transition-colors hover:bg-primary-container/50 dark:border-blue-600/50 dark:bg-blue-950/50 dark:text-blue-100 dark:hover:bg-blue-900/50"
-                      onClick={() =>
-                        setAttachmentPreview({
-                          dataUrl: cycleModalStatement.attachmentDataUrl!,
-                          name: cycleModalStatement.attachmentName ?? "fatura",
-                        })
-                      }
-                    >
-                      <span className="material-symbols-outlined text-[18px]">description</span>
-                      Ver fatura
-                    </button>
-                  ) : null}
-                  <button
-                    type="button"
-                    className="inline-flex items-center justify-center rounded-lg border border-outline-variant/50 px-3 py-2 text-xs font-semibold text-primary transition-colors hover:bg-slate-50 dark:border-slate-600 dark:hover:bg-slate-800"
-                    onClick={() => {
-                      setInvoiceDetailYm(null);
-                      setStatementPrefill(null);
-                      setStatementEditing(cycleModalStatement);
-                      setStatementOpen(true);
-                    }}
-                  >
-                    Editar fatura
-                  </button>
-                </>
-              ) : (
-                <button
-                  type="button"
-                  className="inline-flex items-center justify-center rounded-lg border border-primary/40 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary transition-colors hover:bg-primary/15 dark:bg-blue-950/30 dark:hover:bg-blue-900/40"
-                  onClick={() => {
-                    setInvoiceDetailYm(null);
-                    setStatementEditing(null);
-                    setStatementPrefill({
-                      referenceMonth: invoiceDetailYm,
-                      amount: cycleModalNetFromTxns,
-                    });
-                    setStatementOpen(true);
-                  }}
-                >
-                  Registrar esta fatura
-                </button>
-              )}
-            </div>
-            <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3 custom-scrollbar">
-              {invoiceDetailCycleTxns.length === 0 ? (
-                <p className="py-8 text-center text-sm text-slate-500 dark:text-slate-400">
-                  Nenhum lançamento neste período.
-                </p>
-              ) : (
-                <div className="overflow-hidden rounded-xl border border-slate-200/90 dark:border-slate-700">
-                  <table className="w-full text-left text-xs">
-                    <thead className="bg-slate-50 dark:bg-slate-800/80">
-                      <tr className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                        <th className="px-3 py-2">Data</th>
-                        <th className="px-3 py-2">Descrição</th>
-                        <th className="px-3 py-2 text-right">Valor</th>
-                        <th className="w-10 px-2 py-2 text-center" aria-label="Ações" />
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 bg-white dark:divide-slate-800 dark:bg-slate-900">
-                      {invoiceDetailCycleTxns.map((t) => (
-                        <tr
-                          key={t.id}
-                          className={`transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-800/50 ${t.skipCardInvoiceDelta ? "opacity-[0.72]" : ""}`}
-                        >
-                          <td className="whitespace-nowrap px-3 py-2 text-slate-600 dark:text-slate-400">
-                            {formatDateShort(t.date)}
-                          </td>
-                          <td className="px-3 py-2">
-                            <div className="font-medium text-primary dark:text-slate-100">{t.description}</div>
-                            <div className="text-[10px] text-slate-500 dark:text-slate-400">
-                              {t.category}
-                              {t.skipCardInvoiceDelta ? " · só histórico" : ""}
-                            </div>
-                            {t.justification?.trim() ? (
-                              <div
-                                className="mt-1 line-clamp-3 text-[10px] leading-snug text-slate-600 dark:text-slate-500"
-                                title={t.justification.trim()}
-                              >
-                                {t.justification.trim()}
-                              </div>
-                            ) : null}
-                          </td>
-                          <td className="px-3 py-2 text-right font-semibold tabular-nums text-primary dark:text-slate-100">
-                            {formatBRL(t.amount)}
-                          </td>
-                          <td className="px-1 py-2 text-center align-middle">
-                            <button
-                              type="button"
-                              className="rounded p-1 text-slate-500 transition-colors hover:bg-slate-100 hover:text-primary dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-blue-300"
-                              aria-label="Editar lançamento"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setInvoiceEditingTxn(t);
-                                setInvoiceTxnFormOpen(true);
-                              }}
-                            >
-                              <span className="material-symbols-outlined text-[18px]">edit</span>
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      ) : null}
       <CreditCardStatementModal
         open={statementOpen}
         creditCardId={card.id}
@@ -691,7 +490,6 @@ export function CreditCardDetailPage() {
               return;
             }
             resetCreditCardActivity(card.id);
-            setInvoiceDetailYm(null);
           }}
         >
           Zerar agora
@@ -744,7 +542,8 @@ export function CreditCardDetailPage() {
                   </label>
                 </div>
                 <p className="mb-2 text-[10px] leading-snug text-slate-500 dark:text-slate-400">
-                  Ciclo pelo fechamento do cartão. Toque em um ponto para ver lançamentos e a fatura anexada.
+                  Ciclo pelo fechamento do cartão. Toque em um ponto para abrir a página completa daquele mês
+                  (lançamentos, fatura e anexo).
                 </p>
                 {(() => {
                   const VB_W = 320;
@@ -774,9 +573,7 @@ export function CreditCardDetailPage() {
                   const labelStep = Math.max(1, Math.ceil(series.length / 8));
                   const valueStep = series.length > 12 ? labelStep : 1;
                   const showValueAt = (idx: number) =>
-                    idx % valueStep === 0 ||
-                    idx === pts.length - 1 ||
-                    invoiceDetailYm === pts[idx]!.ym;
+                    idx % valueStep === 0 || idx === pts.length - 1;
                   return (
                     <div className="w-full shrink-0 overflow-x-auto rounded-lg border border-slate-100/90 bg-slate-50/50 dark:border-slate-700/80 dark:bg-slate-800/30">
                       <svg
@@ -828,7 +625,6 @@ export function CreditCardDetailPage() {
                           );
                         })}
                         {pts.map((p) => {
-                          const isOpen = invoiceDetailYm === p.ym;
                           return (
                             <circle
                               key={p.ym}
@@ -836,19 +632,17 @@ export function CreditCardDetailPage() {
                               tabIndex={0}
                               cx={p.x}
                               cy={p.y}
-                              r={isOpen ? 6 : 4}
-                              className={`cursor-pointer transition-all ${
-                                isOpen
-                                  ? "fill-primary stroke-white stroke-[2.5] dark:fill-blue-400 dark:stroke-slate-900"
-                                  : p.isCurrent
-                                    ? "fill-white stroke-primary stroke-[2] dark:fill-slate-900 dark:stroke-blue-400"
-                                    : "fill-white stroke-slate-300 stroke-[1.5] dark:fill-slate-900 dark:stroke-slate-500"
+                              r={4}
+                              className={`cursor-pointer transition-all hover:opacity-90 ${
+                                p.isCurrent
+                                  ? "fill-white stroke-primary stroke-[2] dark:fill-slate-900 dark:stroke-blue-400"
+                                  : "fill-white stroke-slate-300 stroke-[1.5] dark:fill-slate-900 dark:stroke-slate-500"
                               }`}
-                              onClick={() => setInvoiceDetailYm(p.ym)}
+                              onClick={() => navigate(`/cartao/${cardId}/fatura/${p.ym}`)}
                               onKeyDown={(e) => {
                                 if (e.key === "Enter" || e.key === " ") {
                                   e.preventDefault();
-                                  setInvoiceDetailYm(p.ym);
+                                  navigate(`/cartao/${cardId}/fatura/${p.ym}`);
                                 }
                               }}
                             >
@@ -978,9 +772,12 @@ export function CreditCardDetailPage() {
               >
                 <div className="mb-2 flex items-start justify-between gap-2">
                   <div>
-                    <p className="font-label text-[9px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    <Link
+                      to={`/cartao/${card.id}/fatura/${s.referenceMonth}`}
+                      className="font-label text-[9px] font-semibold uppercase tracking-wider text-primary hover:underline dark:text-blue-300"
+                    >
                       {monthLabel(s.referenceMonth)}
-                    </p>
+                    </Link>
                     <p className="mt-0.5 font-headline text-sm font-bold tabular-nums text-primary dark:text-slate-100">{formatBRL(s.amount)}</p>
                     {cycle ? (
                       <p className="mt-1 text-[9px] leading-tight text-slate-500 dark:text-slate-400">
@@ -1000,6 +797,13 @@ export function CreditCardDetailPage() {
                 </div>
                 {s.note ? <p className="mb-1 text-[10px] text-slate-600 dark:text-slate-400">{s.note}</p> : null}
                 <div className="flex flex-wrap gap-1.5 border-t border-outline-variant/10 pt-2 dark:border-slate-600">
+                  <Link
+                    to={`/cartao/${card.id}/fatura/${s.referenceMonth}`}
+                    className="flex items-center text-[11px] font-semibold text-primary hover:underline dark:text-blue-300"
+                  >
+                    <span className="material-symbols-outlined mr-0.5 text-sm">calendar_view_month</span>
+                    Página do mês
+                  </Link>
                   {s.attachmentDataUrl ? (
                     <>
                       <button

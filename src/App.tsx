@@ -30,6 +30,9 @@ const PontosPage = lazy(() => import("./pages/PontosPage").then((m) => ({ defaul
 const CreditCardDetailPage = lazy(() =>
   import("./pages/CreditCardDetailPage").then((m) => ({ default: m.CreditCardDetailPage }))
 );
+const CreditCardStatementMonthPage = lazy(() =>
+  import("./pages/CreditCardStatementMonthPage").then((m) => ({ default: m.CreditCardStatementMonthPage }))
+);
 const AiAssistantPage = lazy(() =>
   import("./pages/AiAssistantPage").then((m) => ({ default: m.AiAssistantPage }))
 );
@@ -78,6 +81,7 @@ export default function App() {
           <Route path="/analytics" element={<Navigate to="/gastos-recorrentes" replace />} />
           <Route path="/lancamentos" element={<LancamentosPage />} />
           <Route path="/cartao/:cardId" element={<CreditCardDetailPage />} />
+          <Route path="/cartao/:cardId/fatura/:referenceMonth" element={<CreditCardStatementMonthPage />} />
           <Route path="/valores-a-receber" element={<ValoresAReceberPage />} />
           <Route path="/pontos" element={<PontosPage />} />
           <Route path="/payments" element={<LancamentosPage />} />

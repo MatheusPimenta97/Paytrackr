@@ -6,6 +6,7 @@ import { TransactionFormModal } from "../components/TransactionFormModal";
 import { formatBRL, useFinance } from "../context/FinanceContext";
 import {
   chartReferenceMonthForCardTransaction,
+  coerceStatementReferenceMonthYm,
   formatDateShort,
   formatStatementInvoiceCyclePt,
   statementInvoiceCycleIsoRange,
@@ -188,6 +189,8 @@ export function CreditCardStatementMonthPage() {
         open={invoiceTxnFormOpen}
         editingTransaction={invoiceEditingTxn}
         initialCreditCardId={invoiceEditingTxn ? null : card.id}
+        initialStatementReferenceMonth={refYm}
+        pinStatementToCreditCardId={card.id}
         stackOnTop
         onClose={() => {
           setInvoiceTxnFormOpen(false);
@@ -378,7 +381,8 @@ export function CreditCardStatementMonthPage() {
                 {filteredCycleTxns.map((t) => {
                   const d = t.date.slice(0, 10);
                   const inC = !!(cycleRange && d >= cycleRange.startIso && d <= cycleRange.endIso);
-                  const willSkip = !inC || cycleIsPast;
+                  const pinnedHere = coerceStatementReferenceMonthYm(t.statementReferenceMonth) === refYm;
+                  const willSkip = cycleIsPast || (!inC && !pinnedHere);
                   return (
                     <tr
                       key={t.id}

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CATEGORY_OPTIONS } from "../domain/categories";
 import { BENEFIT_BUCKET_LABEL, BENEFIT_BUCKETS, isBenefitBucket } from "../domain/cardWallet";
-import { parseMoneyInput } from "../domain/money";
+import { coerceStatementReferenceMonthYm, parseMoneyInput } from "../domain/money";
 import type { BenefitBucket, Transaction, TxnPaymentMethod, TxnStatus } from "../domain/types";
 import { useFinance } from "../context/FinanceContext";
 
@@ -67,6 +67,13 @@ type Props = {
   editingTransaction?: Transaction | null;
   /** z-index acima do detalhe de fatura no cartão (z-125) e do modal de fatura (z-130). */
   stackOnTop?: boolean;
+  /**
+   * Aberto a partir da página de um mês de fatura: grava `statementReferenceMonth` no lançamento
+   * para ele permanecer nessa fatura mesmo se a data cair em outro ciclo.
+   */
+  initialStatementReferenceMonth?: string | null;
+  /** Cartão da fatura em que o modal foi aberto — o vínculo só aplica se o lançamento continuar neste cartão. */
+  pinStatementToCreditCardId?: string | null;
 };
 
 export function TransactionFormModal({
@@ -75,6 +82,8 @@ export function TransactionFormModal({
   initialCreditCardId = null,
   editingTransaction = null,
   stackOnTop = false,
+  initialStatementReferenceMonth = null,
+  pinStatementToCreditCardId = null,
 }: Props) {
   const { addTransaction, updateTransaction, state } = useFinance();
   const [description, setDescription] = useState("");
@@ -102,6 +111,19 @@ export function TransactionFormModal({
     () => (creditCardId ? state.creditCards.find((c) => c.id === creditCardId) : null),
     [creditCardId, state.creditCards]
   );
+
+  const pinYm = useMemo(
+    () => coerceStatementReferenceMonthYm(initialStatementReferenceMonth ?? undefined),
+    [initialStatementReferenceMonth]
+  );
+  const pinCardId = pinStatementToCreditCardId?.trim() || null;
+  const statementPagePinActive = !!(pinYm && pinCardId);
+  const pinMonthTitle = useMemo(() => {
+    if (!pinYm) return "";
+    const [y, m] = pinYm.split("-").map(Number);
+    if (!y || !m) return pinYm;
+    return new Date(y, m - 1, 1).toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+  }, [pinYm]);
 
   useEffect(() => {
     if (!open) {
@@ -244,6 +266,14 @@ export function TransactionFormModal({
 
     const justificationPayload = justTrim ? justTrim : null;
 
+    const statementRefPatch =
+      pinYm && pinCardId
+        ? {
+            statementReferenceMonth:
+              ccid === pinCardId && card?.kind === "credito" ? pinYm : null,
+          }
+        : {};
+
     if (editingTransaction) {
       updateTransaction(editingTransaction.id, {
         date,
@@ -261,6 +291,7 @@ export function TransactionFormModal({
         paymentAttachmentDataUrl: attachUrl,
         paymentAttachmentName: attachName,
         justification: justificationPayload,
+        ...statementRefPatch,
       });
     } else {
       addTransaction({
@@ -279,6 +310,7 @@ export function TransactionFormModal({
         paymentAttachmentDataUrl: attachUrl,
         paymentAttachmentName: attachName,
         justification: justificationPayload,
+        ...statementRefPatch,
       });
       setDescription("");
       setAmountRaw("");
@@ -376,6 +408,12 @@ export function TransactionFormModal({
                 onChange={(e) => setDate(e.target.value)}
                 className="w-full rounded-lg bg-surface-container-high px-3 py-2 text-sm"
               />
+              {statementPagePinActive && creditCardId === pinCardId && selectedCard?.kind === "credito" ? (
+                <p className="mt-1.5 text-[10px] leading-snug text-on-surface-variant">
+                  Fica na fatura de <span className="font-semibold text-on-surface">{pinMonthTitle}</span> nesta
+                  página, mesmo que a data esteja fora do período do ciclo.
+                </p>
+              ) : null}
             </div>
           </div>
           <div>

@@ -99,6 +99,8 @@ async function chatCompletionJson(input: {
     role: "system" | "user";
     content: unknown;
   }>;
+  /** Faturas longas precisam de saída grande; 4096 truncava o JSON no meio da lista. */
+  maxTokens?: number;
 }): Promise<string> {
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
@@ -110,7 +112,7 @@ async function chatCompletionJson(input: {
       model: input.model || DEFAULT_MODEL_FALLBACK,
       response_format: { type: "json_object" },
       messages: input.messages,
-      max_tokens: 4096,
+      max_tokens: input.maxTokens ?? 4096,
     }),
   });
 
@@ -184,6 +186,14 @@ function extractResponsesOutputText(data: unknown): string | null {
 function buildStatementExtractionGuide(categoriesLine: string): string {
   return `INCLUA em suggestedTransactions TODAS as linhas financeiras desta fatura que compõem o total a pagar / limite utilizado, de TODAS as seções (nacionais, internacional em R$, IOF, repasse de IOF, encargos, multa, juros, parcelas, etc.). Não pare na primeira tabela.
 
+LAYOUT ITAÚ / SIMILARES (MUITO COMUM — siga à risca):
+• A seção "Lançamentos: compras e saques" (e títulos parecidos) costuma vir em DUAS COLUNAS na mesma página. Percorra a COLUNA ESQUERDA inteira (todas as linhas DATA + estabelecimento + valor) e depois a COLUNA DIREITA inteira — ou linha a linha se estiverem intercaladas. Não importe só a metade esquerda da página.
+• "Pagamentos efetuados" é bloco separado; cada linha com valor deve virar transação (em geral entryKind "credit" se for pagamento que reduz o saldo da fatura).
+• Coluna ESTABELECIMENTO em duas linhas: junte na description (ex.: linha1 "AIRBNB * HMQPQ 01/04" + linha2 "viagem SAO PAULO" → uma string coerente). Se houver padrão de parcela "NN/MM" (ex.: 01/04), repita em installmentNote.
+• Datas só como DD/MM: use o mês de referência YYYY-MM enviado pelo usuário e o cabeçalho da fatura ("fechamento", "vencimento", "previsão") para inferir o ANO; lançamentos 15/12 vs 08/01 podem cair em anos diferentes na virada.
+• Valores negativos na coluna "Valor em R$" (ex.: -0,01, -6.008,56) são créditos/estornos na fatura: entryKind "credit" e amount = valor absoluto. Não omita valores pequenos.
+• Se o PDF veio como texto e a ordem das colunas ficou embaralhada, reconstrua cada lançamento casando DATA + descrição + VALOR EM R$.
+
 REGRAS DE DESCRIPTION (obrigatório):
 • Para COMPRAS (nacional ou internacional): use o NOME DO ESTABELECIMENTO exatamente como impresso na fatura (ex.: "Google YouTubePremiumSA", "CARREFOUR TBE 24BARUERI", "CURSOR, AI POWERED IDEN", "TOTALPASSSAO PAULOBRA"). NUNCA substitua por rótulos genéricos como "Compras nacionais - EB", "Compras internacionais", "Estabelecimento X" ou siglas inventadas — isso quebra a categorização.
 • Para tarifas/encargos sem estabelecimento comercial: descrições fixas claras são OK (ex.: "IOF — financiamento", "Encargos refinanciamento (rotativo)", "Juros de mora", "Multa por atraso", "Repasse de IOF (internacional)", "Pagamento via conta").
@@ -197,7 +207,7 @@ INTERNACIONAL E IOF:
 CATEGORIA (category):
 • Use o nome do estabelecimento E palavras da fatura (ex.: "supermercado", "lazer", "outros SAO PAULO", "restaurante") para escolher entre as opções. Ex.: supermercado/padaria → Alimentação; streaming/cinema/academia/pass → Lazer; farmácia/hospital → Saúde; Uber/combustível → Transporte; hotel/aéreo → Viagem; software/nuvem (Cursor, AWS, GitHub) → Eletrônicos; loja de roupa/calçados (Zara, C&A, Renner…) → Vestuário; juros de mora, encargos de refinanciamento/rotativo, multa, IOF, tarifa, anuidade → **Juros e encargos** (string exata); pagamento que abate a fatura continua credit + descrição clara, não use "Juros e encargos" para isso.
 
-entryKind "credit" apenas para pagamentos que abatem a fatura (ex. pagamento via conta). amount sempre > 0 (magnitude).
+entryKind "credit" para pagamentos que abatem a fatura E para estornos/valores negativos impressos (alinhe com o bloco "LAYOUT ITAÚ" acima). amount sempre magnitude > 0.
 
 statementTotalGuess: número do TOTAL FECHADO desta fatura em BRL. Prioridade MÁXIMA a frases explícitas como "O total da sua fatura é", "Total da fatura", depois "Limite total utilizado" / "Valor total a pagar" quando for claramente o fechamento. NÃO use só "Total lançamentos no cartão" ou "Total compras e saques" se existir um total maior que já inclua internacional + encargos + IOF. statementTotalGuess deve coincidir com esse total integral quando estiver legível.
 
@@ -271,6 +281,7 @@ async function responsesCompletionJson(input: {
   apiKey: string;
   model: string;
   userContent: Array<Record<string, unknown>>;
+  maxOutputTokens?: number;
 }): Promise<string> {
   const model = pickModelForNativePdf(input.model);
   const res = await fetch("https://api.openai.com/v1/responses", {
@@ -282,7 +293,7 @@ async function responsesCompletionJson(input: {
     body: JSON.stringify({
       model,
       input: [{ role: "user", content: input.userContent }],
-      max_output_tokens: 4096,
+      max_output_tokens: input.maxOutputTokens ?? 4096,
       text: { format: { type: "json_object" } },
     }),
   });
@@ -334,6 +345,7 @@ ${monthHint}`;
   const content = await responsesCompletionJson({
     apiKey: input.apiKey,
     model: input.model,
+    maxOutputTokens: 16384,
     userContent: [
       {
         type: "input_text",
@@ -356,6 +368,25 @@ ${monthHint}`;
     });
   }
   return normalizeAnalyzePayload(parsed);
+}
+
+/** Interpreta amount vindo da IA como número ou string pt-BR (ex.: "6.008,56", "-232,14"). */
+function parseStatementAmountField(raw: unknown): number {
+  if (typeof raw === "number" && Number.isFinite(raw)) return Math.abs(raw);
+  if (typeof raw !== "string") return 0;
+  let s = raw.trim().replace(/\s/g, "").replace(/R\$\s?/gi, "");
+  s = s.replace(/^-\s*/, "-");
+  const neg = s.startsWith("-");
+  if (neg) s = s.slice(1).trim();
+  // Formato BR: milhar com ponto, decimal com vírgula
+  if (/,/.test(s) && /\d,\d{1,4}$/.test(s)) {
+    s = s.replace(/\./g, "").replace(",", ".");
+  } else {
+    s = s.replace(",", ".");
+  }
+  const n = parseFloat(s);
+  if (!Number.isFinite(n)) return 0;
+  return Math.abs(n);
 }
 
 function normalizeAnalyzePayload(parsed: unknown): StatementAnalyzeResult {
@@ -381,12 +412,7 @@ function normalizeAnalyzePayload(parsed: unknown): StatementAnalyzeResult {
       const date = typeof r.date === "string" ? r.date.trim() : "";
       const description = typeof r.description === "string" ? r.description.trim() : "";
       const category = typeof r.category === "string" ? r.category.trim() : "";
-      const amt =
-        typeof r.amount === "number" && Number.isFinite(r.amount)
-          ? Math.abs(r.amount)
-          : typeof r.amount === "string"
-            ? Math.abs(Number.parseFloat(r.amount.replace(",", ".")) || 0)
-            : 0;
+      const amt = parseStatementAmountField(r.amount);
       if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || description.length === 0 || amt <= 0) continue;
       const installmentNote =
         typeof r.installmentNote === "string" && r.installmentNote.trim()
@@ -435,6 +461,7 @@ ${monthHint}`;
   const content = await chatCompletionJson({
     apiKey: input.apiKey,
     model: input.model,
+    maxTokens: 16384,
     messages: [
       { role: "system", content: system },
       {
@@ -486,6 +513,7 @@ ${monthHint}`;
   const content = await chatCompletionJson({
     apiKey: input.apiKey,
     model: input.model,
+    maxTokens: 16384,
     messages: [
       { role: "system", content: system },
       {
@@ -555,6 +583,21 @@ async function extractPdfText(buffer: Buffer): Promise<string> {
   } finally {
     await parser.destroy();
   }
+}
+
+/**
+ * PDF Itaú (e parecidos) com tabela em duas colunas: `pdf-parse` costuma juntar o texto fora da ordem visual,
+ * e a extração por texto perde metade dos lançamentos. Melhor enviar o PDF à API com visão (`input_file`).
+ */
+function shouldPreferNativePdfOverExtractedText(text: string): boolean {
+  const folded = text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "");
+  const itauLike = /\bitau\b/.test(folded);
+  const hasPurchaseGrid =
+    /lancamentos.*compras|compras e saques/.test(folded) || /valor\s+em\s+r\$/.test(folded);
+  return itauLike && hasPurchaseGrid;
 }
 
 function applyCategoryWhitelist(result: StatementAnalyzeResult, allowed: readonly string[]): StatementAnalyzeResult {
@@ -657,7 +700,9 @@ export async function handleStatementAnalyzePost(
         console.error("[paytrackr-statement] pdf-parse", msg);
       }
 
-      if (pdfTextOk) {
+      const useTextFirst = pdfTextOk && !shouldPreferNativePdfOverExtractedText(text);
+
+      if (useTextFirst) {
         result = await analyzeCreditCardStatementFromText({
           apiKey: openaiKey,
           model: openaiModel,
@@ -678,14 +723,24 @@ export async function handleStatementAnalyzePost(
         } catch (e2) {
           const msg2 = e2 instanceof Error ? e2.message : String(e2);
           console.error("[paytrackr-statement] pdf-native-openai", msg2);
-          return {
-            status: 422,
-            json: {
-              error:
-                "Não foi possível extrair texto do PDF nem analisá-lo como documento (OpenAI). Tente PNG/JPEG da fatura ou outro PDF. Detalhe: " +
-                (msg2.length > 220 ? `${msg2.slice(0, 220)}…` : msg2),
-            },
-          };
+          if (pdfTextOk) {
+            result = await analyzeCreditCardStatementFromText({
+              apiKey: openaiKey,
+              model: openaiModel,
+              statementText: text,
+              referenceMonth,
+              categoriesLine,
+            });
+          } else {
+            return {
+              status: 422,
+              json: {
+                error:
+                  "Não foi possível extrair texto do PDF nem analisá-lo como documento (OpenAI). Tente PNG/JPEG da fatura ou outro PDF. Detalhe: " +
+                  (msg2.length > 220 ? `${msg2.slice(0, 220)}…` : msg2),
+              },
+            };
+          }
         }
       }
     } else {

@@ -7,11 +7,12 @@ type Props = {
   open: boolean;
   receivable: Receivable | null;
   onClose: () => void;
-  onConfirm: (opts: { amount: number; registerIncome: boolean }) => void;
+  onConfirm: (opts: { amount: number; registerIncome: boolean; paymentDate: string }) => void;
 };
 
 export function ReceivablePartialModal({ open, receivable, onClose, onConfirm }: Props) {
   const [raw, setRaw] = useState("");
+  const [paymentDate, setPaymentDate] = useState("");
   const [registerIncome, setRegisterIncome] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -22,6 +23,7 @@ export function ReceivablePartialModal({ open, receivable, onClose, onConfirm }:
     setError(null);
     setRaw("");
     setRegisterIncome(true);
+    setPaymentDate(receivable.dueDate);
   }, [open, receivable]);
 
   if (!open || !receivable) return null;
@@ -38,7 +40,12 @@ export function ReceivablePartialModal({ open, receivable, onClose, onConfirm }:
       setError(`O máximo agora é ${formatBRL(remaining)}.`);
       return;
     }
-    onConfirm({ amount: n, registerIncome });
+    const pd = paymentDate.trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(pd)) {
+      setError("Informe a data do recebimento (AAAA-MM-DD).");
+      return;
+    }
+    onConfirm({ amount: n, registerIncome, paymentDate: pd });
     onClose();
   }
 
@@ -68,6 +75,18 @@ export function ReceivablePartialModal({ open, receivable, onClose, onConfirm }:
               className="w-full rounded-lg bg-surface-container-high px-3 py-2 text-sm"
               autoFocus
             />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-bold text-on-surface-variant">Data do recebimento</label>
+            <input
+              type="date"
+              value={paymentDate}
+              onChange={(e) => setPaymentDate(e.target.value)}
+              className="w-full rounded-lg bg-surface-container-high px-3 py-2 text-sm"
+            />
+            <p className="mt-1 text-[11px] text-on-surface-variant">
+              Por padrão usa o vencimento; ajuste se caiu em outro dia.
+            </p>
           </div>
           <label className="flex cursor-pointer items-center gap-2 text-sm">
             <input

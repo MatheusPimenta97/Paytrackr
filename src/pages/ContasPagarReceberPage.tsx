@@ -108,7 +108,7 @@ function downloadTableCsv(filename: string, header: string[], lines: string[][])
 }
 
 const tabBtn =
-  "relative pb-3 text-sm font-bold transition-colors border-b-2 border-transparent text-on-surface-variant hover:text-primary";
+  "relative pb-2 text-xs font-bold transition-colors border-b-2 border-transparent text-on-surface-variant hover:text-primary";
 const tabBtnActive = "border-primary text-primary";
 
 export function ContasPagarReceberPage() {
@@ -249,9 +249,9 @@ export function ContasPagarReceberPage() {
         open={partialFor !== null}
         receivable={partialFor}
         onClose={() => setPartialFor(null)}
-        onConfirm={({ amount, registerIncome }) => {
+        onConfirm={({ amount, registerIncome, paymentDate }) => {
           if (!partialFor) return;
-          receiveReceivable(partialFor.id, { amount, registerIncome });
+          receiveReceivable(partialFor.id, { amount, registerIncome, paymentDate });
         }}
       />
 
@@ -318,11 +318,11 @@ export function ContasPagarReceberPage() {
         <div className="min-w-0 flex-1">
           <div className="overflow-hidden rounded-2xl border border-outline-variant/15 bg-surface-container-lowest shadow-[0px_8px_40px_rgba(7,30,39,0.06)]">
             {/* Abas */}
-            <div className="flex border-b border-outline-variant/15 px-4 pt-4 sm:px-6">
+            <div className="flex border-b border-outline-variant/15 px-3 pt-3 sm:px-5">
               <button
                 type="button"
                 onClick={() => setMainTab("pagar")}
-                className={`${tabBtn} mr-8 ${mainTab === "pagar" ? tabBtnActive : ""}`}
+                className={`${tabBtn} mr-6 ${mainTab === "pagar" ? tabBtnActive : ""}`}
               >
                 A pagar
               </button>
@@ -336,13 +336,13 @@ export function ContasPagarReceberPage() {
             </div>
 
             {/* Barra filtro + ações */}
-            <div className="flex flex-col gap-3 border-b border-outline-variant/10 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+            <div className="flex flex-col gap-2 border-b border-outline-variant/10 px-3 py-2 sm:flex-row sm:items-center sm:justify-between sm:px-5">
               <div className="flex flex-wrap items-center gap-3">
                 <span className="text-xs font-bold text-on-surface-variant">Filtrar</span>
                 <button
                   type="button"
                   onClick={() => setTableFilter("pendentes")}
-                  className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold transition-colors ${
+                  className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] font-bold transition-colors ${
                     tableFilter === "pendentes"
                       ? "border-primary bg-primary/10 text-primary"
                       : "border-outline-variant/40 bg-surface-container-high/50 text-on-surface-variant hover:border-primary/40"
@@ -357,7 +357,7 @@ export function ContasPagarReceberPage() {
                 <button
                   type="button"
                   onClick={() => setTableFilter("agendados")}
-                  className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold transition-colors ${
+                  className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] font-bold transition-colors ${
                     tableFilter === "agendados"
                       ? "border-primary bg-primary/10 text-primary"
                       : "border-outline-variant/40 bg-surface-container-high/50 text-on-surface-variant hover:border-primary/40"
@@ -372,7 +372,7 @@ export function ContasPagarReceberPage() {
                 <button
                   type="button"
                   onClick={() => setTableFilter("todos")}
-                  className={`rounded-full px-3 py-1 text-xs font-bold ${
+                  className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
                     tableFilter === "todos"
                       ? "bg-primary text-white"
                       : "text-on-surface-variant hover:bg-surface-container-high"
@@ -386,36 +386,36 @@ export function ContasPagarReceberPage() {
                   <Link
                     to="/gastos-recorrentes"
                     title="Gerenciar gastos fixos"
-                    className="rounded-lg p-2 text-on-surface-variant hover:bg-surface-container-high hover:text-primary"
+                    className="rounded-md p-1.5 text-on-surface-variant hover:bg-surface-container-high hover:text-primary"
                   >
-                    <span className="material-symbols-outlined text-[22px]">settings</span>
+                    <span className="material-symbols-outlined text-[20px]">settings</span>
                   </Link>
                 ) : (
-                  <span className="rounded-lg p-2 text-outline-variant/30" title="—">
-                    <span className="material-symbols-outlined text-[22px]">settings</span>
+                  <span className="rounded-md p-1.5 text-outline-variant/30" title="—">
+                    <span className="material-symbols-outlined text-[20px]">settings</span>
                   </span>
                 )}
                 <button
                   type="button"
                   title="Baixar tabela (CSV)"
-                  className="rounded-lg p-2 text-on-surface-variant hover:bg-surface-container-high hover:text-primary"
+                  className="rounded-md p-1.5 text-on-surface-variant hover:bg-surface-container-high hover:text-primary"
                   onClick={() => (mainTab === "pagar" ? exportPagarCsv() : exportReceberCsv())}
                 >
-                  <span className="material-symbols-outlined text-[22px]">download</span>
+                  <span className="material-symbols-outlined text-[20px]">download</span>
                 </button>
                 <button
                   type="button"
                   title="Imprimir"
-                  className="rounded-lg p-2 text-on-surface-variant hover:bg-surface-container-high hover:text-primary print:hidden"
+                  className="rounded-md p-1.5 text-on-surface-variant hover:bg-surface-container-high hover:text-primary print:hidden"
                   onClick={() => window.print()}
                 >
-                  <span className="material-symbols-outlined text-[22px]">print</span>
+                  <span className="material-symbols-outlined text-[20px]">print</span>
                 </button>
               </div>
             </div>
 
             {/* Tabela + empty */}
-            <div className="p-4 sm:p-6">
+            <div className="p-3 sm:p-4">
               {mainTab === "pagar" ? (
                 filteredRecurring.length === 0 ? (
                   <div className="flex flex-col items-center justify-center px-4 py-16 text-center">
@@ -433,17 +433,31 @@ export function ContasPagarReceberPage() {
                     </Link>
                   </div>
                 ) : (
-                  <div className="overflow-x-auto rounded-xl border border-outline-variant/10">
-                    <table className="w-full min-w-[720px] border-collapse text-left text-sm">
+                  <div className="overflow-x-auto rounded-lg border border-outline-variant/10">
+                    <table className="w-full min-w-[600px] border-collapse text-left text-xs">
                       <thead>
                         <tr className="border-b border-outline-variant/15 bg-surface-container-high/40">
-                          <th className="px-4 py-3 font-bold text-on-surface-variant">Descrição</th>
-                          <th className="px-4 py-3 font-bold text-on-surface-variant">Categoria</th>
-                          <th className="px-4 py-3 font-bold text-on-surface-variant">Vencimento</th>
-                          <th className="px-4 py-3 font-bold text-on-surface-variant">Valor</th>
-                          <th className="px-4 py-3 font-bold text-on-surface-variant">Pagamento</th>
-                          <th className="px-4 py-3 font-bold text-on-surface-variant">Situação</th>
-                          <th className="px-4 py-3 text-right font-bold text-on-surface-variant">Ações</th>
+                          <th className="px-2 py-1.5 font-bold text-[10px] uppercase tracking-wide text-on-surface-variant">
+                            Descrição
+                          </th>
+                          <th className="px-2 py-1.5 font-bold text-[10px] uppercase tracking-wide text-on-surface-variant">
+                            Cat.
+                          </th>
+                          <th className="px-2 py-1.5 font-bold text-[10px] uppercase tracking-wide text-on-surface-variant">
+                            Venc.
+                          </th>
+                          <th className="px-2 py-1.5 font-bold text-[10px] uppercase tracking-wide text-on-surface-variant">
+                            Valor
+                          </th>
+                          <th className="px-2 py-1.5 font-bold text-[10px] uppercase tracking-wide text-on-surface-variant">
+                            Pagto.
+                          </th>
+                          <th className="px-2 py-1.5 font-bold text-[10px] uppercase tracking-wide text-on-surface-variant">
+                            Sit.
+                          </th>
+                          <th className="px-2 py-1.5 text-right font-bold text-[10px] uppercase tracking-wide text-on-surface-variant">
+                            Ações
+                          </th>
                         </tr>
                       </thead>
                       <tbody>
@@ -457,28 +471,28 @@ export function ContasPagarReceberPage() {
                               key={r.id}
                               className="border-b border-outline-variant/10 transition-colors hover:bg-surface-container-low/70"
                             >
-                              <td className="px-4 py-3 font-semibold text-primary">{r.name}</td>
-                              <td className="px-4 py-3 text-on-surface-variant">{r.category}</td>
-                              <td className="px-4 py-3 text-on-surface-variant">
-                                {dueLabel(r)}
+                              <td className="max-w-[140px] truncate px-2 py-1.5 font-semibold text-primary">{r.name}</td>
+                              <td className="max-w-[72px] truncate px-2 py-1.5 text-on-surface-variant">{r.category}</td>
+                              <td className="whitespace-nowrap px-2 py-1.5 text-on-surface-variant">
+                                <span className="block leading-tight">{dueLabel(r)}</span>
                                 {dueSoon <= 7 ? (
-                                  <span className="ml-1 block text-[11px] font-semibold text-primary">
-                                    {dueSoon === 0 ? "hoje" : `em ${dueSoon}d`}
+                                  <span className="text-[10px] font-semibold leading-tight text-primary">
+                                    {dueSoon === 0 ? "hoje" : `${dueSoon}d`}
                                   </span>
                                 ) : null}
                               </td>
-                              <td className="px-4 py-3 font-headline font-bold text-primary">
+                              <td className="whitespace-nowrap px-2 py-1.5 font-bold text-primary">
                                 {formatBRL(r.cadence === "anual" ? r.amount / 12 : r.amount)}
                                 {r.cadence === "anual" ? (
-                                  <span className="ml-1 text-xs font-normal text-on-surface-variant">/mês</span>
+                                  <span className="font-normal text-on-surface-variant">/m</span>
                                 ) : null}
                               </td>
-                              <td className="max-w-[140px] truncate px-4 py-3 text-xs text-on-surface-variant">
+                              <td className="max-w-[100px] truncate px-2 py-1.5 text-[10px] text-on-surface-variant">
                                 {cardHint ?? "—"}
                               </td>
-                              <td className="px-4 py-3">
+                              <td className="px-2 py-1.5">
                                 <span
-                                  className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
+                                  className={`inline-block rounded px-1.5 py-0.5 text-[9px] font-bold uppercase leading-none ${
                                     st === "vencendo"
                                       ? "bg-error-container text-error"
                                       : st === "pago"
@@ -489,13 +503,13 @@ export function ContasPagarReceberPage() {
                                   {stLabel}
                                 </span>
                               </td>
-                              <td className="px-4 py-3 text-right">
+                              <td className="px-2 py-1.5 text-right">
                                 <button
                                   type="button"
                                   onClick={() => toggleRecurringPaid(r.id, mk)}
-                                  className="rounded-lg bg-secondary px-3 py-1.5 text-xs font-bold text-on-secondary-container hover:bg-secondary/90"
+                                  className="rounded-md bg-secondary px-2 py-1 text-[10px] font-bold text-on-secondary-container hover:bg-secondary/90"
                                 >
-                                  Marcar pago
+                                  Pago
                                 </button>
                               </td>
                             </tr>
@@ -521,18 +535,32 @@ export function ContasPagarReceberPage() {
                   </button>
                 </div>
               ) : (
-                <div className="overflow-x-auto rounded-xl border border-outline-variant/10">
-                  <table className="w-full min-w-[900px] border-collapse text-left text-sm">
+                <div className="overflow-x-auto rounded-lg border border-outline-variant/10">
+                  <table className="w-full min-w-[720px] border-collapse text-left text-xs">
                     <thead>
                       <tr className="border-b border-outline-variant/15 bg-surface-container-high/40">
-                        <th className="px-3 py-3 font-bold text-on-surface-variant" aria-label="Iniciais" />
-                        <th className="px-4 py-3 font-bold text-on-surface-variant">Descrição</th>
-                        <th className="px-4 py-3 font-bold text-on-surface-variant">Categoria</th>
-                        <th className="px-4 py-3 font-bold text-on-surface-variant">Vencimento</th>
-                        <th className="px-4 py-3 font-bold text-on-surface-variant">Total</th>
-                        <th className="px-4 py-3 font-bold text-on-surface-variant">A receber</th>
-                        <th className="px-4 py-3 font-bold text-on-surface-variant">Situação</th>
-                        <th className="px-4 py-3 text-right font-bold text-on-surface-variant">Ações</th>
+                        <th className="w-8 px-1 py-1.5 font-bold text-[10px] uppercase tracking-wide text-on-surface-variant" />
+                        <th className="px-2 py-1.5 font-bold text-[10px] uppercase tracking-wide text-on-surface-variant">
+                          Descrição
+                        </th>
+                        <th className="px-2 py-1.5 font-bold text-[10px] uppercase tracking-wide text-on-surface-variant">
+                          Cat.
+                        </th>
+                        <th className="px-2 py-1.5 font-bold text-[10px] uppercase tracking-wide text-on-surface-variant">
+                          Venc.
+                        </th>
+                        <th className="px-2 py-1.5 font-bold text-[10px] uppercase tracking-wide text-on-surface-variant">
+                          Total
+                        </th>
+                        <th className="px-2 py-1.5 font-bold text-[10px] uppercase tracking-wide text-on-surface-variant">
+                          Aberto
+                        </th>
+                        <th className="px-2 py-1.5 font-bold text-[10px] uppercase tracking-wide text-on-surface-variant">
+                          Sit.
+                        </th>
+                        <th className="px-1 py-1.5 text-right font-bold text-[10px] uppercase tracking-wide text-on-surface-variant">
+                          Ações
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
@@ -547,116 +575,119 @@ export function ContasPagarReceberPage() {
                             key={r.id}
                             className="border-b border-outline-variant/10 transition-colors hover:bg-surface-container-low/70"
                           >
-                            <td className="px-3 py-3">
-                              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-surface-container-high text-xs font-bold text-primary">
+                            <td className="px-1 py-1 align-middle">
+                              <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-surface-container-high text-[9px] font-bold text-primary">
                                 {initials(r.debtorName)}
                               </div>
                             </td>
-                            <td className="px-4 py-3">
-                              <span className="font-semibold text-primary">{r.debtorName}</span>
+                            <td className="max-w-[120px] px-2 py-1 align-middle">
+                              <span className="line-clamp-2 font-semibold leading-tight text-primary">{r.debtorName}</span>
                               {r.installmentMode ? (
-                                <span className="mt-0.5 block text-[10px] text-on-surface-variant">
-                                  Parcelas no cartão
-                                  {r.installmentCount ? ` · ${r.installmentCount}x` : ""}
+                                <span className="block truncate text-[9px] leading-tight text-on-surface-variant">
+                                  Cartão{r.installmentCount ? ` ${r.installmentCount}x` : ""}
                                 </span>
                               ) : null}
                             </td>
-                            <td className="px-4 py-3 text-on-surface-variant">{r.incomeCategory ?? "—"}</td>
-                            <td className="px-4 py-3 text-on-surface-variant">{formatDateShort(r.dueDate)}</td>
-                            <td className="px-4 py-3 font-medium text-on-surface">{formatBRL(r.amount)}</td>
-                            <td className="px-4 py-3">
-                              <div className="font-headline font-bold text-primary">{formatBRL(rest)}</div>
-                              <div className="mt-1 h-1 max-w-[100px] overflow-hidden rounded-full bg-surface-container-high">
-                                <div
-                                  className="h-full rounded-full bg-secondary"
-                                  style={{ width: `${pct}%` }}
-                                />
-                              </div>
-                              <span className="text-[10px] text-on-surface-variant">{pct}% recebido</span>
+                            <td className="max-w-[68px] truncate px-2 py-1 align-middle text-on-surface-variant">
+                              {r.incomeCategory ?? "—"}
                             </td>
-                            <td className="px-4 py-3">
+                            <td className="whitespace-nowrap px-2 py-1 align-middle text-on-surface-variant">
+                              {formatDateShort(r.dueDate)}
+                            </td>
+                            <td className="whitespace-nowrap px-2 py-1 align-middle font-medium text-on-surface">
+                              {formatBRL(r.amount)}
+                            </td>
+                            <td className="px-2 py-1 align-middle">
+                              <div className="font-bold leading-none text-primary">{formatBRL(rest)}</div>
+                              <div className="mt-0.5 h-0.5 max-w-[72px] overflow-hidden rounded-full bg-surface-container-high">
+                                <div className="h-full rounded-full bg-secondary" style={{ width: `${pct}%` }} />
+                              </div>
+                              <span className="text-[9px] leading-none text-on-surface-variant">{pct}%</span>
+                            </td>
+                            <td className="px-2 py-1 align-middle">
                               {badge ? (
                                 <span
-                                  className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
+                                  className={`inline-block max-w-[72px] truncate rounded px-1 py-0.5 text-[9px] font-bold uppercase leading-none ${
                                     overdue ? "bg-error-container text-error" : "bg-surface-container-high text-on-surface-variant"
                                   }`}
+                                  title={badge}
                                 >
                                   {badge}
                                 </span>
                               ) : (
-                                <span className="text-xs text-on-surface-variant">—</span>
+                                <span className="text-on-surface-variant">—</span>
                               )}
                             </td>
-                            <td className="px-4 py-3">
-                              <div className="flex flex-wrap justify-end gap-1">
+                            <td className="px-1 py-1 align-middle">
+                              <div className="flex flex-nowrap justify-end gap-px">
                                 {isSalaryIncomeCategory(r.incomeCategory ?? "") && r.payslipAttachmentDataUrl ? (
                                   <a
                                     href={r.payslipAttachmentDataUrl}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     title="Holerite"
-                                    className="rounded-lg p-1.5 text-primary hover:bg-surface-container-high"
+                                    className="rounded p-1 text-primary hover:bg-surface-container-high"
                                   >
-                                    <span className="material-symbols-outlined text-[20px]">description</span>
+                                    <span className="material-symbols-outlined text-[17px]">description</span>
                                   </a>
                                 ) : null}
                                 <button
                                   type="button"
                                   title="WhatsApp"
-                                  className="rounded-lg p-1.5 text-primary hover:bg-surface-container-high"
+                                  className="rounded p-1 text-primary hover:bg-surface-container-high"
                                   onClick={() => cobrarWhatsApp(r)}
                                 >
-                                  <span className="material-symbols-outlined text-[20px]">send</span>
+                                  <span className="material-symbols-outlined text-[17px]">send</span>
                                 </button>
                                 <button
                                   type="button"
                                   title="Parcial"
-                                  className="rounded-lg p-1.5 text-secondary hover:bg-surface-container-high"
+                                  className="rounded p-1 text-secondary hover:bg-surface-container-high"
                                   onClick={() => setPartialFor(r)}
                                 >
-                                  <span className="material-symbols-outlined text-[20px]">payments</span>
+                                  <span className="material-symbols-outlined text-[17px]">payments</span>
                                 </button>
                                 <button
                                   type="button"
-                                  title="Liquidar na conta"
-                                  className="rounded-lg p-1.5 text-primary hover:bg-surface-container-high"
+                                  title="Liquidar na conta (data = vencimento)"
+                                  className="rounded p-1 text-primary hover:bg-surface-container-high"
                                   onClick={() => {
                                     if (
                                       window.confirm(
-                                        `Registrar o restante (${formatBRL(rest)}) na conta principal?`
+                                        `Registrar ${formatBRL(rest)} na conta principal com data ${formatDateShort(r.dueDate)} (vencimento)?`
                                       )
                                     ) {
                                       receiveReceivable(r.id, { registerIncome: true });
                                     }
                                   }}
                                 >
-                                  <span className="material-symbols-outlined text-[20px]">check_circle</span>
+                                  <span className="material-symbols-outlined text-[17px]">check_circle</span>
                                 </button>
                                 <button
                                   type="button"
-                                  title="Quitar sem lançamento"
-                                  className="rounded-lg p-1.5 text-on-surface-variant hover:bg-surface-container-high"
+                                  title="Quitar sem lançamento (data = vencimento)"
+                                  className="rounded p-1 text-on-surface-variant hover:bg-surface-container-high"
                                   onClick={() => {
                                     if (
                                       window.confirm(
-                                        `Marcar ${formatBRL(rest)} como recebidos sem criar lançamento na conta?`
+                                        `Marcar ${formatBRL(rest)} como recebidos em ${formatDateShort(r.dueDate)} sem lançamento na conta?`
                                       )
                                     ) {
                                       receiveReceivable(r.id, { registerIncome: false });
                                     }
                                   }}
                                 >
-                                  <span className="material-symbols-outlined text-[20px]">done_all</span>
+                                  <span className="material-symbols-outlined text-[17px]">done_all</span>
                                 </button>
                                 <button
                                   type="button"
                                   title="Excluir"
-                                  className="rounded-lg p-1.5 text-error hover:bg-error-container/20"
+                                  className="rounded p-1 text-error hover:bg-error-container/20"
                                   onClick={() => {
                                     if (window.confirm("Excluir esta entrada?")) deleteReceivable(r.id);
                                   }}
                                 >
-                                  <span className="material-symbols-outlined text-[20px]">delete</span>
+                                  <span className="material-symbols-outlined text-[17px]">delete</span>
                                 </button>
                               </div>
                             </td>

@@ -368,7 +368,14 @@ type Action =
   | { type: "UPDATE_PROFILE"; patch: Partial<UserProfile> }
   | { type: "ADD_RECEIVABLE"; payload: Omit<Receivable, "id" | "status" | "paidAt" | "createdAt"> & { id?: string } }
   | { type: "DELETE_RECEIVABLE"; id: string }
-  | { type: "RECEIVE_RECEIVABLE"; id: string; registerIncome: boolean; amount?: number }
+  | {
+      type: "RECEIVE_RECEIVABLE";
+      id: string;
+      registerIncome: boolean;
+      amount?: number;
+      /** YYYY-MM-DD; default = vencimento do recebível */
+      paymentDate?: string;
+    }
   | {
       type: "ADD_LOYALTY_PROGRAM";
       payload: Omit<LoyaltyProgram, "id"> & { id?: string };
@@ -949,7 +956,9 @@ function financeReducer(state: FinanceState, action: Action): FinanceState {
       const prev = receivedTotal(rec);
       const remaining = roundMoney(rec.amount - prev);
       if (remaining <= 0) return state;
-      const paidAt = new Date().toISOString().slice(0, 10);
+      const req = action.paymentDate?.trim();
+      const paidAt =
+        req && /^\d{4}-\d{2}-\d{2}$/.test(req) ? req : rec.dueDate;
       const requested =
         action.amount !== undefined ? roundMoney(Math.max(0, action.amount)) : remaining;
       const pay = roundMoney(Math.min(requested, remaining));
@@ -1134,7 +1143,10 @@ type FinanceContextValue = {
   ) => void;
   deleteReceivable: (id: string) => void;
   /** Registra recebimento (total ou parcial); opcionalmente credita receita na conta principal. */
-  receiveReceivable: (id: string, options?: { registerIncome?: boolean; amount?: number }) => void;
+  receiveReceivable: (
+    id: string,
+    options?: { registerIncome?: boolean; amount?: number; paymentDate?: string }
+  ) => void;
   addLoyaltyProgram: (p: Omit<LoyaltyProgram, "id"> & { id?: string }) => void;
   updateLoyaltyProgram: (id: string, patch: Partial<Omit<LoyaltyProgram, "id">>) => void;
   deleteLoyaltyProgram: (id: string) => void;
@@ -1562,12 +1574,13 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const receiveReceivable = useCallback(
-    (id: string, options?: { registerIncome?: boolean; amount?: number }) => {
+    (id: string, options?: { registerIncome?: boolean; amount?: number; paymentDate?: string }) => {
       dispatch({
         type: "RECEIVE_RECEIVABLE",
         id,
         registerIncome: options?.registerIncome !== false,
         amount: options?.amount,
+        paymentDate: options?.paymentDate,
       });
     },
     []

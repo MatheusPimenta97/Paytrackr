@@ -32,7 +32,13 @@ function categoryMaterialIcon(category: string): string {
 
 export function CreditCardStatementMonthPage() {
   const { cardId, referenceMonth } = useParams<{ cardId: string; referenceMonth: string }>();
-  const { state, addCreditCardStatement, updateCreditCardStatement, deleteCreditCardStatement } = useFinance();
+  const {
+    state,
+    addCreditCardStatement,
+    updateCreditCardStatement,
+    deleteCreditCardStatement,
+    deleteTransaction,
+  } = useFinance();
 
   const [statementOpen, setStatementOpen] = useState(false);
   const [statementEditing, setStatementEditing] = useState<CreditCardStatement | null>(null);
@@ -374,7 +380,7 @@ export function CreditCardStatementMonthPage() {
                   <th className="px-4 py-2">Descrição</th>
                   <th className="px-4 py-2">Categoria</th>
                   <th className="px-4 py-2 text-right">Valor</th>
-                  <th className="w-12 px-2 py-2 text-center" aria-label="Ações" />
+                  <th className="w-24 px-2 py-2 text-center" aria-label="Ações" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -417,17 +423,34 @@ export function CreditCardStatementMonthPage() {
                         {formatBRL(t.amount)}
                       </td>
                       <td className="px-2 py-2 text-center">
-                        <button
-                          type="button"
-                          className="rounded p-1.5 text-slate-500 hover:bg-slate-100 hover:text-primary dark:hover:bg-slate-800 dark:hover:text-blue-300"
-                          aria-label="Editar lançamento"
-                          onClick={() => {
-                            setInvoiceEditingTxn(t);
-                            setInvoiceTxnFormOpen(true);
-                          }}
-                        >
-                          <span className="material-symbols-outlined text-[18px]">edit</span>
-                        </button>
+                        <div className="flex items-center justify-center gap-0.5">
+                          <button
+                            type="button"
+                            className="rounded p-1.5 text-slate-500 hover:bg-slate-100 hover:text-primary dark:hover:bg-slate-800 dark:hover:text-blue-300"
+                            aria-label="Editar lançamento"
+                            onClick={() => {
+                              setInvoiceEditingTxn(t);
+                              setInvoiceTxnFormOpen(true);
+                            }}
+                          >
+                            <span className="material-symbols-outlined text-[18px]">edit</span>
+                          </button>
+                          <button
+                            type="button"
+                            className="rounded p-1.5 text-slate-500 hover:bg-error/10 hover:text-error dark:hover:bg-error/15"
+                            aria-label="Excluir lançamento"
+                            onClick={() => {
+                              if (!confirm("Excluir este lançamento?")) return;
+                              if (invoiceEditingTxn?.id === t.id) {
+                                setInvoiceTxnFormOpen(false);
+                                setInvoiceEditingTxn(null);
+                              }
+                              deleteTransaction(t.id);
+                            }}
+                          >
+                            <span className="material-symbols-outlined text-[18px]">delete</span>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
